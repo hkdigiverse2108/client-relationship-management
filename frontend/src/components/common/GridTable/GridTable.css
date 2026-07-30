@@ -1,0 +1,29 @@
+.aio-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aio-view-toggle__btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.9);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.aio-view-toggle__btn:hover {
+  background: rgba(255,255,255,.1);
+}
+
+.aio-view-toggle__btn.is-active {
+  background: linear-gradient(135deg,#0d6efd,#6f5cff);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(13,110,253,.25);
+}

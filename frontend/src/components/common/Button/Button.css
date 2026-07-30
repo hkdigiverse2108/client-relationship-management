@@ -1,0 +1,131 @@
+.aio-btn {
+  --btn-bg: var(--color-primary);
+  --btn-fg: #fff;
+  --btn-border: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--btn-fg);
+  background-color: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    color var(--transition-fast);
+  white-space: nowrap;
+}
+.aio-btn:hover:not(:disabled) {
+  /* transform: translateY(-1px); */
+  box-shadow: var(--shadow-md);
+  opacity: 0.9;
+  transition: 0.2s ease-in-out;
+}
+.aio-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.aio-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.aio-btn__icon {
+  font-size: 1.05em;
+  display: inline-flex;
+}
+.aio-btn__label {
+  display: inline-flex;
+  align-items: center;
+}
+.aio-btn--primary {
+  --btn-bg: var(--color-primary);
+  --btn-fg: #fff;
+  font-size: var(--font-size-xs);
+}
+/* .aio-btn--primary:hover:not(:disabled) {
+  --btn-bg: var(--color-primary-hover);
+} */
+.aio-btn--secondary {
+  --btn-bg: var(--color-surface-alt);
+  --btn-fg: var(--color-text);
+  --btn-border: var(--color-border);
+}
+.aio-btn--secondary:hover:not(:disabled) {
+  --btn-bg: var(--color-divider);
+}
+.aio-btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-text-muted);
+}
+.aio-btn--ghost:hover:not(:disabled) {
+  --btn-bg: var(--color-surface-alt);
+  --btn-fg: var(--color-text);
+}
+.aio-btn--outline {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-primary);
+  --btn-border: var(--color-primary);
+}
+.aio-btn--outline:hover:not(:disabled) {
+  --btn-bg: var(--color-primary-soft);
+}
+.aio-btn--danger {
+  --btn-bg: var(--color-danger);
+  --btn-fg: #fff;
+}
+.aio-btn--danger:hover:not(:disabled) {
+  --btn-bg: #dc2626;
+}
+.aio-btn--sm {
+  padding: 0.35rem 0.75rem;
+  font-size: var(--font-size-xs);
+}
+.aio-btn--md {
+  padding: 0.55rem 1rem;
+}
+.aio-btn--lg {
+  padding: 0.75rem 1.35rem;
+  font-size: var(--font-size-base);
+}
+.aio-btn--block {
+  width: 100%;
+}
+.aio-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: aio-spin 0.6s linear infinite;
+}
+
+
+.aio-btn--hero {
+  background: var(--page-header-button-bg);
+  color: var(--color-page-header);
+  border: var(--page-header-button-border);
+  font-size: var(--font-size-xs);
+}
+
+.aio-btn--gradient{
+  background: linear-gradient(135deg, var(--color-accent, #805ad5), var(--color-primary, #0052cc));
+  color: var(--color-primary-soft);
+  border: var(--btn-border);
+  height: 33px;
+  font-size: var(--font-size-xs);
+  
+
+}
+
+
+@keyframes aio-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

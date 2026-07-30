@@ -1,0 +1,59 @@
+.aio-search {
+  position: relative;
+  width: 240px;
+  min-width: 180px;
+}
+
+.aio-search__icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+.aio-search__input {
+  width: 100%;
+  height: 35px;
+  padding: 0 16px 0 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-input);
+  color: var(--color-text);
+  font-size: 14px;
+  outline: none;
+  transition: all .2s ease;
+}
+
+.aio-search__input::placeholder {
+  color: var(--color-text-subtle);
+  
+}
+
+.aio-search__input:focus {
+  border-color: var(--color-primary);
+  /* box-shadow: 0 0 0 3px var(--color-primary-soft); */
+}
+
+/* Dark Version (Hero Banner) */
+
+.aio-search--dark .aio-search__input {
+  background: var(--page-header-button-bg);
+  border: var(--page-header-button-border);
+  color: var(--color-page-header);
+}
+
+.aio-search--dark .aio-search__input::placeholder {
+  color: var(--color-border);
+}
+
+.aio-search--dark .aio-search__icon {
+  color: var(--search-icon);
+}
+
+.aio-search--dark .aio-search__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: none;
+}

@@ -1,0 +1,15 @@
+.aio-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  flex-shrink: 0;
+  user-select: none;
+}
+.aio-avatar--initials {
+  text-transform: uppercase;
+}

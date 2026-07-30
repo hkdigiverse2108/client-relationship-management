@@ -1,0 +1,234 @@
+/* =========================================================
+   Design tokens — all colors/spacing/typography as CSS vars.
+   Dark mode override lives in themes.css.
+   ========================================================= */
+:root {
+  /* Brand */
+  /* --color-primary: #4f46e5; */
+  --color-primary: #0052cc;
+  --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;
+  --color-secondary: #64748b;
+  --page-header-color : rgb(165, 180, 252);
+  /* --color-accent: #06b6d4; */
+  --color-accent: #805ad5;
+  --color-hover-bg: rgba(0, 82, 204, 0.1);
+  /* Status */
+  --color-success: #10b981;
+  --color-success-soft: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fee2e2;
+  --color-info: #3b82f6;
+  --color-info-soft: #dbeafe;
+  /* Surfaces (light) */
+  --color-bg: #f7f8fb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f9fafb;
+  --color-sidebar: #e5eeff;
+  --color-header: #ffffff;
+  /* Text */
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
+  --color-text-inverse: #ffffff;
+  --color-input: #f1f5fa;
+  --search-icon : rgb(129, 140, 248);
+  /* Borders */
+  --color-border: #c3c6d6;
+  --color-border-strong: #d1d5db;
+  /* --color-divider: #f1f5f9; */
+  --color-divider: #c3c6d6;
+  /* Chart palette */
+  --chart-1: #4f46e5;
+  --chart-2: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --chart-6: #8b5cf6;
+  /* Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg: 1.0625rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 20px 50px rgba(15, 23, 42, 0.12);
+  /* Layout */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 76px;
+  --header-height: 68px;
+  /* Motion */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+  --transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Z-index scale */
+  --z-sidebar: 900;
+  --z-header: 800;
+  --z-dropdown: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
+
+  /* every page header bg */
+  --page-header-bg-gradient:linear-gradient(to right, rgb(15, 23, 42), rgb(30, 27, 75), rgb(15, 23, 42));
+  --page-header-button-bg: rgba(49, 46, 129, 0.4);
+  --page-header-button-border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* all colors */
+/* =========================================================
+   CUSTOM UX4G COLOR PALETTE DESIGN TOKENS
+   All colors derived directly from UX4G Color Palette Editor.
+   Design tokens — all colors/spacing/typography as CSS vars.
+   Dark mode override lives in themes.css.
+   ========================================================= */
+/* :root { */
+  /* 1. Primary Color: Main brand highlights, links, primary buttons */
+  /* Brand */
+  /* --color-primary: #4f46e5; */
+  /* --color-primary: #0052cc;
+  --color-primary-hover: #0043b3;
+  --color-primary-soft: #e5eeff; */
+  /* 2. Secondary Color: Secondary highlights, sub-menus */
+  /* --color-secondary: #3b82f6; */
+  /* 3. Accent Color: Alert badges, graphs gradients, accessory buttons */
+  /* --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;
+  --color-secondary: #64748b; */
+  /* --color-accent: #06b6d4; */
+  /* --color-accent: #805ad5; */
+  /* 4. Sidebar Background: Fills the left-hand navigation sidebar */
+  /* --color-sidebar: #e5eeff; */
+  /* 5. Navbar/Header Background: Fills the top header dashboard bar */
+  /* --color-header: #0f172a; */
+  /* 6. Card Background: Grid cards, modals, dropdown panels */
+  /* --color-surface: #ffffff; */
+  /* 7. App Background: Core body background */
+  /* --color-bg: #f8f9ff; */
+  /* 8. Table Header Fill: Grid/list table column headers background */
+  /* --color-table-header: #eff4ff; */
+  /* 9. Hover Background: List items, dropdowns and button hover states */
+  /* --color-hover-bg: #eff4ff; */
+  /* --color-surface-alt: #eff4ff; */
+  /* 10. Border Color: Dividers, grid outlines, input wraps */
+  /* --color-border: #c3c6d6; */
+  /* --color-border-strong: #a0a4b8; */
+  /* --color-divider: #c3c6d6; */
+  /* 11. Link Text Color: Hyperlink anchors and clickable symbols */
+  /* --color-link: #0052cc; */
+  /* 12. Icon Color: Main navigation and card symbol graphics */
+  /* --color-icon: #4f46e5; */
+  /* 13. Success Indicators: Active, paid, confirmed status tags */
+  /* --color-success: #108981; */
+  /* --color-success-soft: #e6f6f5; */
+  /* 14. Warning Indicators: Pending, low stock status warnings */
+  /* --color-hover-bg: rgba(0, 82, 204, 0.1); */
+  /* Status */
+  /* --color-success: #10b981; */
+  /* --color-success-soft: #d1fae5; */
+  /* --color-warning: #f59e0b; */
+  /* --color-warning-soft: #fef3c7; */
+  /* 15. Error / Danger Indicators: Failed, cancelled, out of stock warnings */
+  /* --color-danger: #ba1a1a;
+  --color-danger-soft: #fde8e8; */
+  /* 16. Info Alerts: Informational banner highlights */
+  /* --color-info: #0c56d0;
+  --color-info-soft: #e8f1fd; */
+  /* Text colors */
+  /* --color-danger: #ef4444;
+  --color-danger-soft: #fee2e2;
+  --color-info: #3b82f6;
+  --color-info-soft: #dbeafe; */
+  /* Surfaces (light) */
+  /* --color-bg: #f7f8fb; */
+  /* --color-surface: #ffffff; */
+  /* --color-surface-alt: #f9fafb; */
+  /* --color-sidebar: #e5eeff;
+  --color-header: #ffffff; */
+  /* Text */
+  /* --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
+  --color-text-inverse: #ffffff; */
+  /* Borders */
+  /* --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db; */
+  /* --color-divider: #f1f5f9; */
+  /* --color-divider: #c3c6d6; */
+  /* Chart palette */
+  /* --chart-1: #0052cc;
+  --chart-2: #3b82f6;
+  --chart-3: #108981;
+  --chart-1: #4f46e5;
+  --chart-2: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ba1a1a;
+  --chart-6: #805ad5;
+  --chart-5: #ef4444;
+  --chart-6: #8b5cf6; */
+  /* Typography */
+  /* --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg: 1.0625rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem; */
+  /* Radii */
+  /* --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px; */
+  /* Shadows */
+  /* --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 20px 50px rgba(15, 23, 42, 0.12); */
+  /* Layout */
+  /* --sidebar-width: 260px;
+  --sidebar-width-collapsed: 76px;
+  --header-height: 68px; */
+  /* Motion */
+  /* --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+  --transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1); */
+  /* Z-index scale */
+  /* --z-sidebar: 900;
+  --z-header: 800;
+  --z-dropdown: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
+} */

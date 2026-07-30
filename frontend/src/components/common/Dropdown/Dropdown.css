@@ -1,0 +1,99 @@
+.aio-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.aio-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: var(--z-dropdown);
+  animation: aio-dd 180ms ease;
+}
+.aio-dropdown__menu--right {
+  right: 0;
+}
+.aio-dropdown__menu--left {
+  left: 0;
+}
+.aio-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+}
+.aio-dropdown__item:hover {
+  background: var(--color-surface-alt);
+}
+.aio-dropdown__item.is-danger {
+  color: var(--color-danger);
+}
+.aio-dropdown__item.is-danger:hover {
+  background: var(--color-danger-soft);
+}
+.aio-dropdown__icon {
+  color: var(--color-text-muted);
+}
+.aio-dropdown__item.is-danger .aio-dropdown__icon {
+  color: var(--color-danger);
+}
+@keyframes aio-dd {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.aio-dropdown__header {
+  padding: 10px 14px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  user-select: none;
+  cursor: default;
+  border-bottom: 1px solid var(--color-input);
+}
+
+.aio-dropdown__divider {
+  height: 1px;
+  margin: 6px 0;
+  /* background: var(--color-border); */
+  background: var(--color-input);
+}
+.aio-dropdown__user {
+  padding: 3px 16px 3px;
+}
+
+.aio-dropdown__user-name {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.aio-dropdown__user-email {
+  /* margin-top: 2px; */
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

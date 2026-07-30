@@ -1,0 +1,28 @@
+.aio-table-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.aio-table th.is-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.aio-table th.is-sortable:hover {
+  color: var(--color-text);
+}
+.aio-table__th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.aio-table__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-surface-alt);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

@@ -1,0 +1,80 @@
+.aio-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.aio-cal__head {
+  background: var(--color-surface-alt);
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.aio-cal__cell {
+  background: var(--color-surface);
+  min-height: 110px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background-color var(--transition-fast);
+}
+.aio-cal__cell:hover {
+  background: var(--color-surface-alt);
+}
+.aio-cal__cell.is-outside {
+  opacity: 0.4;
+}
+.aio-cal__cell.is-today .aio-cal__date {
+  background: var(--color-primary);
+  color: #fff;
+}
+.aio-cal__date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  align-self: flex-start;
+}
+.aio-cal__events {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+.aio-cal__event {
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.aio-cal__more {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+}
+@media (max-width: 767.98px) {
+  .aio-cal__cell {
+    min-height: 74px;
+    padding: 0.35rem;
+  }
+  .aio-cal__event {
+    font-size: 10px;
+  }
+}

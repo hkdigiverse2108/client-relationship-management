@@ -1,0 +1,106 @@
+.aio-auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--color-bg);
+}
+.aio-auth__side {
+  position: relative;
+  padding: 2.5rem;
+  color: #fff;
+  background: radial-gradient(1200px 600px at 0% 0%, rgba(255, 255, 255, 0.15), transparent), linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #06b6d4 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+.aio-auth__side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.18), transparent 40%);
+  pointer-events: none;
+}
+.aio-auth__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 20px;
+}
+.aio-auth__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+.aio-auth__pitch {
+  max-width: 460px;
+  position: relative;
+}
+.aio-auth__pitch h2 {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  color: #fff;
+  font-weight: 700;
+}
+.aio-auth__pitch p {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 1.5rem;
+}
+.aio-auth__pitch ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.aio-auth__pitch li {
+  padding-left: 1.25rem;
+  position: relative;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+.aio-auth__pitch li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #fff;
+  font-weight: 700;
+}
+.aio-auth__foot {
+  font-size: 12px;
+  opacity: 0.7;
+  position: relative;
+}
+.aio-auth__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  background: var(--color-surface);
+}
+.aio-auth__panel-inner {
+  width: 100%;
+  max-width: 400px;
+}
+.aio-auth__terms {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 12px;
+  color: var(--color-text-subtle);
+}
+@media (max-width: 991.98px) {
+  .aio-auth {
+    grid-template-columns: 1fr;
+  }
+  .aio-auth__side {
+    display: none;
+  }
+}

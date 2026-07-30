@@ -1,0 +1,38 @@
+import axios from "axios";
+import toast from "react-hot-toast";
+import { STORAGE_KEYS, APP_CONFIG } from "@/config/appConfig";
+import { storage } from "@/utils/storage";
+/**
+ * Shared Axios instance. Attaches JWT on every request and normalizes error
+ * handling. Base URL is read from VITE_API_BASE_URL in the root CRM/.env file.
+ */
+const axiosClient = axios.create({
+  baseURL: APP_CONFIG.apiBaseUrl,
+  timeout: 20000,
+  headers: { "Content-Type": "application/json" },
+});
+axiosClient.interceptors.request.use((config) => {
+  const token = storage.get(STORAGE_KEYS.token);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+axiosClient.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const status = error?.response?.status;
+    const message = error?.response?.data?.message || error?.message || "Something went wrong. Please try again.";
+    if (status === 401) {
+      storage.remove(STORAGE_KEYS.token);
+      storage.remove(STORAGE_KEYS.user);
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    } else if (status >= 500) {
+      toast.error("Server error. Please try again later.");
+    }
+    return Promise.reject({ status, message, raw: error });
+  },
+);
+export default axiosClient;
