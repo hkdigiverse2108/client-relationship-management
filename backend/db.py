@@ -1,0 +1,19 @@
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# Get settings from environment
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "crm_db")
+
+client = AsyncIOMotorClient(MONGODB_URI)
+db = client[MONGODB_DB_NAME]
+
+# Collections
+users_collection = db.get_collection("users")
+otps_collection = db.get_collection("otps")
+audit_logs_collection = db.get_collection("audit_logs")
+
+async def init_db():
+    # Create unique indexes
+    await users_collection.create_index("email", unique=True)
+    await otps_collection.create_index("email")

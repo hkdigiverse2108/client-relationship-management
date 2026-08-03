@@ -127,7 +127,7 @@ export const NAV_SECTIONS = [
       {label: "API Management", path: "/api-management"},
       {label:"User Management", path: "/user-management"},
       {label: "Roles & Permissions", path: "/roles-and-permissions"},
-      {label: "Audit Logs", path: "/audit-logs"},
+      {label: "Audit Logs", path: "/audit-log"},
       {label: "Appearance & Theme", path: "/appearance"}
       
     ]   

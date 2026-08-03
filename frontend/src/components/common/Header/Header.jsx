@@ -22,6 +22,7 @@ import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import toast from "react-hot-toast";
 import "./Header.css";
 import { LuClipboardList, LuPalette} from "react-icons/lu";
+import { getProfilePhotoUrl } from "@/utils/helpers";
 
 export default function Header() {
   const { openMobile } = useSidebar();
@@ -128,7 +129,7 @@ export default function Header() {
           align="right"
           trigger={({ onClick }) => (
             <button className="aio-header__user" onClick={onClick}>
-              <Avatar name={user?.name || "Pratvi Jikadra"} size={36} />
+              <Avatar name={user?.name || "Pratvi Jikadra"} src={getProfilePhotoUrl(user?.profile_photo)} size={36} />
               <div className="aio-header__user-info">
                 <span className="aio-header__user-name">{user?.name || "Pratvi Jikadra"}</span>
                 <span className="aio-header__user-role">{user?.role || "Admin"}</span>
@@ -148,7 +149,7 @@ export default function Header() {
               icon: isDark ? FiSun : FiMoon,
               onClick: toggleTheme,
             },
-            { label: "Appearance & Theme", icon: LuPalette, onClick: () => navigate("/settings") },
+            { label: "Appearance & Theme", icon: LuPalette, onClick: () => navigate("/appearance") },
             { type: "divider" },
             { label: "Sign out", icon: FiLogOut, onClick: handleLogout, danger: true },
           ]}

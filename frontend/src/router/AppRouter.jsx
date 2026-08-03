@@ -14,6 +14,7 @@ import TasksList from "@/pages/Tasks/TasksList";
 import Calendar from "@/pages/Calendar/Calendar";
 import Reports from "@/pages/Reports/Reports";
 import Settings from "@/pages/Settings/Settings";
+import Appearance from "@/pages/Settings/Appearance";
 import NotFound from "@/pages/NotFound";
 import Sales from "@/pages/Dashboard/Sales";
 import Team from "@/pages/Dashboard/Team";
@@ -25,6 +26,7 @@ import GanttChart from "@/pages/Project/GanttChart";
 import Orders from "@/pages/Ecommerce/Orders";
 import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
+import AuditLog from "@/pages/Audit/AuditLog";
 export default function AppRouter() {
   return (
     <Routes>
@@ -55,6 +57,8 @@ export default function AppRouter() {
         <Route path="/calendar"  element={<Calendar />} />
         <Route path="/reports"   element={<Reports />} />
         <Route path="/settings"  element={<Settings />} />
+        <Route path="/appearance" element={<Appearance />} />
+        <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/projects-dashboard"  element={<ProjectDashboard />} />
         <Route path="/all-projects"  element={<AllProjects />} />
         <Route path="/pipeline-board"  element={<PipelineBoard />} />

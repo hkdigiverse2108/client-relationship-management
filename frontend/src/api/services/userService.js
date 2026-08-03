@@ -1,12 +1,32 @@
-import { sleep } from "@/utils/helpers";
-import { usersData } from "@/data/usersData";
+import axiosClient from "@/api/axiosClient";
+
 export const userService = {
-  async list() {
-    await sleep(200);
-    return usersData;
+  async getList() {
+    return axiosClient.get("/users");
   },
-  async get(id) {
-    await sleep(150);
-    return usersData.find((u) => u.id === id) || null;
+  async create(payload) {
+    return axiosClient.post("/users", payload);
   },
+  async update(userId, payload) {
+    return axiosClient.put(`/users/${userId}`, payload);
+  },
+  async toggleStatus(userId, isActive) {
+    return axiosClient.patch(`/users/${userId}/status`, { is_active: isActive });
+  },
+  async delete(userId) {
+    return axiosClient.delete(`/users/${userId}`);
+  },
+  async resetPassword(userId) {
+    return axiosClient.put(`/users/${userId}/reset-password`);
+  },
+  async updateProfile(payload) {
+    return axiosClient.patch("/users/me/profile", payload);
+  },
+  async uploadPhoto(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return axiosClient.post("/users/me/photo", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+  }
 };

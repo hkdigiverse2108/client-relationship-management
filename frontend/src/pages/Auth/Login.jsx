@@ -57,9 +57,6 @@ export default function Login() {
         </div>
         <Button type="submit" block loading={loading} size="lg">Sign in</Button>
       </form>
-      <p className="text-center mt-4" style={{ fontSize: 14 }}>
-        New to AIO CRM? <Link to="/register">Create an account</Link>
-      </p>
     </div>
   );
 }

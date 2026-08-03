@@ -22,16 +22,23 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error?.response?.status;
-    const message = error?.response?.data?.message || error?.message || "Something went wrong. Please try again.";
-    if (status === 401) {
+    const message = error?.response?.data?.detail || error?.response?.data?.message || error?.message || "Something went wrong. Please try again.";
+    
+    if (status === 401 || (status === 403 && message.includes("deactivate"))) {
       storage.remove(STORAGE_KEYS.token);
       storage.remove(STORAGE_KEYS.user);
+      
+      if (status === 403 && message.includes("deactivate")) {
+        toast.error("Your account has been deactivate by admin.please contact admin.");
+      }
+      
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
     } else if (status >= 500) {
       toast.error("Server error. Please try again later.");
     }
+    
     return Promise.reject({ status, message, raw: error });
   },
 );

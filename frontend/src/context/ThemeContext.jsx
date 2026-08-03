@@ -6,10 +6,12 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(
     () => storage.get(STORAGE_KEYS.theme) || APP_CONFIG.defaultTheme
   );
+  
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     storage.set(STORAGE_KEYS.theme, theme);
   }, [theme]);
+
   const value = useMemo(
     () => ({
       theme,

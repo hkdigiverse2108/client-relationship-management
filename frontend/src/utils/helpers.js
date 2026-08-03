@@ -1,7 +1,14 @@
 // Generic pure helpers.
+import { APP_CONFIG } from "@/config/appConfig";
+
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const uniqueId = (prefix = "id") => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 export const classNames = (...args) => args.filter(Boolean).join(" ").trim();
+
+export const getProfilePhotoUrl = (url) => {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${APP_CONFIG.apiBaseUrl.replace('/api/v1', '')}${url}`;
+};
 export const paginate = (items = [], page = 1, pageSize = 10) => {
   const safeItems = Array.isArray(items) ? items : [];
   const start = (page - 1) * pageSize;

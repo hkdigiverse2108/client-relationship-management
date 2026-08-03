@@ -22,7 +22,10 @@ function subGroupHasActiveChild(item, pathname) {
   return item.subItems.some((sub) => pathname === sub.path);
 }
 
+import { useAuth } from "@/context/AuthContext";
+
 export default function Sidebar() {
+  const { user } = useAuth();
   const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar();
   const location = useLocation();
 
@@ -75,9 +78,33 @@ export default function Sidebar() {
         {/* Navigation Sections */}
         <nav className="aio-sidebar__nav">
           {NAV_SECTIONS.map((section) => {
+            // Apply permission checks
+            const perms = user?.permissions || {};
+            
+            const isSuperAdmin = user?.role === "Super Admin";
+            
+            // Filter items based on permissions
+            const filteredItems = section.items.map(item => {
+              if (item.subItems) {
+                const filteredSub = item.subItems.filter(sub => isSuperAdmin || perms[sub.path]?.view);
+                return filteredSub.length > 0 ? { ...item, subItems: filteredSub } : null;
+              } else {
+                return isSuperAdmin || perms[item.path]?.view ? item : null;
+              }
+            }).filter(Boolean);
+
+            if (filteredItems.length === 0) return null;
+
             const SectionIcon = section.icon;
             const isOpen = !!openSections[section.id];
-            const sectionIsActive = sectionHasActiveChild(section, location.pathname);
+            
+            // Update isActive logic to use filteredItems
+            const sectionIsActive = filteredItems.some((item) => {
+              if (item.subItems) {
+                return item.subItems.some((sub) => location.pathname === sub.path);
+              }
+              return location.pathname === item.path;
+            });
 
             return (
               <div key={section.id} className="aio-sidebar__section">
@@ -103,7 +130,7 @@ export default function Sidebar() {
                 {/* Sub-items Container */}
                 {isOpen && (
                   <div className="aio-sidebar__items">
-                    {section.items.map((item, idx) => {
+                    {filteredItems.map((item, idx) => {
                       // Sub-group (e.g. WhatsApp)
                       if (item.subItems) {
                         const isSubGroupOpen = !!openSubGroups[item.id];

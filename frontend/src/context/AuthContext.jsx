@@ -10,7 +10,11 @@ export function AuthProvider({ children }) {
     // Hydrate user on mount if a token exists but user is missing.
     const token = storage.get(STORAGE_KEYS.token);
     if (token && !user) {
-      authService.me().then(setUser).catch(() => setUser(null));
+      authService.me().then(setUser).catch(() => {
+          storage.remove(STORAGE_KEYS.token);
+          storage.remove(STORAGE_KEYS.user);
+          setUser(null);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -37,6 +41,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
+    window.location.href = "/login";
   }, []);
   const value = useMemo(
     () => ({ user, isAuthenticated: !!user, loading, login, register, logout }),

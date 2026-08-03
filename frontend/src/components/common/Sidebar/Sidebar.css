@@ -363,3 +363,29 @@
     display: none;
   }
 }
+
+/* --- Protection from ux4g global CSS --- */
+.aio-sidebar a {
+  outline: none !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+.aio-sidebar__link {
+  border: none !important;
+  outline: none !important;
+}
+
+.aio-sidebar__chevron, .aio-sidebar__chevron-sm {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  margin-top: 2px !important;
+}
+
+.aio-sidebar button {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}

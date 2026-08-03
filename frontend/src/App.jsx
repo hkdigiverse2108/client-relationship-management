@@ -20,30 +20,33 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import { AppearanceProvider } from "@/context/AppearanceContext";
 import AppRouter from "@/router/AppRouter";
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <SidebarProvider>
-          <BrowserRouter>
-            <AppRouter />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 3500,
-                style: {
-                  borderRadius: "10px",
-                  background: "var(--color-surface)",
-                  color: "var(--color-text)",
-                  border: "1px solid var(--color-border)",
-                  boxShadow: "var(--shadow-md)",
-                },
-              }}
-            />
-          </BrowserRouter>
-        </SidebarProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AppearanceProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <SidebarProvider>
+            <BrowserRouter>
+              <AppRouter />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 3500,
+                  style: {
+                    borderRadius: "10px",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                    border: "1px solid var(--color-border)",
+                    boxShadow: "var(--shadow-md)",
+                  },
+                }}
+              />
+            </BrowserRouter>
+          </SidebarProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </AppearanceProvider>
   );
 }

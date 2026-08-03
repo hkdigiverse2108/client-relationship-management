@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
 import { classNames } from "@/utils/helpers";
 import "./Modal.css";
@@ -18,7 +19,8 @@ export default function Modal({ open, onClose, title, size = "md", children, foo
     };
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  
+  return createPortal(
     <div className="aio-modal-backdrop" onClick={onClose} role="dialog" aria-modal>
       <div
         className={classNames("aio-modal", `aio-modal--${size}`)}
@@ -33,6 +35,7 @@ export default function Modal({ open, onClose, title, size = "md", children, foo
         <div className="aio-modal__body">{children}</div>
         {footer && <div className="aio-modal__footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
-}
+}
