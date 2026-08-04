@@ -128,7 +128,7 @@ export default function Sidebar() {
                 </button>
 
                 {/* Sub-items Container */}
-                {isOpen && (
+                {(isOpen || collapsed) && (
                   <div className="aio-sidebar__items">
                     {filteredItems.map((item, idx) => {
                       // Sub-group (e.g. WhatsApp)
@@ -152,7 +152,7 @@ export default function Sidebar() {
                               <FiChevronDown className="aio-sidebar__chevron-sm" />
                             </button>
 
-                            {isSubGroupOpen && (
+                            {(isSubGroupOpen || collapsed) && (
                               <div className="aio-sidebar__subitems">
                                 {item.subItems.map((sub, sIdx) => (
                                   <NavLink

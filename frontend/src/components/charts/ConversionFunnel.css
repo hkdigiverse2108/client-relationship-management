@@ -1,0 +1,51 @@
+.aio-funnel {
+  width: 100%;
+}
+
+.aio-funnel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.aio-funnel__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aio-funnel__stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.aio-funnel__label {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.aio-funnel__value {
+  font-weight: 700;
+  color: var(--color-text);
+  font-size: 16px;
+}
+
+.aio-funnel__track {
+  width: 100%;
+  height: 24px;
+  background-color: transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.aio-funnel__fill {
+  height: 100%;
+  background-color: #92bdf0; /* A soft blue that closely matches the user's image */
+  background-color: var(--color-primary, #92bdf0); /* Uses primary color if available */
+  opacity: 0.6; /* Slight transparency for that soft pastel look */
+  border-radius: 12px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}

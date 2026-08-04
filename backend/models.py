@@ -87,3 +87,15 @@ class AuditLogCreate(BaseModel):
 class AuditLogResponse(AuditLogCreate):
     id: str = Field(alias="_id")
     timestamp: datetime
+
+class NotificationCreate(BaseModel):
+    user_id: str
+    title: str
+    message: str
+    type: str = "info" # info, success, warning, error
+    link: Optional[str] = None
+    is_read: bool = False
+    
+class NotificationResponse(NotificationCreate):
+    id: str = Field(alias="_id")
+    created_at: datetime

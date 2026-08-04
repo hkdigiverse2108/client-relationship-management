@@ -9,6 +9,7 @@ from db import users_collection, audit_logs_collection
 from auth_utils import get_password_hash, decode_access_token
 from dependencies import get_current_user
 from audit_logger import log_audit_action
+from routers.notifications_router import create_notification
 from email_utils import send_new_account_email
 import os
 import aiofiles
@@ -93,6 +94,25 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
         f"Created user {user_in.name} ({user_in.email}) with role {user_in.role}"
     )
     
+    # Notification to the creator
+    await create_notification(
+        user_id=str(current_user["_id"]),
+        title="User Created Successfully",
+        message=f"You added {user_in.name} ({user_in.role}) to the team.",
+        type="success"
+    )
+    
+    # Notification to Super Admin (if someone else created it)
+    if current_user["role"] != "Super Admin":
+        super_admin = await users_collection.find_one({"role": "Super Admin"})
+        if super_admin:
+            await create_notification(
+                user_id=str(super_admin["_id"]),
+                title="New Team Member Added",
+                message=f"{current_user.get('name', 'Someone')} added {user_in.name} as {user_in.role}.",
+                type="info"
+            )
+            
     # Return user
     user_dict["id"] = user_dict.pop("_id")
     return UserResponse(**user_dict)

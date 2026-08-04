@@ -1,0 +1,114 @@
+.aio-heatmap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.aio-heatmap__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.aio-heatmap__icon {
+  font-size: 1.2rem;
+  color: #f97316; /* Fire orange icon color to match the image */
+}
+
+.aio-heatmap__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.aio-heatmap__body {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.aio-heatmap__x-axis {
+  display: flex;
+  margin-bottom: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.aio-heatmap__y-spacer {
+  width: 35px;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+}
+
+.aio-heatmap__x-label {
+  flex: 1;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  min-width: 16px;
+}
+
+.aio-heatmap__grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aio-heatmap__row {
+  display: flex;
+  align-items: center;
+}
+
+.aio-heatmap__y-label {
+  width: 35px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+  text-align: right;
+  margin-right: 0.75rem;
+}
+
+.aio-heatmap__cells {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.aio-heatmap__cell {
+  flex: 1;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  background-color: #e2e8f0;
+  transition: all 0.2s ease;
+  min-width: 16px;
+}
+
+.aio-heatmap__cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.aio-heatmap__legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  margin-left: calc(35px + 0.75rem); /* Align with cells */
+}
+
+.aio-heatmap__legend-text {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.aio-heatmap__legend-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}

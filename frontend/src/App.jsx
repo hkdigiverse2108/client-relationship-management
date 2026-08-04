@@ -21,30 +21,36 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { AppearanceProvider } from "@/context/AppearanceContext";
+import { SearchProvider } from "@/context/SearchContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import AppRouter from "@/router/AppRouter";
 export default function App() {
   return (
     <AppearanceProvider>
       <ThemeProvider>
         <AuthProvider>
-          <SidebarProvider>
-            <BrowserRouter>
-              <AppRouter />
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  duration: 3500,
-                  style: {
-                    borderRadius: "10px",
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                    border: "1px solid var(--color-border)",
-                    boxShadow: "var(--shadow-md)",
-                  },
-                }}
-              />
-            </BrowserRouter>
-          </SidebarProvider>
+          <NotificationProvider>
+            <SidebarProvider>
+              <BrowserRouter>
+                <SearchProvider>
+                  <AppRouter />
+                  <Toaster
+                    position="top-right"
+                    toastOptions={{
+                      duration: 3500,
+                      style: {
+                        borderRadius: "10px",
+                        background: "var(--color-surface)",
+                        color: "var(--color-text)",
+                        border: "1px solid var(--color-border)",
+                        boxShadow: "var(--shadow-md)",
+                      },
+                    }}
+                  />
+                </SearchProvider>
+              </BrowserRouter>
+            </SidebarProvider>
+          </NotificationProvider>
         </AuthProvider>
       </ThemeProvider>
     </AppearanceProvider>

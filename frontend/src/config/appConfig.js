@@ -6,8 +6,8 @@ export const APP_CONFIG = {
   supportEmail: "support@aiocrm.com",
   defaultTheme: "light",
   defaultPageSize: 10,
-  currency: "USD",
-  currencySymbol: "$",
+  currency: "INR",
+  currencySymbol: "₹",
   dateFormat: "MMM DD, YYYY",
   dateTimeFormat: "MMM DD, YYYY h:mm A",
   // API base URL — set VITE_API_BASE_URL in root CRM/.env

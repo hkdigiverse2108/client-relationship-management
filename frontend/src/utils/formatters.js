@@ -4,7 +4,7 @@ import { APP_CONFIG } from "@/config/appConfig";
 dayjs.extend(relativeTime);
 export const formatCurrency = (value, currency = APP_CONFIG.currency) => {
   if (value == null || Number.isNaN(Number(value))) return "—";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
@@ -12,7 +12,7 @@ export const formatCurrency = (value, currency = APP_CONFIG.currency) => {
 };
 export const formatNumber = (value) => {
   if (value == null) return "—";
-  return new Intl.NumberFormat("en-US").format(Number(value));
+  return new Intl.NumberFormat("en-IN").format(Number(value));
 };
 export const formatDate = (value, pattern = APP_CONFIG.dateFormat) => {
   if (!value) return "—";

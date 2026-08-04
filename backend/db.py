@@ -12,6 +12,8 @@ db = client[MONGODB_DB_NAME]
 users_collection = db.get_collection("users")
 otps_collection = db.get_collection("otps")
 audit_logs_collection = db.get_collection("audit_logs")
+leads_collection = db.get_collection("leads")
+notifications_collection = db.get_collection("notifications")
 
 async def init_db():
     # Create unique indexes

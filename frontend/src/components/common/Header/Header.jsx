@@ -16,8 +16,10 @@ import {
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useSearch } from "@/context/SearchContext";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Dropdown from "@/components/common/Dropdown/Dropdown";
+import NotificationDropdown from "./NotificationDropdown";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import toast from "react-hot-toast";
 import "./Header.css";
@@ -28,6 +30,7 @@ export default function Header() {
   const { openMobile } = useSidebar();
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { openSearch } = useSearch();
   const navigate = useNavigate();
 
   // WhatsApp API Connection status state (ON by default)
@@ -65,12 +68,14 @@ export default function Header() {
       </div>
 
       <div className="aio-header__center">
-        <div className="aio-header__search">
+        <div className="aio-header__search" onClick={openSearch} style={{ cursor: "pointer" }}>
           <FiSearch className="aio-header__search-icon" />
           <input
             type="text"
             placeholder="Search CRM (contacts, leads, bills...)"
             className="aio-header__search-input"
+            readOnly
+            style={{ cursor: "pointer" }}
           />
           <kbd className="aio-header__kbd">Ctrl + K</kbd>
         </div>
@@ -106,10 +111,8 @@ export default function Header() {
           ]}
         />
 
-        {/* Notifications Icon */}
-        <button className="aio-header__icon-btn" aria-label="Notifications">
-          <FiBell />
-        </button>
+        {/* Notifications Dropdown */}
+        <NotificationDropdown />
 
         {/* Theme Toggle Icon */}
         <button className="aio-header__icon-btn" onClick={toggleTheme} aria-label="Toggle theme">

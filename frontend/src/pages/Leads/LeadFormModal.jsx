@@ -46,7 +46,7 @@ export default function LeadFormModal({ open, onClose, onSubmit, initialValues, 
           <div className="col-md-6">
             <label className="form-label">Source</label>
             <select className="form-select mb-3" {...register("source")}>
-              {["Website","Referral","Ads","Social","Cold outreach","Other"].map((s) => (
+              {["Website", "LinkedIn", "WhatsApp", "Meta Ads", "Google Ads", "Referral", "Call", "Other"].map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

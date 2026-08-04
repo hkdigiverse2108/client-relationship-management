@@ -1,9 +1,9 @@
 export const dashboardData = {
   stats: [
     { key: "revenue", label: "Total Revenue", value: 284500, delta: 12.4, trend: "up", format: "currency" },
-    { key: "deals", label: "Active Deals", value: 148, delta: 8.2, trend: "up", format: "number" },
-    { key: "leads", label: "New Leads", value: 76, delta: -3.1, trend: "down", format: "number" },
-    { key: "winrate", label: "Win Rate", value: 63, delta: 4.5, trend: "up", format: "percent" },
+    { key: "deals", label: "Active Leads", value: 148, delta: 8.2, trend: "up", format: "number" },
+    { key: "leads", label: "Conversion Rate", value: 76, delta: -3.1, trend: "down", format: "number" },
+    { key: "winrate", label: "WhatsApp Volume", value: 63, delta: 4.5, trend: "up", format: "percent" },
   ],
   revenueSeries: {
     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -18,11 +18,14 @@ export const dashboardData = {
     { stage: "Closed Won", value: 33 },
   ],
   sources: [
-    { label: "Website", value: 38 },
-    { label: "Referral", value: 22 },
-    { label: "Ads", value: 18 },
-    { label: "Social", value: 14 },
-    { label: "Other", value: 8 },
+    { label: "Website (5%)", value: 38 },
+    { label: "LinkedIn (23%)", value: 22 },
+    { label: "WhatsApp (10%)", value: 18 },
+    { label: "Meta Ads (5%)", value: 12 },
+    { label: "Google Ads (2%)", value: 18 },
+    { label: "Referral (2%)", value: 18 },
+    { label: "Call (2%)", value: 18 },
+    { label: "Other (0%)", value: 8 },
   ],
   activity: [
     { id: "a1", type: "deal", text: "Sarah closed a $12,400 deal with Northwind Ltd.", time: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
