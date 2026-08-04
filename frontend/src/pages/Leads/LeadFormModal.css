@@ -1,0 +1,31 @@
+.lead-form-scrollable {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+}
+
+/* Custom scrollbar for webkit */
+.lead-form-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.lead-form-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.lead-form-scrollable::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+.lead-form-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+.form-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}

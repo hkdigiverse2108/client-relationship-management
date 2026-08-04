@@ -1,36 +1,31 @@
-import { sleep } from "@/utils/helpers";
-import { leadsData } from "@/data/leadsData";
-// import axiosClient from "@/api/axiosClient";
-// import { ENDPOINTS } from "@/api/endpoints";
-let leads = [...leadsData];
+import api from "../axiosClient";
+
 export const leadService = {
-  async list() {
-    await sleep(300);
-    return leads;
-    // return axiosClient.get(ENDPOINTS.leads.list);
+  list: async () => {
+    return await api.get("/leads");
   },
-  async get(id) {
-    await sleep(200);
-    return leads.find((l) => l.id === id) || null;
+  
+  get: async (id) => {
+    return await api.get(`/leads/${id}`);
   },
-  async create(payload) {
-    await sleep(300);
-    const newLead = {
-      id: `l_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      ...payload,
-    };
-    leads = [newLead, ...leads];
-    return newLead;
+
+  create: async (data) => {
+    return await api.post("/leads", data);
   },
-  async update(id, payload) {
-    await sleep(300);
-    leads = leads.map((l) => (l.id === id ? { ...l, ...payload } : l));
-    return leads.find((l) => l.id === id);
+
+  update: async (id, data) => {
+    return await api.put(`/leads/${id}`, data);
   },
-  async remove(id) {
-    await sleep(200);
-    leads = leads.filter((l) => l.id !== id);
-    return { success: true };
+
+  importLeads: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return await api.post("/leads/import", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
   },
+
+  remove: async (id) => {
+    return await api.delete(`/leads/${id}`);
+  }
 };

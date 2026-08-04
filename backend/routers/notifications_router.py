@@ -28,7 +28,7 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     
     result = []
     for notif in notifications:
-        notif["id"] = str(notif.pop("_id"))
+        notif["_id"] = str(notif["_id"])
         result.append(notif)
         
     return result

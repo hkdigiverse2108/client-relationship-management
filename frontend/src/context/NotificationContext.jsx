@@ -35,7 +35,7 @@ export function NotificationProvider({ children }) {
     try {
       await notificationService.markAsRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, is_read: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {

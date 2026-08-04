@@ -39,7 +39,7 @@ export default function NotificationDropdown() {
 
   const handleNotificationClick = (notif) => {
     if (!notif.is_read) {
-      markAsRead(notif._id);
+      markAsRead(notif.id);
     }
     if (notif.link) {
       window.location.href = notif.link; // Or use navigate(notif.link) if you import useNavigate
@@ -80,7 +80,7 @@ export default function NotificationDropdown() {
             ) : (
               notifications.map((notif) => (
                 <div
-                  key={notif._id}
+                  key={notif.id}
                   className={`notif-item ${!notif.is_read ? "is-unread" : ""}`}
                   onClick={() => handleNotificationClick(notif)}
                 >

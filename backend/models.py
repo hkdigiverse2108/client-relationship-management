@@ -99,3 +99,69 @@ class NotificationCreate(BaseModel):
 class NotificationResponse(NotificationCreate):
     id: str = Field(alias="_id")
     created_at: datetime
+
+class LeadCreate(BaseModel):
+    lead_name: str
+    company_name: str
+    first_name: str
+    last_name: str
+    mobile_number: str
+    alternate_number: Optional[str] = None
+    email: EmailStr
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    source: str
+    status: str
+    stage: str
+    priority: str
+    tags: Optional[str] = None
+    expected_value: float
+    probability: Optional[float] = None
+    customer_type: Optional[str] = None
+    preferred_channel: Optional[str] = None
+    next_followup_date: Optional[str] = None
+    followup_status: Optional[str] = None
+    assigned_to: str
+    city: str
+    state: str
+    country: str
+    pincode: str
+    requirement: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+class LeadUpdate(BaseModel):
+    lead_name: Optional[str] = None
+    company_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    mobile_number: Optional[str] = None
+    alternate_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    source: Optional[str] = None
+    status: Optional[str] = None
+    stage: Optional[str] = None
+    priority: Optional[str] = None
+    tags: Optional[str] = None
+    expected_value: Optional[float] = None
+    probability: Optional[float] = None
+    customer_type: Optional[str] = None
+    preferred_channel: Optional[str] = None
+    next_followup_date: Optional[str] = None
+    followup_status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    pincode: Optional[str] = None
+    requirement: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+class LeadResponse(LeadCreate):
+    id: str = Field(alias="_id")
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
