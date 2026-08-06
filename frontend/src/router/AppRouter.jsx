@@ -7,8 +7,9 @@ import Register from "@/pages/Auth/Register";
 import ForgotPassword from "@/pages/Auth/ForgotPassword";
 import Dashboard from "@/pages/Dashboard/Dashboard";
 import LeadsList from "@/pages/Leads/LeadsList";
-import ContactsList from "@/pages/Contacts/ContactsList";
 import ClientsList from "@/pages/Clients/ClientsList";
+import ClientProfile from "@/pages/Clients/ClientProfile";
+import ContactsList from "@/pages/Contacts/ContactsList";
 import Pipeline from "@/pages/Pipeline/Pipeline";
 import TasksList from "@/pages/Tasks/TasksList";
 import Calendar from "@/pages/Calendar/Calendar";
@@ -50,8 +51,9 @@ export default function AppRouter() {
         <Route path="/team"     element={<Team />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/leads"     element={<LeadsList />} />
+        <Route path="/clients"   element={<ClientsList />} />
+        <Route path="/clients/:id" element={<ClientProfile />} />
         <Route path="/contacts"  element={<ContactsList />} />
-        <Route path="/clients" element={<ClientsList />} />
         <Route path="/pipeline"     element={<Pipeline />} />
         <Route path="/tasks"     element={<TasksList />} />
         <Route path="/calendar"  element={<Calendar />} />

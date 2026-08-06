@@ -1,0 +1,32 @@
+.client-profile-page .stat-card {
+  border-radius: 12px;
+  background-color: var(--color-surface);
+}
+
+.client-profile-page .nav-tabs {
+  border-bottom: 2px solid var(--color-border);
+}
+
+.client-profile-page .nav-tabs .nav-link {
+  border: none;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  padding: 12px 20px;
+  background: transparent;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.client-profile-page .nav-tabs .nav-link:hover {
+  color: var(--color-primary);
+}
+
+.client-profile-page .nav-tabs .nav-link.active {
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.text-muted-2 {
+  color: #8c8c8c;
+}

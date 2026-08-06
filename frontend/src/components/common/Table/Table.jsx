@@ -52,7 +52,7 @@ export default function Table({
                   key={col.key}
                   onClick={() => handleSort(col)}
                   className={classNames(col.sortable && "is-sortable")}
-                  style={{ width: col.width, textAlign: col.align || "left" }}
+                  style={{ width: col.width, textAlign: col.align || "left", whiteSpace: "nowrap" }}
                 >
                   <span className="aio-table__th">
                     {col.label}

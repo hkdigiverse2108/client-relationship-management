@@ -103,8 +103,7 @@ export default function LeadsList() {
   const { data: rawLeads, loading, refetch } = useAsync(load, [], []);
   const leads = useMemo(() => rawLeads || [], [rawLeads]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sidebarFilters, setSidebarFilters] = useState({ stage: "all", source: "all", tag: "all" });
+  const [sidebarFilters, setSidebarFilters] = useState({ status: "all", source: "all", tag: "all" });
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -125,10 +124,9 @@ export default function LeadsList() {
   const debounced = useDebounce(search, 250);
   const filtered = useMemo(() => {
     let items = leads;
-    if (statusFilter !== "all") items = items.filter((l) => l.status === statusFilter);
     
-    if (sidebarFilters.stage !== "all") {
-      items = items.filter((l) => (l.stage || "new").toLowerCase() === sidebarFilters.stage);
+    if (sidebarFilters.status !== "all") {
+      items = items.filter((l) => (l.status || "new").toLowerCase() === sidebarFilters.status);
     }
     if (sidebarFilters.source !== "all") {
       items = items.filter((l) => (l.source || "website") === sidebarFilters.source);
@@ -141,7 +139,7 @@ export default function LeadsList() {
     }
 
     return filterBySearch(items, debounced, ["lead_name", "first_name", "last_name", "email", "company_name"]);
-  }, [leads, statusFilter, sidebarFilters, debounced]);
+  }, [leads, sidebarFilters, debounced]);
   const openCreate = () => { setEditing(null); setModalOpen(true); };
   const openEdit = (lead) => { setEditing(lead); setModalOpen(true); };
   const handleSubmit = async (values) => {
@@ -159,7 +157,13 @@ export default function LeadsList() {
       setEditing(null);
       refetch();
     } catch (e) {
-      toast.error(e?.message || "Failed to save lead");
+      try {
+        const msg = e.message || e.raw?.message;
+        const displayMsg = typeof msg === 'string' ? msg : (msg?.message || "Failed to save lead");
+        toast.error(displayMsg);
+      } catch (fatalError) {
+        toast.error("An unexpected error occurred");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +189,9 @@ export default function LeadsList() {
       toast.success(res.message || "Leads imported successfully", { id: toastId });
       refetch();
     } catch (err) {
-      toast.error(err.message || "Import failed", { id: toastId });
+      const msg = err.message || err.raw?.message;
+      const displayMsg = typeof msg === 'string' ? msg : (msg?.message || "Import failed");
+      toast.error(displayMsg, { id: toastId });
     } finally {
       // Reset input
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -201,9 +207,12 @@ export default function LeadsList() {
       toast.success("Status updated", { id: toastId });
       refetch();
     } catch (err) {
-      toast.error(err.message || "Failed to update status", { id: toastId });
+      const msg = err.message || err.raw?.message;
+      const displayMsg = typeof msg === 'string' ? msg : (msg?.message || "Failed to update status");
+      toast.error(displayMsg, { id: toastId });
     }
   };
+
 
   const handleAssignChange = async (lead, newAssigneeId) => {
     if (lead.assigned_to === newAssigneeId) return;
@@ -214,7 +223,9 @@ export default function LeadsList() {
       toast.success("Lead assigned successfully", { id: toastId });
       refetch();
     } catch (err) {
-      toast.error(err.message || "Failed to assign lead", { id: toastId });
+      const msg = err.message || err.raw?.message;
+      const displayMsg = typeof msg === 'string' ? msg : (msg?.message || "Failed to assign lead");
+      toast.error(displayMsg, { id: toastId });
     }
   };
 
@@ -252,7 +263,6 @@ export default function LeadsList() {
         />
       ),
     },
-    { key: "stage", label: "Stage", sortable: true, render: (r) => <span className="text-capitalize">{r.stage}</span> },
     { key: "expected_value", label: "Value", sortable: true, align: "right", render: (r) => formatCurrency(r.expected_value) },
     { key: "assigned_to", label: "Assigned To", sortable: true, render: (r) => <AssigneeDropdown lead={r} usersMap={usersMap} users={usersList} onAssign={handleAssignChange} /> },
     { key: "created_at", label: "Created", sortable: true, render: (r) => formatDate(r.created_at) },
@@ -303,14 +313,7 @@ export default function LeadsList() {
               <div className="col-12 col-md-6 col-lg-5">
                 <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email, or company…" />
               </div>
-              <div className="col-6 col-md-3 col-lg-2">
-                <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="all">All statuses</option>
-                  {Object.entries(LEAD_STATUS_LABEL).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
+
               <div className="col-6 col-md-3 col-lg-2">
                 <Button variant="secondary" icon={FiFilter} block>Filters</Button>
               </div>

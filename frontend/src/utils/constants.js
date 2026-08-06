@@ -3,28 +3,27 @@ export const LEAD_STATUS = {
   NEW: "new",
   CONTACTED: "contacted",
   QUALIFIED: "qualified",
-  UNQUALIFIED: "unqualified",
+  NEGOTIATION: "negotiation",
+  WON: "won",
+  LOST: "lost",
 };
 export const LEAD_STATUS_LABEL = {
   new: "New",
   contacted: "Contacted",
   qualified: "Qualified",
-  unqualified: "Unqualified",
+  negotiation: "Negotiation",
+  won: "Won",
+  lost: "Lost",
 };
 export const LEAD_STATUS_VARIANT = {
   new: "info",
   contacted: "primary",
-  qualified: "success",
-  unqualified: "danger",
+  qualified: "primary",
+  negotiation: "warning",
+  won: "success",
+  lost: "danger",
 };
-export const LEAD_STAGES = [
-  { id: "new", label: "New" },
-  { id: "contacted", label: "Contacted" },
-  { id: "qualified", label: "Qualified" },
-  { id: "negotiation", label: "Negotiation" },
-  { id: "won", label: "Won" },
-  { id: "lost", label: "Lost" },
-];
+
 export const LEAD_SOURCES = [
   "website", "referral", "google ads", "meta ads", "linkedin", "whatsapp", "call", "other"
 ];
@@ -37,9 +36,49 @@ export const LEAD_CUSTOMER_TYPES = [
 export const LEAD_COMM_CHANNELS = [
   "Email", "whatsapp", "phone call", "SMS"
 ];
-export const LEAD_FOLLOWUP_STATUSES = [
-  "scheduled", "contacted", "postponed", "not show"
-];
+export const LEAD_FOLLOWUP_STATUSES = {
+  scheduled: "Scheduled",
+  contacted: "Contacted",
+  postponed: "Postponed",
+  not_show: "Not Show"
+};
+
+// --- CONTACTS CONSTANTS ---
+
+export const CONTACT_STATUS_LABEL = {
+  active: "Active",
+  inactive: "Inactive",
+  blocked: "Blocked"
+};
+
+export const CONTACT_STATUS_VARIANT = {
+  active: "success",
+  inactive: "warning",
+  blocked: "danger"
+};
+
+// --- CLIENTS CONSTANTS ---
+export const CLIENT_STATUS_LABEL = {
+  active: "Active",
+  inactive: "Inactive",
+  on_hold: "On Hold"
+};
+
+export const CLIENT_STATUS_VARIANT = {
+  active: "success",
+  inactive: "secondary",
+  on_hold: "warning"
+};
+
+export const CONTACT_DEPARTMENTS = {
+  sales: "Sales",
+  support: "Support",
+  billing: "Billing",
+  management: "Management",
+  it: "IT",
+  marketing: "Marketing",
+  other: "Other"
+};
 export const DEAL_STAGES = [
   { id: "prospecting", label: "Prospecting" },
   { id: "qualification", label: "Qualification" },

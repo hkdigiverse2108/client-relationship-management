@@ -1,0 +1,28 @@
+.client-form-scrollable {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+}
+
+.client-form-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.client-form-scrollable::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.form-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-section-title:first-child {
+  margin-top: 0;
+}

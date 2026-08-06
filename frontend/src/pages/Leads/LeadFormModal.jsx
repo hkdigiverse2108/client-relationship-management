@@ -7,7 +7,6 @@ import Button from "@/components/common/Button/Button";
 import { leadSchema } from "@/utils/validators";
 import { 
   LEAD_STATUS_LABEL, 
-  LEAD_STAGES, 
   LEAD_SOURCES, 
   LEAD_PRIORITIES, 
   LEAD_CUSTOMER_TYPES, 
@@ -26,7 +25,7 @@ export default function LeadFormModal({ open, onClose, onSubmit, initialValues, 
     defaultValues: initialValues || {
       lead_name: "", first_name: "", last_name: "", company_name: "",
       mobile_number: "", alternate_number: "", email: "", website: "",
-      industry: "", source: "website", status: "new", stage: "new", priority: "medium",
+      industry: "", source: "website", status: "new", priority: "medium",
       tags: "", expected_value: "", probability: "", customer_type: "individual",
       preferred_channel: "Email", next_followup_date: "", followup_status: "scheduled",
       assigned_to: "", city: "", state: "", country: "", pincode: "",
@@ -42,7 +41,7 @@ export default function LeadFormModal({ open, onClose, onSubmit, initialValues, 
         reset({
           lead_name: "", first_name: "", last_name: "", company_name: "",
           mobile_number: "", alternate_number: "", email: "", website: "",
-          industry: "", source: "website", status: "new", stage: "new", priority: "medium",
+          industry: "", source: "website", status: "new", priority: "medium",
           tags: "", expected_value: "", probability: "", customer_type: "individual",
           preferred_channel: "Email", next_followup_date: "", followup_status: "scheduled",
           assigned_to: "", city: "", state: "", country: "", pincode: "",
@@ -110,13 +109,7 @@ export default function LeadFormModal({ open, onClose, onSubmit, initialValues, 
             </select>
             {errors.status && <div className="invalid-feedback">{errors.status.message}</div>}
           </div>
-          <div className="col-md-3">
-            <label className="form-label">Lead Stage *</label>
-            <select className={`form-select ${errors.stage ? 'is-invalid' : ''}`} {...register("stage")}>
-              {LEAD_STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
-            {errors.stage && <div className="invalid-feedback">{errors.stage.message}</div>}
-          </div>
+
           <div className="col-md-3">
             <label className="form-label">Priority *</label>
             <select className={`form-select ${errors.priority ? 'is-invalid' : ''}`} {...register("priority")}>
@@ -148,7 +141,7 @@ export default function LeadFormModal({ open, onClose, onSubmit, initialValues, 
           <div className="col-md-3">
             <label className="form-label">Follow-up Status</label>
             <select className="form-select" {...register("followup_status")}>
-              {LEAD_FOLLOWUP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              {Object.entries(LEAD_FOLLOWUP_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
           <div className="col-md-3">

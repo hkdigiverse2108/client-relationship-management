@@ -6,7 +6,7 @@ from datetime import datetime
 from bson import ObjectId
 from models import LeadCreate, LeadUpdate, LeadResponse
 from dependencies import get_current_user
-from db import leads_collection, audit_logs_collection, users_collection
+from db import leads_collection, audit_logs_collection, users_collection, clients_collection
 from audit_logger import log_audit_action
 from routers.notifications_router import create_notification
 
@@ -98,7 +98,6 @@ async def import_leads(file: UploadFile = File(...), current_user: dict = Depend
             lead_dict["industry"] = row.get("industry", "")
             lead_dict["source"] = row.get("source", "website")
             lead_dict["status"] = row.get("status", "new")
-            lead_dict["stage"] = row.get("stage", "new")
             lead_dict["priority"] = row.get("priority", "medium")
             lead_dict["tags"] = row.get("tags", "")
             lead_dict["expected_value"] = float(row.get("expected_value", 0))
@@ -190,6 +189,53 @@ async def update_lead(lead_id: str, lead_update: LeadUpdate, current_user: dict 
     await leads_collection.update_one({"_id": obj_id}, {"$set": update_data})
     updated_lead = await leads_collection.find_one({"_id": obj_id})
     updated_lead["_id"] = str(updated_lead["_id"])
+    
+    # Auto-convert to client if status changed to 'won'
+    if update_data.get("status") == "won" and target_lead.get("status") != "won":
+        existing_client = await clients_collection.find_one({"converted_from_lead_id": lead_id})
+        if not existing_client:
+            latest_client = await clients_collection.find_one(
+                {"client_id": {"$regex": "^CL-"}},
+                sort=[("client_id", -1)]
+            )
+            new_client_id = "CL-0001"
+            if latest_client and "client_id" in latest_client:
+                try:
+                    latest_num = int(latest_client["client_id"].split("-")[1])
+                    new_client_id = f"CL-{latest_num + 1:04d}"
+                except Exception:
+                    pass
+            
+            new_client = {
+                "client_id": new_client_id,
+                "client_name": updated_lead.get("lead_name", ""),
+                "company_name": updated_lead.get("company_name", ""),
+                "mobile_number": updated_lead.get("mobile_number", ""),
+                "alternate_number": updated_lead.get("alternate_number"),
+                "email": updated_lead.get("email"),
+                "website": updated_lead.get("website"),
+                "industry": updated_lead.get("industry"),
+                "customer_type": updated_lead.get("customer_type", "individual"),
+                "status": "active",
+                "assigned_to": updated_lead.get("assigned_to"),
+                "address": updated_lead.get("address"),
+                "city": updated_lead.get("city"),
+                "state": updated_lead.get("state"),
+                "country": updated_lead.get("country"),
+                "pincode": updated_lead.get("pincode"),
+                "converted_from_lead_id": lead_id,
+                "created_by": current_user["_id"],
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            await clients_collection.insert_one(new_client)
+            await log_audit_action(
+                audit_logs_collection, 
+                current_user, 
+                "Create", 
+                "Clients", 
+                f"Auto-converted client {new_client.get('company_name')} ({new_client_id}) from lead"
+            )
     
     await log_audit_action(
         audit_logs_collection, 

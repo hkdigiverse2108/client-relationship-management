@@ -1,29 +1,23 @@
-import { sleep } from "@/utils/helpers";
-import { contactsData } from "@/data/contactsData";
-let contacts = [...contactsData];
+import api from "../axiosClient";
+
 export const contactService = {
-  async list() {
-    await sleep(250);
-    return contacts;
+  list: async () => {
+    return await api.get("/contacts");
   },
-  async get(id) {
-    await sleep(150);
-    return contacts.find((c) => c.id === id) || null;
+
+  get: async (id) => {
+    return await api.get(`/contacts/${id}`);
   },
-  async create(payload) {
-    await sleep(250);
-    const item = { id: `c_${Date.now()}`, createdAt: new Date().toISOString(), ...payload };
-    contacts = [item, ...contacts];
-    return item;
+
+  create: async (data) => {
+    return await api.post("/contacts", data);
   },
-  async update(id, payload) {
-    await sleep(250);
-    contacts = contacts.map((c) => (c.id === id ? { ...c, ...payload } : c));
-    return contacts.find((c) => c.id === id);
+
+  update: async (id, data) => {
+    return await api.put(`/contacts/${id}`, data);
   },
-  async remove(id) {
-    await sleep(150);
-    contacts = contacts.filter((c) => c.id !== id);
-    return { success: true };
-  },
+
+  remove: async (id) => {
+    return await api.delete(`/contacts/${id}`);
+  }
 };

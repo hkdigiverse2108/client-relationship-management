@@ -112,7 +112,6 @@ class LeadCreate(BaseModel):
     industry: Optional[str] = None
     source: str
     status: str
-    stage: str
     priority: str
     tags: Optional[str] = None
     expected_value: float
@@ -142,7 +141,6 @@ class LeadUpdate(BaseModel):
     industry: Optional[str] = None
     source: Optional[str] = None
     status: Optional[str] = None
-    stage: Optional[str] = None
     priority: Optional[str] = None
     tags: Optional[str] = None
     expected_value: Optional[float] = None
@@ -162,6 +160,202 @@ class LeadUpdate(BaseModel):
 
 class LeadResponse(LeadCreate):
     id: str = Field(alias="_id")
-    created_by: str
-    created_at: datetime
-    updated_at: datetime
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+# --- Contacts Models ---
+
+class ContactCreate(BaseModel):
+    contact_name: str
+    company_name: str
+    contact_number: str
+    email: EmailStr
+    address: Optional[str] = ""
+    city: Optional[str] = ""
+    state: Optional[str] = ""
+    country: Optional[str] = ""
+    gstin: Optional[str] = ""
+    department: Optional[str] = ""
+    status: str = "Active"
+    tags: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class ContactUpdate(BaseModel):
+    contact_name: Optional[str] = None
+    company_name: Optional[str] = None
+    contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    gstin: Optional[str] = None
+    department: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[str] = None
+    notes: Optional[str] = None
+
+class ContactResponse(ContactCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Clients Models ---
+
+class ClientCreate(BaseModel):
+    client_id: Optional[str] = None
+    client_name: Optional[str] = ""
+    company_name: Optional[str] = ""
+    contact_person: Optional[str] = None
+    mobile_number: Optional[str] = ""
+    alternate_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    customer_type: Optional[str] = None
+    status: str = "Active"
+    assigned_to: str
+    address: Optional[str] = None
+    city: str
+    state: str
+    country: str
+    pincode: str
+    contract_value: Optional[float] = None
+    requirement: Optional[str] = None
+    notes: Optional[str] = None
+    converted_from_lead_id: Optional[str] = "Manual"
+
+class ClientUpdate(BaseModel):
+    client_name: Optional[str] = None
+    company_name: Optional[str] = None
+    contact_person: Optional[str] = None
+    mobile_number: Optional[str] = None
+    alternate_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    customer_type: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    pincode: Optional[str] = None
+    contract_value: Optional[float] = None
+    requirement: Optional[str] = None
+    notes: Optional[str] = None
+
+class ClientResponse(ClientCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Deal Models ---
+class DealCreate(BaseModel):
+    title: str
+    client_id: str
+    amount: float
+    stage: str = "prospecting"
+    expected_close_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    notes: Optional[str] = None
+
+class DealUpdate(BaseModel):
+    title: Optional[str] = None
+    client_id: Optional[str] = None
+    amount: Optional[float] = None
+    stage: Optional[str] = None
+    expected_close_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    notes: Optional[str] = None
+
+class DealResponse(DealCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Project Models ---
+class ProjectCreate(BaseModel):
+    title: str
+    client_id: str
+    deal_id: Optional[str] = None
+    status: str = "not_started"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    client_id: Optional[str] = None
+    deal_id: Optional[str] = None
+    status: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class ProjectResponse(ProjectCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Invoice Models (Accounting Source of Truth) ---
+class InvoiceCreate(BaseModel):
+    invoice_number: str
+    client_id: str
+    deal_id: Optional[str] = None
+    total_amount: float
+    status: str = "draft"  # draft, sent, paid, partial, overdue
+    issue_date: str
+    due_date: str
+    notes: Optional[str] = None
+
+class InvoiceUpdate(BaseModel):
+    invoice_number: Optional[str] = None
+    client_id: Optional[str] = None
+    deal_id: Optional[str] = None
+    total_amount: Optional[float] = None
+    status: Optional[str] = None
+    issue_date: Optional[str] = None
+    due_date: Optional[str] = None
+    notes: Optional[str] = None
+
+class InvoiceResponse(InvoiceCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Payment Models ---
+class PaymentCreate(BaseModel):
+    client_id: str
+    invoice_id: Optional[str] = None
+    amount_received: float
+    payment_date: str
+    payment_method: str = "bank_transfer"
+    transaction_reference: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentUpdate(BaseModel):
+    client_id: Optional[str] = None
+    invoice_id: Optional[str] = None
+    amount_received: Optional[float] = None
+    payment_date: Optional[str] = None
+    payment_method: Optional[str] = None
+    transaction_reference: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentResponse(PaymentCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
