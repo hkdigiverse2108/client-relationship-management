@@ -80,12 +80,13 @@ export const CONTACT_DEPARTMENTS = {
   other: "Other"
 };
 export const DEAL_STAGES = [
-  { id: "prospecting", label: "Prospecting" },
-  { id: "qualification", label: "Qualification" },
-  { id: "proposal", label: "Proposal" },
+  { id: "new_lead", label: "New Lead" },
+  { id: "contacted", label: "Contacted" },
+  { id: "qualified", label: "Qualified" },
+  { id: "proposal_sent", label: "Proposal Sent" },
   { id: "negotiation", label: "Negotiation" },
-  { id: "closed_won", label: "Closed Won" },
-  { id: "closed_lost", label: "Closed Lost" },
+  { id: "won", label: "Won" },
+  { id: "lost", label: "Lost" },
 ];
 export const TASK_PRIORITY = {
   LOW: "low",

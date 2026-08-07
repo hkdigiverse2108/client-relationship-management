@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
-from models import DealCreate, DealResponse
-from db import deals_collection
+from models import DealCreate, DealResponse, NotificationCreate
+from db import deals_collection, notifications_collection
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/deals", tags=["deals"])
@@ -17,6 +17,20 @@ async def create_deal(deal: DealCreate, current_user: dict = Depends(get_current
     result = await deals_collection.insert_one(data)
     created = await deals_collection.find_one({"_id": result.inserted_id})
     created["_id"] = str(created["_id"])
+    
+    # Notify assigned user
+    if data.get("assigned_to"):
+        notification = NotificationCreate(
+            user_id=data["assigned_to"],
+            title="New Deal Assigned",
+            message=f"You have been assigned a new deal: {data['title']}",
+            type="info",
+            link="/pipeline"
+        )
+        notif_data = notification.model_dump(exclude_unset=True)
+        notif_data["created_at"] = datetime.utcnow()
+        await notifications_collection.insert_one(notif_data)
+
     return created
 
 @router.get("", response_model=List[DealResponse])
@@ -38,12 +52,28 @@ async def update_deal(obj_id: str, deal: DealUpdate, current_user: dict = Depend
         raise HTTPException(status_code=400, detail="No fields provided")
     data["updated_at"] = datetime.utcnow()
     
-    result = await deals_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
-    if result.matched_count == 0:
+    old_deal = await deals_collection.find_one({"_id": ObjectId(obj_id)})
+    if not old_deal:
         raise HTTPException(status_code=404, detail="Deal not found")
+
+    result = await deals_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
         
     updated = await deals_collection.find_one({"_id": ObjectId(obj_id)})
     updated["_id"] = str(updated["_id"])
+    
+    # Notify if assigned_to changed
+    if data.get("assigned_to") and data.get("assigned_to") != old_deal.get("assigned_to"):
+        notification = NotificationCreate(
+            user_id=data["assigned_to"],
+            title="Deal Assigned",
+            message=f"You have been assigned an existing deal: {updated['title']}",
+            type="info",
+            link="/pipeline"
+        )
+        notif_data = notification.model_dump(exclude_unset=True)
+        notif_data["created_at"] = datetime.utcnow()
+        await notifications_collection.insert_one(notif_data)
+
     return updated
 
 @router.delete("/{obj_id}")

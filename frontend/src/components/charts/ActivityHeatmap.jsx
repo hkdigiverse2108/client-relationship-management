@@ -33,7 +33,7 @@ export default function ActivityHeatmap({ data }) {
     <div className="aio-heatmap">
       <div className="aio-heatmap__header">
         <FiActivity className="aio-heatmap__icon" />
-        <h3 className="aio-heatmap__title">Leads Activity Heatmap — 30 Days</h3>
+        <h3 className="aio-heatmap__title">Activity Heatmap — 30 Days</h3>
       </div>
 
       <div className="aio-heatmap__body">

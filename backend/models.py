@@ -259,19 +259,25 @@ class ClientResponse(ClientCreate):
 class DealCreate(BaseModel):
     title: str
     client_id: str
+    company_name: Optional[str] = None
     amount: float
-    stage: str = "prospecting"
+    stage: str = "new_lead"
+    probability: Optional[float] = None
     expected_close_date: Optional[str] = None
     assigned_to: Optional[str] = None
+    reason: Optional[str] = None
     notes: Optional[str] = None
 
 class DealUpdate(BaseModel):
     title: Optional[str] = None
     client_id: Optional[str] = None
+    company_name: Optional[str] = None
     amount: Optional[float] = None
     stage: Optional[str] = None
+    probability: Optional[float] = None
     expected_close_date: Optional[str] = None
     assigned_to: Optional[str] = None
+    reason: Optional[str] = None
     notes: Optional[str] = None
 
 class DealResponse(DealCreate):

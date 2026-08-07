@@ -70,10 +70,14 @@ export const contactSchema = yup.object().shape({
 
 export const dealSchema = yup.object({
   title: yup.string().required("Deal title is required"),
+  company_name: yup.string().nullable(),
   amount: yup.number().typeError("Amount must be a number").min(0).required("Amount is required"),
   stage: yup.string().required("Stage is required"),
-  contact: yup.string().nullable(),
-  closeDate: yup.string().nullable(),
+  probability: yup.number().typeError("Probability must be a number").min(0).max(100).nullable(),
+  assigned_to: yup.string().required("Assigned user is required"),
+  reason: yup.string().nullable(),
+  expected_close_date: yup.string().nullable(),
+  notes: yup.string().nullable(),
 });
 
 export const clientSchema = yup.object({

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any
 from dependencies import get_current_user
 from models import UserResponse
-from db import leads_collection, audit_logs_collection
+from db import leads_collection, audit_logs_collection, deals_collection
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -33,10 +33,10 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         {
             "$facet": {
                 "current_period": [
-                    {"$match": {"created_at": {"$gte": last_30_days.isoformat()}}}
+                    {"$match": {"created_at": {"$gte": last_30_days}}}
                 ],
                 "previous_period": [
-                    {"$match": {"created_at": {"$gte": prev_30_days.isoformat(), "$lt": last_30_days.isoformat()}}}
+                    {"$match": {"created_at": {"$gte": prev_30_days, "$lt": last_30_days}}}
                 ],
                 "all_time": [
                     {"$match": {}}
@@ -48,20 +48,24 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     result = await leads_collection.aggregate(pipeline).to_list(1)
     data = result[0] if result else {"current_period": [], "previous_period": [], "all_time": []}
 
-    def calc_metrics(leads_list):
-        active_statuses = ["New Lead", "Contacted", "Qualified", "Proposal Sent", "Negotiation"]
+    # Fetch Deals for Revenue calculation
+    deals_result = await deals_collection.aggregate(pipeline).to_list(1)
+    deals_data = deals_result[0] if deals_result else {"current_period": [], "previous_period": [], "all_time": []}
+
+    def calc_metrics(leads_list, deals_list):
+        active_statuses = ["new", "contacted", "qualified", "negotiation"]
         
         total_leads = len(leads_list)
         active_leads = sum(1 for l in leads_list if l.get("status") in active_statuses)
-        won_leads = sum(1 for l in leads_list if l.get("status") == "Won")
+        won_leads = sum(1 for l in leads_list if l.get("status") == "won")
         
-        # Assume value is stored under 'value' key as a float/int
-        revenue = sum(float(l.get("value", 0)) for l in leads_list if l.get("status") == "Won")
+        # Calculate revenue from deals
+        revenue = sum(float(d.get("amount", 0)) for d in deals_list if d.get("stage") == "won")
         
         conversion_rate = (won_leads / total_leads * 100) if total_leads > 0 else 0
         
         # Calculate Funnel
-        qualified_leads = sum(1 for l in leads_list if l.get("status") in ["Qualified", "Proposal Sent", "Negotiation", "Won"])
+        qualified_leads = sum(1 for l in leads_list if l.get("status") in ["qualified", "negotiation", "won"])
         
         funnel = [
             {"label": "Visitors", "value": 0},
@@ -70,7 +74,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
             {"label": "Closed Won", "value": won_leads},
         ]
         
-        # Calculate Sources (all time usually makes more sense, but we'll return it per-period or just use all_time)
+        # Calculate Sources
         source_counts = {}
         for l in leads_list:
             src = l.get("source") or "Other"
@@ -94,9 +98,9 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
             "funnel": funnel
         }
 
-    all_metrics = calc_metrics(data["all_time"])
-    curr_metrics = calc_metrics(data["current_period"])
-    prev_metrics = calc_metrics(data["previous_period"])
+    all_metrics = calc_metrics(data["all_time"], deals_data["all_time"])
+    curr_metrics = calc_metrics(data["current_period"], deals_data["current_period"])
+    prev_metrics = calc_metrics(data["previous_period"], deals_data["previous_period"])
 
     revenue_delta = compute_delta(curr_metrics["revenue"], prev_metrics["revenue"])
     active_delta = compute_delta(curr_metrics["active_leads"], prev_metrics["active_leads"])
@@ -168,12 +172,10 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
             "time": doc.get("timestamp", "").isoformat() if hasattr(doc.get("timestamp"), 'isoformat') else str(doc.get("timestamp"))
         })
 
-    # Fetch 30-day Activity Heatmap (Only Leads)
     heatmap_cursor = audit_logs_collection.aggregate([
         {
             "$match": {
-                "timestamp": {"$gte": last_30_days},
-                "module": "Lead"
+                "timestamp": {"$gte": last_30_days}
             }
         },
         {
@@ -226,30 +228,28 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
         group_format = "%Y-%m-%d"
 
     pipeline = [
-        {"$match": {"created_at": {"$gte": start_date.isoformat()}}},
-        {
-            "$addFields": {
-                "date_str": {"$substr": ["$created_at", 0, 10]}
-            }
-        }
+        {"$match": {"created_at": {"$gte": start_date}}}
     ]
     
-    leads = await leads_collection.aggregate(pipeline).to_list(10000)
+    deals = await deals_collection.aggregate(pipeline).to_list(10000)
 
     # Dictionary to hold groupings: { "date_label": {"actual": 0, "projected": 0} }
     grouped_data = {}
     
-    projected_statuses = ["Qualified", "Proposal Sent", "Negotiation"]
+    projected_stages = ["qualified", "proposal_sent", "negotiation"]
 
-    for l in leads:
-        created_at_str = l.get("created_at", "")
-        if not created_at_str:
+    for d in deals:
+        created_at_val = d.get("created_at")
+        if not created_at_val:
             continue
             
-        try:
-            dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-        except ValueError:
-            continue
+        if isinstance(created_at_val, str):
+            try:
+                dt = datetime.fromisoformat(created_at_val.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+        else:
+            dt = created_at_val
             
         # Format key based on grouping
         key = dt.strftime(group_format)
@@ -257,12 +257,12 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
         if key not in grouped_data:
             grouped_data[key] = {"actual": 0, "projected": 0}
             
-        status = l.get("status")
-        value = float(l.get("value", 0))
+        stage = d.get("stage")
+        value = float(d.get("amount", 0))
         
-        if status == "Won":
+        if stage == "won":
             grouped_data[key]["actual"] += value
-        elif status in projected_statuses:
+        elif stage in projected_stages:
             grouped_data[key]["projected"] += value
 
     # Sort keys
