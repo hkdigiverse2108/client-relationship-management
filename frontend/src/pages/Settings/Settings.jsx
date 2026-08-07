@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { FiUser, FiLock, FiBell, FiUsers } from "react-icons/fi";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
@@ -13,6 +13,7 @@ import { classNames, getProfilePhotoUrl } from "@/utils/helpers";
 import UserManagement from "@/components/users/UserManagement";
 import { userService } from "@/api/services/userService";
 import { authService } from "@/api/services/authService";
+import { dashboardService } from "@/api/services/dashboardService";
 import { APP_CONFIG } from "@/config/appConfig";
 const TABS = [
   { id: "profile",       label: "Profile",       icon: FiUser },
@@ -103,6 +104,32 @@ export default function Settings() {
       toast.error(error?.response?.data?.detail || "Failed to update password");
     } finally {
       setSavingPassword(false);
+    }
+  };
+
+  const [salesTarget, setSalesTarget] = useState("");
+  const [savingTarget, setSavingTarget] = useState(false);
+
+  // Fetch sales target when switching to team tab
+  useEffect(() => {
+    if (tab === "team") {
+      dashboardService.getSalesTarget().then(res => {
+        if (res && res.monthly_sales_target) {
+          setSalesTarget(res.monthly_sales_target.toString());
+        }
+      });
+    }
+  }, [tab]);
+
+  const handleSaveTarget = async () => {
+    try {
+      setSavingTarget(true);
+      await dashboardService.updateSalesTarget({ monthly_sales_target: parseFloat(salesTarget) });
+      toast.success("Sales target updated successfully");
+    } catch (error) {
+      toast.error("Failed to update sales target");
+    } finally {
+      setSavingTarget(false);
     }
   };
 
@@ -235,7 +262,27 @@ export default function Settings() {
               </div>
             )}
             {tab === "team" && (
-              <UserManagement />
+              <div>
+                <div className="mb-4">
+                  <h3 className="mb-3" style={{ fontSize: "1.15rem" }}>Sales Configuration</h3>
+                  <div className="d-flex align-items-end gap-3" style={{ maxWidth: "400px" }}>
+                    <div className="flex-grow-1">
+                      <Input 
+                        label="Monthly Sales Target (₹)" 
+                        type="number" 
+                        value={salesTarget} 
+                        onChange={(e) => setSalesTarget(e.target.value)} 
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <Button onClick={handleSaveTarget} loading={savingTarget}>Save Target</Button>
+                    </div>
+                  </div>
+                </div>
+                <hr className="my-4" style={{ borderColor: "var(--color-divider)" }} />
+                <h3 className="mb-3" style={{ fontSize: "1.15rem" }}>User Management</h3>
+                <UserManagement />
+              </div>
             )}
           </div>
         </div>

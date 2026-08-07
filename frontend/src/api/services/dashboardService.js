@@ -28,4 +28,35 @@ export const dashboardService = {
       return { labels: [], actual: [], projected: [] };
     }
   },
+  
+  async getSalesMetrics() {
+    try {
+      return await axiosClient.get("/dashboard/sales-metrics");
+    } catch (error) {
+      console.error("Failed to fetch sales metrics", error);
+      return null;
+    }
+  },
+
+  async getSalesTarget() {
+    try {
+      return await axiosClient.get("/dashboard/sales-target");
+    } catch (error) {
+      console.error("Failed to fetch sales target", error);
+      return { monthly_sales_target: 500000 };
+    }
+  },
+
+  async updateSalesTarget(data) {
+    return await axiosClient.put("/dashboard/sales-target", data);
+  },
+
+  async getTeamMetrics() {
+    try {
+      return await axiosClient.get("/dashboard/team-metrics");
+    } catch (error) {
+      console.error("Failed to fetch team metrics", error);
+      return null;
+    }
+  }
 };

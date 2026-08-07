@@ -20,6 +20,8 @@ deals_collection = db.get_collection("deals")
 projects_collection = db.get_collection("projects")
 invoices_collection = db.get_collection("invoices")
 payments_collection = db.get_collection("payments")
+settings_collection = db.get_collection("settings")
+tasks_collection = db.get_collection("tasks")
 
 async def init_db():
     # Create unique indexes

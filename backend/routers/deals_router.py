@@ -11,6 +11,8 @@ router = APIRouter(prefix="/deals", tags=["deals"])
 async def create_deal(deal: DealCreate, current_user: dict = Depends(get_current_user)):
     data = deal.model_dump(exclude_unset=True)
     data["created_by"] = current_user["_id"]
+    if not data.get("assigned_to"):
+        data["assigned_to"] = current_user["_id"]
     data["created_at"] = datetime.utcnow()
     data["updated_at"] = data["created_at"]
     
