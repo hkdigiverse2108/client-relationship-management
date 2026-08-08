@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from dependencies import get_current_user
 from models import UserResponse
-from db import leads_collection, audit_logs_collection, deals_collection, users_collection, settings_collection, projects_collection, tasks_collection
+from db import leads_collection, audit_logs_collection, deals_collection, users_collection, settings_collection, projects_collection, tasks_collection, expenses_collection
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -525,4 +525,170 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
         "roles_distribution": roles_data,
         "workload": workload_list,
         "recent_activities_feed": formatted_logs
+    }
+
+@router.get("/analytics-metrics")
+async def get_analytics_metrics(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    now = datetime.utcnow()
+    # Default to current month if no dates provided
+    if start_date and end_date:
+        start_dt = datetime.strptime(start_date[:10], "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date[:10], "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    else:
+        start_dt = now.replace(day=1, hour=0, minute=0, second=0)
+        end_dt = now
+        
+    duration = end_dt - start_dt
+    prev_end_dt = start_dt - timedelta(seconds=1)
+    prev_start_dt = prev_end_dt - duration
+
+    # Base Queries
+    query_curr = {"created_at": {"$gte": start_dt, "$lte": end_dt}}
+    query_prev = {"created_at": {"$gte": prev_start_dt, "$lte": prev_end_dt}}
+    
+    exp_curr = {"date": {"$gte": start_dt, "$lte": end_dt}}
+    exp_prev = {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}}
+
+    # 1. Total Revenue
+    won_curr = await deals_collection.find({**query_curr, "stage": "won"}).to_list(None)
+    won_prev = await deals_collection.find({**query_prev, "stage": "won"}).to_list(None)
+    
+    rev_curr = sum(d.get("amount", 0) for d in won_curr)
+    rev_prev = sum(d.get("amount", 0) for d in won_prev)
+    rev_growth = compute_delta(rev_curr, rev_prev)
+    
+    # 2. Net Profit
+    exp_curr_list = await expenses_collection.find(exp_curr).to_list(None)
+    exp_prev_list = await expenses_collection.find(exp_prev).to_list(None)
+    
+    profit_curr = rev_curr - sum(e.get("amount", 0) for e in exp_curr_list)
+    profit_prev = rev_prev - sum(e.get("amount", 0) for e in exp_prev_list)
+    profit_growth = compute_delta(profit_curr, profit_prev)
+    
+    # 3. MRR
+    mrr_curr = sum(d.get("amount", 0) for d in won_curr if d.get("is_recurring", False))
+    mrr_prev = sum(d.get("amount", 0) for d in won_prev if d.get("is_recurring", False))
+    mrr_growth = compute_delta(mrr_curr, mrr_prev)
+    
+    # 4. Churn Rate
+    def calc_churn(q):
+        return deals_collection.count_documents({**q, "stage": "lost"})
+    def calc_total(q):
+        return deals_collection.count_documents(q)
+        
+    total_curr = await calc_total(query_curr)
+    lost_curr = await calc_churn(query_curr)
+    churn_curr = (lost_curr / total_curr * 100) if total_curr > 0 else 0
+    
+    total_prev = await calc_total(query_prev)
+    lost_prev = await calc_churn(query_prev)
+    churn_prev = (lost_prev / total_prev * 100) if total_prev > 0 else 0
+    churn_growth = compute_delta(churn_curr, churn_prev)
+    
+    # 5. Deal Velocity (Average days to close)
+    velocity_days = 0
+    if len(won_curr) > 0:
+        total_days = 0
+        valid_deals = 0
+        for d in won_curr:
+            created = d.get("created_at")
+            updated = d.get("updated_at")
+            if isinstance(created, datetime) and isinstance(updated, datetime):
+                days = (updated - created).days
+                total_days += max(days, 0)
+                valid_deals += 1
+        if valid_deals > 0:
+            velocity_days = total_days / valid_deals
+            
+    # 6. Growth Dynamics (Last 6 Months Trend)
+    months_labels = []
+    mrr_data = []
+    arr_data = []
+    
+    for i in range(5, -1, -1):
+        m_start = (now.replace(day=1) - timedelta(days=30*i)).replace(day=1, hour=0, minute=0, second=0)
+        # Next month's first day minus 1 second = last day of this month
+        if m_start.month == 12:
+            m_end = m_start.replace(year=m_start.year+1, month=1) - timedelta(seconds=1)
+        else:
+            m_end = m_start.replace(month=m_start.month+1) - timedelta(seconds=1)
+            
+        months_labels.append(m_start.strftime("%b"))
+        
+        m_deals = await deals_collection.find({
+            "created_at": {"$gte": m_start, "$lte": m_end},
+            "stage": "won"
+        }).to_list(None)
+        
+        m_arr = sum(d.get("amount", 0) for d in m_deals)
+        m_mrr = sum(d.get("amount", 0) for d in m_deals if d.get("is_recurring", False))
+        
+        arr_data.append(m_arr)
+        mrr_data.append(m_mrr)
+        
+    growth_dynamics = {
+        "labels": months_labels,
+        "mrr": mrr_data,
+        "arr": arr_data
+    }
+    
+    # 7. Channel Attribution
+    # Pre-populate with expected channels so they always show up
+    channel_counts = {
+        "WhatsApp CRM": 0,
+        "Direct Sales": 0,
+        "Marketing Ads": 0
+    }
+    for d in won_curr:
+        src = d.get("source")
+        if src:
+            channel_counts[src] = channel_counts.get(src, 0) + d.get("amount", 0)
+        
+    channels_list = []
+    # Always show them even if total revenue is 0
+    sorted_ch = sorted(channel_counts.items(), key=lambda x: x[1], reverse=True)
+    colors = ["#25D366", "#4f46e5", "#f59e0b", "#ec4899", "#14b8a6"]
+    for i, (name, val) in enumerate(sorted_ch[:5]):
+        percentage = round((val / rev_curr) * 100) if rev_curr > 0 else 0
+        channels_list.append({
+            "name": name,
+            "percentage": percentage,
+            "color": colors[i % len(colors)]
+        })
+            
+    # 8. Revenue by Service
+    service_counts = {}
+    for d in won_curr:
+        srv = d.get("service_category")
+        if srv:
+            service_counts[srv] = service_counts.get(srv, 0) + d.get("amount", 0)
+        
+    revenue_by_service = {"labels": [], "values": []}
+    for k, v in service_counts.items():
+        revenue_by_service["labels"].append(k)
+        revenue_by_service["values"].append(v)
+        
+    # If no data, provide an empty structure so charts don't break
+    if not revenue_by_service["labels"]:
+        revenue_by_service = {"labels": ["No Data"], "values": [0]}
+
+    return {
+        "kpis": {
+            "total_revenue": rev_curr,
+            "revenue_growth": rev_growth,
+            "net_profit": profit_curr,
+            "profit_growth": profit_growth,
+            "mrr": mrr_curr,
+            "mrr_growth": mrr_growth,
+            "churn_rate": round(churn_curr, 1),
+            "churn_growth": churn_growth,
+            "deal_velocity": round(velocity_days, 1)
+        },
+        "growth_dynamics": growth_dynamics,
+        "channel_attribution": channels_list,
+        "revenue_by_service": revenue_by_service
     }

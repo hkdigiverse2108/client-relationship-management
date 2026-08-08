@@ -267,6 +267,9 @@ class DealCreate(BaseModel):
     assigned_to: Optional[str] = None
     reason: Optional[str] = None
     notes: Optional[str] = None
+    is_recurring: bool = False
+    source: Optional[str] = None
+    service_category: Optional[str] = None
 
 class DealUpdate(BaseModel):
     title: Optional[str] = None
@@ -279,6 +282,9 @@ class DealUpdate(BaseModel):
     assigned_to: Optional[str] = None
     reason: Optional[str] = None
     notes: Optional[str] = None
+    is_recurring: Optional[bool] = None
+    source: Optional[str] = None
+    service_category: Optional[str] = None
 
 class DealResponse(DealCreate):
     id: str = Field(alias="_id")

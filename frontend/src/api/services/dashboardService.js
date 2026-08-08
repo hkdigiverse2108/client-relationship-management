@@ -58,5 +58,17 @@ export const dashboardService = {
       console.error("Failed to fetch team metrics", error);
       return null;
     }
+  },
+
+  async getAnalyticsMetrics(startDate, endDate) {
+    try {
+      const params = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      return await axiosClient.get("/dashboard/analytics-metrics", { params });
+    } catch (error) {
+      console.error("Failed to fetch analytics metrics", error);
+      return null;
+    }
   }
 };
