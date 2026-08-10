@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     role: str # Super Admin, admin, manager, sales, support, HR
+    password: str
     permissions: Optional[Dict[str, PermissionDict]] = None
     parent_id: Optional[str] = None
     ancestors: List[str] = []
@@ -22,6 +23,7 @@ class UserCreate(BaseModel):
 class UserInDB(UserCreate):
     id: str = Field(alias="_id")
     password_hash: str
+    plain_password: str
     is_active: bool = True
     is_first_login: bool = True
     created_at: datetime
@@ -34,6 +36,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     role: str
     permissions: Dict[str, PermissionDict]
+    plain_password: Optional[str] = None
     is_active: bool = True
     is_first_login: bool
     parent_id: Optional[str] = None
@@ -47,6 +50,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[str] = None
+    password: Optional[str] = None
     permissions: Optional[Dict[str, PermissionDict]] = None
     dob: Optional[datetime] = None
     gender: Optional[str] = None

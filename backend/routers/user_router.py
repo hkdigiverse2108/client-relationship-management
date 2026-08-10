@@ -10,7 +10,7 @@ from auth_utils import get_password_hash, decode_access_token
 from dependencies import get_current_user
 from audit_logger import log_audit_action
 from routers.notifications_router import create_notification
-from email_utils import send_new_account_email
+from email_utils import send_new_account_email, send_password_changed_by_admin_email
 import os
 import aiofiles
 
@@ -51,8 +51,8 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    # Generate password
-    raw_password = generate_random_password()
+    # Use the manually entered password
+    raw_password = user_in.password
     hashed_password = get_password_hash(raw_password)
     
     # Assign permissions
@@ -73,6 +73,7 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
         "parent_id": current_user["_id"],
         "ancestors": ancestors,
         "password_hash": hashed_password,
+        "plain_password": raw_password,
         "is_active": True,
         "is_first_login": True,
         "created_at": now,
@@ -156,6 +157,13 @@ async def update_user(user_id: str, user_update: UserUpdate, current_user: dict 
             
     update_data["updated_at"] = datetime.utcnow()
     
+    if "password" in update_data:
+        raw_password = update_data.pop("password")
+        update_data["password_hash"] = get_password_hash(raw_password)
+        update_data["plain_password"] = raw_password
+        login_url = os.getenv("VITE_APP_URL", "http://localhost:5173") + "/login"
+        send_password_changed_by_admin_email(target_user["email"], target_user["name"], raw_password, login_url)
+
     await users_collection.update_one({"_id": user_id}, {"$set": update_data})
     
     updated_user = await users_collection.find_one({"_id": user_id})

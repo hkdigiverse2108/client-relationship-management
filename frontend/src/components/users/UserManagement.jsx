@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FiPlus, FiChevronDown, FiChevronRight, FiKey } from "react-icons/fi";
+import { FiPlus, FiChevronDown, FiChevronRight, FiKey, FiEye, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Badge from "@/components/common/Badge/Badge";
@@ -19,6 +19,7 @@ export default function UserManagement() {
   
   // Track which parent nodes are expanded
   const [expanded, setExpanded] = useState({});
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const [editingUser, setEditingUser] = useState(null);
 
@@ -40,6 +41,10 @@ export default function UserManagement() {
 
   const toggleExpand = (userId) => {
     setExpanded(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const togglePasswordVisibility = (userId) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
   const openCreateModal = () => {
@@ -170,8 +175,17 @@ export default function UserManagement() {
           </div>
 
           {/* Password Field (Protected) */}
-          <div className="text-muted" style={{ width: 150, fontSize: 13 }}>
-            ******** (Protected)
+          <div className="text-muted d-flex align-items-center justify-content-between" style={{ width: 150, fontSize: 13 }}>
+            <span>{visiblePasswords[user.id] && user.plain_password ? user.plain_password : "********"}</span>
+            {user.plain_password && (
+              <button 
+                className="btn btn-link p-0 text-muted"
+                onClick={() => togglePasswordVisibility(user.id)}
+                title={visiblePasswords[user.id] ? "Hide Password" : "Show Password"}
+              >
+                {visiblePasswords[user.id] ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            )}
           </div>
 
           {/* Actions */}

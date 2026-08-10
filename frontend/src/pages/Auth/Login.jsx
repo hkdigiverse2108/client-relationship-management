@@ -1,14 +1,16 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FiMail, FiLock } from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { loginSchema } from "@/utils/validators";
 import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/common/Input/Input";
 import Button from "@/components/common/Button/Button";
 export default function Login() {
   const { login, loading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/dashboard";
@@ -40,14 +42,24 @@ export default function Login() {
           error={errors.email?.message}
           {...register("email")}
         />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          icon={FiLock}
-          error={errors.password?.message}
-          {...register("password")}
-        />
+        <div className="position-relative">
+          <Input
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            icon={FiLock}
+            error={errors.password?.message}
+            {...register("password")}
+          />
+          <button 
+            type="button"
+            className="btn btn-link position-absolute p-0"
+            style={{ right: 10, top: 33, color: "var(--color-text-subtle)" }}
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+          </button>
+        </div>
         <div className="d-flex align-items-center justify-content-between mb-3">
           <label className="d-flex align-items-center gap-2" style={{ fontSize: 13 }}>
             <input type="checkbox" className="form-check-input m-0" defaultChecked />

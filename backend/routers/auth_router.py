@@ -83,7 +83,7 @@ async def reset_password(request: ResetPasswordRequest):
     hashed_password = get_password_hash(request.new_password)
     await users_collection.update_one(
         {"email": request.email},
-        {"$set": {"password_hash": hashed_password, "updated_at": datetime.utcnow()}}
+        {"$set": {"password_hash": hashed_password, "plain_password": request.new_password, "updated_at": datetime.utcnow()}}
     )
     
     # Delete OTP
@@ -102,7 +102,7 @@ async def change_password(request: ChangePasswordRequest, current_user: dict = D
     
     await users_collection.update_one(
         {"_id": current_user["_id"]},
-        {"$set": {"password_hash": hashed_password, "updated_at": datetime.utcnow()}}
+        {"$set": {"password_hash": hashed_password, "plain_password": request.new_password, "updated_at": datetime.utcnow()}}
     )
     
     return {"message": "Password changed successfully"}

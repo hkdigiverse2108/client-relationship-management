@@ -61,3 +61,19 @@ def send_otp_email(to_email: str, otp: str):
     </html>
     """
     return send_email(to_email, subject, body)
+
+def send_password_changed_by_admin_email(to_email: str, name: str, new_password: str, login_url: str):
+    subject = "AIO CRM - Your Password Has Been Updated"
+    body = f"""
+    <html>
+      <body>
+        <h2>Hello {name},</h2>
+        <p>Your account password has been updated by an administrator.</p>
+        <p><strong>Login URL:</strong> <a href="{login_url}">{login_url}</a></p>
+        <p><strong>Email:</strong> {to_email}</p>
+        <p><strong>New Password:</strong> {new_password}</p>
+        <p>Please log in with your new password.</p>
+      </body>
+    </html>
+    """
+    return send_email(to_email, subject, body)

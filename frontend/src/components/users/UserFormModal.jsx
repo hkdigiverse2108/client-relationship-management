@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Modal from "@/components/common/Modal/Modal";
 import Input from "@/components/common/Input/Input";
@@ -34,9 +35,12 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
   const { user: currentUser } = useAuth();
   const availableRoles = ROLE_CREATION_MAP[currentUser?.role] || [];
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: {
-      name: "", email: "", phone: "", role: "sales",
+      name: "", email: "", phone: "", role: "sales", password: "", confirmPassword: "",
       permissions: DYNAMIC_PAGES.reduce((acc, page) => {
         acc[page.path] = { view: false, edit: false, delete: false };
         if (page.path === "/dashboard") acc[page.path].view = true;
@@ -54,7 +58,23 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
   const currentPermissions = watch("permissions");
   
   const submit = async (values) => {
-    await onSubmit(values, !!initialData);
+    if (values.password || values.confirmPassword) {
+      if (values.password !== values.confirmPassword) {
+        toast.error("Passwords do not match!");
+        return;
+      }
+    } else if (!initialData) {
+      toast.error("Password is required for new users.");
+      return;
+    }
+
+    const payload = { ...values };
+    delete payload.confirmPassword;
+    if (!payload.password) {
+      delete payload.password;
+    }
+
+    await onSubmit(payload, !!initialData);
     reset();
   };
 
@@ -90,6 +110,42 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
+          </div>
+          <div className="col-md-6">
+            <div className="position-relative">
+              <Input 
+                label="Password" 
+                type={showPassword ? "text" : "password"} 
+                placeholder={initialData ? "Leave blank to keep unchanged" : ""}
+                {...register("password")} 
+              />
+              <button 
+                type="button"
+                className="btn btn-link position-absolute p-0"
+                style={{ right: 10, top: 32, color: "var(--color-text-subtle)" }}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
+          </div>
+          <div className="col-md-6">
+            <div className="position-relative">
+              <Input 
+                label="Confirm Password" 
+                type={showConfirmPassword ? "text" : "password"} 
+                placeholder={initialData ? "Leave blank to keep unchanged" : ""}
+                {...register("confirmPassword")} 
+              />
+              <button 
+                type="button"
+                className="btn btn-link position-absolute p-0"
+                style={{ right: 10, top: 32, color: "var(--color-text-subtle)" }}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
           </div>
         </div>
         
