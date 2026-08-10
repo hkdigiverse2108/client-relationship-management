@@ -18,7 +18,6 @@ const TABS = [
   { id: "profile",       label: "Profile",       icon: FiUser },
   { id: "security",      label: "Security",      icon: FiLock },
   { id: "notifications", label: "Notifications", icon: FiBell },
-  { id: "team",          label: "Team",          icon: FiUsers },
 ];
 export default function Settings() {
   const { user, login } = useAuth();
@@ -32,6 +31,16 @@ export default function Settings() {
     phone: user?.phone || "",
     dob: user?.dob ? user.dob.substring(0, 10) : "",
     gender: user?.gender || "",
+    designation: user?.designation || "",
+    city: user?.city || "",
+    state: user?.state || "",
+    country: user?.country || "",
+    bank_name: user?.bank_name || "",
+    account_holder_name: user?.account_holder_name || "",
+    account_number: user?.account_number || "",
+    ifsc_code: user?.ifsc_code || "",
+    pan_number: user?.pan_number || "",
+    aadhar_number: user?.aadhar_number || "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -45,6 +54,21 @@ export default function Settings() {
   };
 
   const handleSaveProfile = async () => {
+    // Validations
+    if (profileData.pan_number) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+      if (!panRegex.test(profileData.pan_number)) {
+        return toast.error("Invalid PAN Card format (e.g., ABCDE1234F)");
+      }
+    }
+    
+    if (profileData.aadhar_number) {
+      const aadharRegex = /^\d{12}$/;
+      if (!aadharRegex.test(profileData.aadhar_number)) {
+        return toast.error("Aadhar Number must be exactly 12 digits");
+      }
+    }
+
     try {
       setSavingProfile(true);
       const updatedUser = await userService.updateProfile(profileData);
@@ -180,6 +204,45 @@ export default function Settings() {
                       
                     </select>
                   </div>
+                  
+                  <div className="col-12 mt-4 pt-2 border-top">
+                    <h4 className="mb-3 text-primary" style={{ fontSize: "1.05rem" }}>Professional & Location</h4>
+                  </div>
+                  <div className="col-md-6"><Input label="Designation" name="designation" placeholder="e.g. Senior Manager" value={profileData.designation} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="City" name="city" value={profileData.city} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="State" name="state" value={profileData.state} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="Country" name="country" value={profileData.country} onChange={handleProfileChange} /></div>
+                  
+                  <div className="col-12 mt-4 pt-2 border-top">
+                    <h4 className="mb-3 text-primary" style={{ fontSize: "1.05rem" }}>Financial Details</h4>
+                  </div>
+                  <div className="col-md-6"><Input label="Bank Name" name="bank_name" placeholder="e.g. HDFC Bank" value={profileData.bank_name} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="Account Holder Name" name="account_holder_name" value={profileData.account_holder_name} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="Account Number" name="account_number" value={profileData.account_number} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6"><Input label="IFSC Code" name="ifsc_code" value={profileData.ifsc_code} onChange={handleProfileChange} /></div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{ fontSize: 13, fontWeight: 500 }}>PAN Card Number</label>
+                    <input 
+                      className="form-control" 
+                      style={{ textTransform: "uppercase" }} 
+                      name="pan_number" 
+                      value={profileData.pan_number} 
+                      onChange={handleProfileChange} 
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{ fontSize: 13, fontWeight: 500 }}>Aadhar Number</label>
+                    <input 
+                      className="form-control" 
+                      name="aadhar_number" 
+                      value={profileData.aadhar_number} 
+                      onChange={handleProfileChange} 
+                      placeholder="123456789012"
+                      maxLength={12}
+                    />
+                  </div>
                 </div>
                 <div className="mt-4 d-flex justify-content-end">
                   <Button onClick={handleSaveProfile} loading={savingProfile}>Save changes</Button>
@@ -216,9 +279,6 @@ export default function Settings() {
                   </div>
                 ))}
               </div>
-            )}
-            {tab === "team" && (
-              <UserManagement />
             )}
           </div>
         </div>

@@ -19,6 +19,16 @@ class UserCreate(BaseModel):
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
 
 class UserInDB(UserCreate):
     id: str = Field(alias="_id")
@@ -43,6 +53,16 @@ class UserResponse(BaseModel):
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -55,6 +75,16 @@ class UserUpdate(BaseModel):
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
 
 class StatusUpdate(BaseModel):
     is_active: bool

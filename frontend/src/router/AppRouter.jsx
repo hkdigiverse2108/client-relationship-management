@@ -27,6 +27,8 @@ import Orders from "@/pages/Ecommerce/Orders";
 import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
 import AuditLog from "@/pages/Audit/AuditLog";
+import UserManagementPage from "@/pages/Settings/UserManagementPage";
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -58,6 +60,7 @@ export default function AppRouter() {
         <Route path="/reports"   element={<Reports />} />
         <Route path="/settings"  element={<Settings />} />
         <Route path="/appearance" element={<Appearance />} />
+        <Route path="/user-management" element={<UserManagementPage />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/projects-dashboard"  element={<ProjectDashboard />} />
         <Route path="/all-projects"  element={<AllProjects />} />

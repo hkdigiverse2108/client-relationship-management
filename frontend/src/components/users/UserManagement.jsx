@@ -6,6 +6,7 @@ import Badge from "@/components/common/Badge/Badge";
 import Button from "@/components/common/Button/Button";
 import { userService } from "@/api/services/userService";
 import UserFormModal from "./UserFormModal";
+import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "@/context/AuthContext";
 import { classNames, getProfilePhotoUrl } from "@/utils/helpers";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
@@ -22,6 +23,7 @@ export default function UserManagement() {
   const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const [editingUser, setEditingUser] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -55,6 +57,10 @@ export default function UserManagement() {
   const openEditModal = (user) => {
     setEditingUser(user);
     setModalOpen(true);
+  };
+
+  const openViewModal = (user) => {
+    setViewingUser(user);
   };
 
   const handleSaveUser = async (values, isEdit) => {
@@ -192,6 +198,13 @@ export default function UserManagement() {
           <div style={{ width: 270 }} className="text-end d-flex gap-2 justify-content-end">
             <button 
               className="btn btn-sm btn-light"
+              onClick={() => openViewModal(user)}
+              title="View Details"
+            >
+              View
+            </button>
+            <button 
+              className="btn btn-sm btn-light"
               onClick={() => openEditModal(user)}
               title="Edit User"
             >
@@ -259,6 +272,14 @@ export default function UserManagement() {
           onSubmit={handleSaveUser}
           submitting={submitting}
           initialData={editingUser}
+        />
+      )}
+
+      {viewingUser && (
+        <UserDetailsModal
+          open={!!viewingUser}
+          user={viewingUser}
+          onClose={() => setViewingUser(null)}
         />
       )}
     </div>
