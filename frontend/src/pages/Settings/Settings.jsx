@@ -181,23 +181,6 @@ export default function Settings() {
                     </select>
                   </div>
                 </div>
-                <hr className="my-4" style={{ borderColor: "var(--color-divider)" }} />
-                <h3 className="mb-3" style={{ fontSize: "1.05rem" }}>Appearance</h3>
-                <div className="d-flex gap-2">
-                  {["light","dark"].map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => {
-                        setTheme(m);
-                        if (m === "dark") applyPreset("corporate");
-                        else applyPreset("default");
-                      }}
-                      className={classNames("btn", theme === m ? "btn-primary" : "btn-light", "text-capitalize")}
-                    >
-                      {m} mode
-                    </button>
-                  ))}
-                </div>
                 <div className="mt-4 d-flex justify-content-end">
                   <Button onClick={handleSaveProfile} loading={savingProfile}>Save changes</Button>
                 </div>
