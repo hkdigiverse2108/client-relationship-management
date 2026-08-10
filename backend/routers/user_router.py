@@ -43,9 +43,13 @@ def get_default_permissions(role: str) -> dict:
 
 @router.post("", response_model=UserResponse)
 async def create_user(user_in: UserCreate, current_user: dict = Depends(get_current_user)):
+    if user_in.role == "Super Admin":
+        raise HTTPException(status_code=403, detail="Cannot create Super Admin")
+        
     allowed_to_create = ROLE_CREATION_MAP.get(current_user["role"], [])
     if user_in.role not in allowed_to_create:
-        raise HTTPException(status_code=403, detail=f"Not authorized to create role: {user_in.role}")
+        if current_user["role"] not in ["Super Admin", "admin"]:
+            raise HTTPException(status_code=403, detail=f"Not authorized to create role: {user_in.role}")
         
     existing = await users_collection.find_one({"email": user_in.email})
     if existing:
@@ -144,9 +148,13 @@ async def update_user(user_id: str, user_update: UserUpdate, current_user: dict 
         raise HTTPException(status_code=403, detail="Not authorized to edit this user")
         
     if user_update.role and user_update.role != target_user["role"]:
+        if user_update.role == "Super Admin":
+            raise HTTPException(status_code=403, detail="Cannot assign Super Admin role")
+            
         allowed_roles = ROLE_CREATION_MAP.get(current_user["role"], [])
         if user_update.role not in allowed_roles:
-            raise HTTPException(status_code=403, detail=f"Not authorized to assign role: {user_update.role}")
+            if current_user["role"] not in ["Super Admin", "admin"]:
+                raise HTTPException(status_code=403, detail=f"Not authorized to assign role: {user_update.role}")
         
     update_data = user_update.model_dump(exclude_unset=True)
     
