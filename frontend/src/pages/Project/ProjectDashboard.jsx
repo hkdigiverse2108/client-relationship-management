@@ -12,10 +12,16 @@ import { groupBy } from "@/utils/helpers";
 import SearchInput from "@/components/common/PageHeaderSearchBar/SearchInput";
 import { useState } from "react";
 import Select from "@/components/common/Select/Select";
+import ProjectFormModal from "./ProjectFormModal";
+import toast from "react-hot-toast";
+import { projectService } from "@/api/services/projectService";
 
 import "../Pipeline/Pipeline.css";
 export default function DealsBoard() {
   const [status, setStatus] = useState("all");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const load = useCallback(() => dealService.list(), []);
   const { data: rawDeals, loading } = useAsync(load, [], []);
   const deals = useMemo(() => rawDeals || [], [rawDeals]);
@@ -26,7 +32,22 @@ export default function DealsBoard() {
       totals[s.id] = (grouped[s.id] || []).reduce((sum, d) => sum + Number(d.amount || 0), 0);
     });
     return totals;
+    return totals;
   }, [grouped]);
+
+  const handleCreateProject = async (values) => {
+    setSubmitting(true);
+    try {
+      await projectService.create(values);
+      toast.success("Project created successfully!");
+      setModalOpen(false);
+    } catch (e) {
+      toast.error(e.message || "Failed to create project");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <Loader />;
   return (
     <>
@@ -46,7 +67,7 @@ export default function DealsBoard() {
         { label: "On Hold", value: "hold" },
         { label: "Cancelled", value: "cancelled" },
       ]}
-    /> <Button icon={FiPlus} variant="gradient">New Project</Button> </>}
+    /> <Button icon={FiPlus} variant="gradient" onClick={() => setModalOpen(true)}>New Project</Button> </>}
       />
       <div className="aio-board">
         {DEAL_STAGES.map((stage) => {
@@ -88,6 +109,12 @@ export default function DealsBoard() {
           );
         })}
       </div>
+      <ProjectFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleCreateProject}
+        submitting={submitting}
+      />
     </>
   );
 }

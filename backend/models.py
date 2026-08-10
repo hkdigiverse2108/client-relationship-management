@@ -297,10 +297,16 @@ class ProjectCreate(BaseModel):
     title: str
     client_id: str
     deal_id: Optional[str] = None
-    status: str = "not_started"
+    status: str = "active"
+    category: str
+    priority: str
+    department: str
+    budget: float
+    project_value: float
+    tags: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_to: str
     description: Optional[str] = None
 
 class ProjectUpdate(BaseModel):
@@ -308,13 +314,33 @@ class ProjectUpdate(BaseModel):
     client_id: Optional[str] = None
     deal_id: Optional[str] = None
     status: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    department: Optional[str] = None
+    budget: Optional[float] = None
+    project_value: Optional[float] = None
+    tags: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     assigned_to: Optional[str] = None
     description: Optional[str] = None
 
-class ProjectResponse(ProjectCreate):
+class ProjectResponse(BaseModel):
     id: str = Field(alias="_id")
+    title: str
+    client_id: str
+    deal_id: Optional[str] = None
+    status: str = "active"
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    department: Optional[str] = None
+    budget: Optional[float] = None
+    project_value: Optional[float] = None
+    tags: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
     created_by: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
