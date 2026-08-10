@@ -11,7 +11,7 @@ load_dotenv(dotenv_path="../.env")
 os.makedirs("uploads/profile_photos", exist_ok=True)
 
 from db import init_db
-from routers import auth_router, user_router, audit_router, dashboard_router, notifications_router, leads_router
+from routers import auth_router, user_router, audit_router, dashboard_router, notifications_router, leads_router, role_router
 
 app = FastAPI(title="AIO CRM API")
 
@@ -40,6 +40,7 @@ app.include_router(leads_router.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(dashboard_router.router, prefix="/api/v1")
 app.include_router(notifications_router.router, prefix="/api/v1")
+app.include_router(role_router.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():

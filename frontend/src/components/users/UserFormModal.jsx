@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import Button from "@/components/common/Button/Button";
 import { classNames } from "@/utils/helpers";
 import { useAuth } from "@/context/AuthContext";
 import { NAV_SECTIONS } from "@/config/navConfig";
+import { roleService } from "@/api/services/roleService";
 
 const DYNAMIC_PAGES = [];
 NAV_SECTIONS.forEach(section => {
@@ -33,16 +34,28 @@ const ROLE_CREATION_MAP = {
 
 export default function UserFormModal({ open, onClose, onSubmit, submitting, initialData = null }) {
   const { user: currentUser } = useAuth();
-  const availableRoles = ROLE_CREATION_MAP[currentUser?.role] || [];
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [presets, setPresets] = useState({});
+  const [dynamicAvailableRoles, setDynamicAvailableRoles] = useState([]);
+
+  useEffect(() => {
+    const baseRoles = ROLE_CREATION_MAP[currentUser?.role] || [];
+    const customRoles = Object.keys(presets).filter(r => !["Super Admin", "admin", "manager", "HR", "sales", "support"].includes(r));
+    
+    if (currentUser?.role === "Super Admin" || currentUser?.role === "admin") {
+      setDynamicAvailableRoles([...baseRoles, ...customRoles]);
+    } else {
+      setDynamicAvailableRoles(baseRoles);
+    }
+  }, [currentUser?.role, presets]);
 
   const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: {
       name: "", email: "", phone: "", role: "sales", password: "", confirmPassword: "",
       permissions: DYNAMIC_PAGES.reduce((acc, page) => {
-        acc[page.path] = { view: false, edit: false, delete: false };
+        acc[page.path] = { view: false, add: false, edit: false, delete: false };
         if (page.path === "/dashboard") acc[page.path].view = true;
         return acc;
       }, {})
@@ -54,6 +67,23 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
       reset(initialData);
     }
   }, [initialData, reset]);
+
+  useEffect(() => {
+    roleService.getPresets().then(data => {
+      const presetMap = {};
+      data.forEach(p => { presetMap[p.role_name] = p; });
+      setPresets(presetMap);
+    }).catch(err => console.error("Failed to fetch presets:", err));
+  }, []);
+
+  const selectedRole = watch("role");
+
+  useEffect(() => {
+    // Only auto-apply presets if it's a new user (not editing an existing one)
+    if (!initialData && presets[selectedRole]) {
+      setValue("permissions", presets[selectedRole].permissions, { shouldDirty: true });
+    }
+  }, [selectedRole, presets, initialData, setValue]);
 
   const currentPermissions = watch("permissions");
   
@@ -82,6 +112,98 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
     setValue(`permissions.${module}.${action}`, checked);
   };
 
+  const isMasterAllChecked = DYNAMIC_PAGES.every(p => currentPermissions?.[p.path]?.view && currentPermissions?.[p.path]?.add && currentPermissions?.[p.path]?.edit && currentPermissions?.[p.path]?.delete);
+  
+  const isSectionAllChecked = (section) => {
+    let allPaths = [];
+    section.items.forEach(item => {
+      if (item.subItems) allPaths.push(...item.subItems.map(s => s.path));
+      else allPaths.push(item.path);
+    });
+    if (allPaths.length === 0) return false;
+    return allPaths.every(path => currentPermissions?.[path]?.view && currentPermissions?.[path]?.add && currentPermissions?.[path]?.edit && currentPermissions?.[path]?.delete);
+  };
+
+  const isPageAllChecked = (path) => {
+    return currentPermissions?.[path]?.view && currentPermissions?.[path]?.add && currentPermissions?.[path]?.edit && currentPermissions?.[path]?.delete;
+  };
+
+  const handleMasterAll = (checked) => {
+    const updated = { ...currentPermissions };
+    Object.keys(updated).forEach(path => {
+      updated[path] = { view: checked, add: checked, edit: checked, delete: checked };
+    });
+    setValue("permissions", updated, { shouldDirty: true });
+  };
+
+  const handleSectionAll = (section, checked) => {
+    const updated = { ...currentPermissions };
+    section.items.forEach(item => {
+      if (item.subItems) {
+        item.subItems.forEach(sub => {
+          if (updated[sub.path]) {
+            updated[sub.path] = { view: checked, add: checked, edit: checked, delete: checked };
+          }
+        });
+      } else {
+        if (updated[item.path]) {
+          updated[item.path] = { view: checked, add: checked, edit: checked, delete: checked };
+        }
+      }
+    });
+    setValue("permissions", updated, { shouldDirty: true });
+  };
+
+  const handlePageAll = (path, checked) => {
+    setValue(`permissions.${path}`, { view: checked, add: checked, edit: checked, delete: checked }, { shouldDirty: true });
+  };
+
+  const renderPageRow = (path, label) => (
+    <tr key={path}>
+      <td className="fw-medium text-muted ps-4" style={{ fontSize: 13 }}>{label}</td>
+      <td className="text-center">
+        <input 
+          type="checkbox" 
+          className="form-check-input" 
+          checked={currentPermissions?.[path]?.view || false}
+          onChange={(e) => handlePermissionChange(path, 'view', e.target.checked)}
+        />
+      </td>
+      <td className="text-center">
+        <input 
+          type="checkbox" 
+          className="form-check-input" 
+          checked={currentPermissions?.[path]?.add || false}
+          onChange={(e) => handlePermissionChange(path, 'add', e.target.checked)}
+        />
+      </td>
+      <td className="text-center">
+        <input 
+          type="checkbox" 
+          className="form-check-input" 
+          checked={currentPermissions?.[path]?.edit || false}
+          onChange={(e) => handlePermissionChange(path, 'edit', e.target.checked)}
+        />
+      </td>
+      <td className="text-center">
+        <input 
+          type="checkbox" 
+          className="form-check-input" 
+          checked={currentPermissions?.[path]?.delete || false}
+          onChange={(e) => handlePermissionChange(path, 'delete', e.target.checked)}
+        />
+      </td>
+      <td className="text-center bg-light">
+        <input 
+          type="checkbox" 
+          className="form-check-input border-primary" 
+          checked={isPageAllChecked(path)}
+          onChange={(e) => handlePageAll(path, e.target.checked)}
+        />
+      </td>
+    </tr>
+  );
+
   return (
     <Modal
       open={open}
@@ -106,7 +228,7 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
           <div className="col-md-6">
             <label className="form-label">Role</label>
             <select className="form-select mb-3" {...register("role")}>
-              {availableRoles.map((r) => (
+              {dynamicAvailableRoles.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
@@ -151,46 +273,63 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
         
         <hr className="my-4" style={{ borderColor: "var(--color-divider)" }} />
         
-        <h6 className="mb-3">Permissions Matrix</h6>
-        <div className="table-responsive">
-          <table className="table table-bordered align-middle" style={{ fontSize: 14 }}>
-            <thead className="table-light">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h6 className="m-0">Permissions Matrix</h6>
+          <div className="form-check">
+            <input 
+              className="form-check-input border-primary" 
+              type="checkbox" 
+              id="master-all"
+              checked={isMasterAllChecked}
+              onChange={(e) => handleMasterAll(e.target.checked)}
+            />
+            <label className="form-check-label fw-bold text-primary" htmlFor="master-all">
+              Master All
+            </label>
+          </div>
+        </div>
+        <div className="table-responsive" style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--color-divider)", borderRadius: 6 }}>
+          <table className="table table-bordered align-middle table-sm m-0" style={{ fontSize: 14 }}>
+            <thead className="table-light sticky-top" style={{ zIndex: 1, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
               <tr>
-                <th>Module</th>
-                <th className="text-center">View</th>
-                <th className="text-center">Edit</th>
-                <th className="text-center">Delete</th>
+                <th>Module / Page</th>
+                <th className="text-center" style={{ width: 80 }}>View</th>
+                <th className="text-center" style={{ width: 80 }}>Add</th>
+                <th className="text-center" style={{ width: 80 }}>Edit</th>
+                <th className="text-center" style={{ width: 80 }}>Delete</th>
+                <th className="text-center bg-light" style={{ width: 80, borderBottom: "2px solid var(--color-primary)" }}>All</th>
               </tr>
             </thead>
             <tbody>
-              {DYNAMIC_PAGES.map((page) => (
-                <tr key={page.path}>
-                  <td className="fw-medium text-muted" style={{ fontSize: 13 }}>{page.label}</td>
-                  <td className="text-center">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      checked={currentPermissions?.[page.path]?.view || false}
-                      onChange={(e) => handlePermissionChange(page.path, 'view', e.target.checked)}
-                    />
-                  </td>
-                  <td className="text-center">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      checked={currentPermissions?.[page.path]?.edit || false}
-                      onChange={(e) => handlePermissionChange(page.path, 'edit', e.target.checked)}
-                    />
-                  </td>
-                  <td className="text-center">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      checked={currentPermissions?.[page.path]?.delete || false}
-                      onChange={(e) => handlePermissionChange(page.path, 'delete', e.target.checked)}
-                    />
-                  </td>
-                </tr>
+              {NAV_SECTIONS.map((section) => (
+                <React.Fragment key={section.id}>
+                  {/* Section Row */}
+                  <tr className="table-secondary">
+                    <td className="fw-bold text-dark" style={{ fontSize: 13 }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <section.icon />
+                        {section.title}
+                      </div>
+                    </td>
+                    <td colSpan={4} className="table-secondary"></td>
+                    <td className="text-center table-secondary">
+                      <input 
+                        type="checkbox" 
+                        className="form-check-input border-primary" 
+                        checked={isSectionAllChecked(section)}
+                        onChange={(e) => handleSectionAll(section, e.target.checked)}
+                      />
+                    </td>
+                  </tr>
+                  
+                  {/* Page Rows */}
+                  {section.items.map((item) => {
+                    if (item.subItems) {
+                      return item.subItems.map(sub => renderPageRow(sub.path, `${item.label} > ${sub.label}`));
+                    }
+                    return renderPageRow(item.path, item.label);
+                  })}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

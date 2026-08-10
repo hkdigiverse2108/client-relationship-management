@@ -28,6 +28,7 @@ import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
 import AuditLog from "@/pages/Audit/AuditLog";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
+import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
 
 export default function AppRouter() {
   return (
@@ -61,6 +62,7 @@ export default function AppRouter() {
         <Route path="/settings"  element={<Settings />} />
         <Route path="/appearance" element={<Appearance />} />
         <Route path="/user-management" element={<UserManagementPage />} />
+        <Route path="/roles-and-permissions" element={<RolesPermissionsPage />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/projects-dashboard"  element={<ProjectDashboard />} />
         <Route path="/all-projects"  element={<AllProjects />} />

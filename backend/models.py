@@ -4,6 +4,7 @@ from datetime import datetime
 
 class PermissionDict(BaseModel):
     view: bool = False
+    add: bool = False
     edit: bool = False
     delete: bool = False
 
@@ -199,3 +200,10 @@ class LeadResponse(LeadCreate):
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+class RolePresetCreate(BaseModel):
+    role_name: str
+    permissions: Dict[str, PermissionDict]
+
+class RolePresetResponse(RolePresetCreate):
+    id: str
