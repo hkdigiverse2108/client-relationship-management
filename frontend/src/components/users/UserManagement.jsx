@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FiPlus, FiChevronDown, FiChevronRight, FiKey, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiMoreVertical, FiShield, FiMail, FiPhone, FiKey, FiCheck, FiX, FiActivity, FiPlus, FiChevronDown, FiChevronRight, FiEye, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Badge from "@/components/common/Badge/Badge";

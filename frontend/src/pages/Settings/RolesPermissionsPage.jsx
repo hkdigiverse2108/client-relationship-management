@@ -50,12 +50,6 @@ export default function RolesPermissionsPage() {
 
   useEffect(() => {
     if (presets[selectedRole]) {
-      setCurrentPermissions(presets[selectedRole].permissions);
-    } else {
-      setCurrentPermissions(getEmptyPermissions());
-    }
-  }, [selectedRole, presets]);
-
   const fetchPresets = async () => {
     try {
       setLoading(true);
@@ -74,6 +68,18 @@ export default function RolesPermissionsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPresets();
+  }, []);
+
+  useEffect(() => {
+    if (presets[selectedRole]) {
+      setCurrentPermissions(presets[selectedRole].permissions);
+    } else {
+      setCurrentPermissions(getEmptyPermissions());
+    }
+  }, [selectedRole, presets]);
 
   const handleSave = async () => {
     try {
