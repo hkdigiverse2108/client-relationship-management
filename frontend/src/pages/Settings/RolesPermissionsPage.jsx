@@ -44,12 +44,6 @@ export default function RolesPermissionsPage() {
   const [newRoleName, setNewRoleName] = useState("");
   const [creatingRole, setCreatingRole] = useState(false);
 
-  useEffect(() => {
-    fetchPresets();
-  }, []);
-
-  useEffect(() => {
-    if (presets[selectedRole]) {
   const fetchPresets = async () => {
     try {
       setLoading(true);
