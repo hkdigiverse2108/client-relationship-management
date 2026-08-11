@@ -23,12 +23,9 @@ async def startup_event():
     await init_db()
 
 # Setup CORS
-default_origin = os.getenv("VITE_APP_URL") or os.getenv("VITE_API_URL")
-cors_origins_env = os.getenv("CORS_ORIGINS", default_origin)
-origins = cors_origins_env.split(",") if cors_origins_env else []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
