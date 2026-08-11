@@ -270,6 +270,17 @@ class ClientCreate(BaseModel):
     notes: Optional[str] = None
     converted_from_lead_id: Optional[str] = "Manual"
 
+class ClientHistoryModel(BaseModel):
+    client_id: str
+    user_id: Optional[str] = None
+    user_name: Optional[str] = "System"
+    action: str
+    description: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class ClientHistoryResponse(ClientHistoryModel):
+    id: str = Field(alias="_id")
+
 class ClientUpdate(BaseModel):
     client_name: Optional[str] = None
     company_name: Optional[str] = None

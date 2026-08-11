@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard/Dashboard";
 import LeadsList from "@/pages/Leads/LeadsList";
 import ClientsList from "@/pages/Clients/ClientsList";
 import ClientProfile from "@/pages/Clients/ClientProfile";
+import ClientDetailsPage from "@/pages/Clients/ClientDetailsPage";
 import ContactsList from "@/pages/Contacts/ContactsList";
 import Pipeline from "@/pages/Pipeline/Pipeline";
 import TasksList from "@/pages/Tasks/TasksList";
@@ -56,6 +57,7 @@ export default function AppRouter() {
         <Route path="/leads"     element={<LeadsList />} />
         <Route path="/clients"   element={<ClientsList />} />
         <Route path="/clients/:id" element={<ClientProfile />} />
+        <Route path="/client-details/:id" element={<ClientDetailsPage />} />
         <Route path="/contacts"  element={<ContactsList />} />
         <Route path="/pipeline"     element={<Pipeline />} />
         <Route path="/tasks"     element={<TasksList />} />
