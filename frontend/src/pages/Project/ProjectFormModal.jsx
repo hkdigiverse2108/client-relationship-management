@@ -20,6 +20,7 @@ const projectSchema = yup.object().shape({
   project_value: yup.number().typeError("Project Value must be a number").required("Project Value is required"),
   assigned_to: yup.string().required("Assigned To is required"),
   status: yup.string().required("Status is required"),
+  stage: yup.string().required("Stage is required"),
   tags: yup.string().nullable(),
   description: yup.string().nullable(),
 });
@@ -33,6 +34,13 @@ const STATUSES = {
   completed: "Completed",
   cancelled: "Cancelled"
 };
+const STAGES = {
+  new: "New",
+  in_progress: "In Progress",
+  review: "In Review",
+  completed: "Completed",
+  hold: "On Hold"
+};
 
 export default function ProjectFormModal({ open, onClose, onSubmit, initialValues, submitting }) {
   const isEdit = !!(initialValues?.id || initialValues?._id);
@@ -44,7 +52,7 @@ export default function ProjectFormModal({ open, onClose, onSubmit, initialValue
     defaultValues: initialValues || {
       title: "", client_id: "", category: "Web Development", priority: "medium",
       department: "Engineering", start_date: "", end_date: "",
-      budget: "", project_value: "", assigned_to: "", status: "active",
+      budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
       tags: "", description: ""
     },
   });
@@ -57,7 +65,7 @@ export default function ProjectFormModal({ open, onClose, onSubmit, initialValue
         reset({
           title: "", client_id: "", category: "Web Development", priority: "medium",
           department: "Engineering", start_date: "", end_date: "",
-          budget: "", project_value: "", assigned_to: "", status: "active",
+          budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
           tags: "", description: ""
         });
       }
@@ -146,7 +154,7 @@ export default function ProjectFormModal({ open, onClose, onSubmit, initialValue
 
         <h5 className="form-section-title">Management</h5>
         <div className="row g-3 mb-4">
-          <div className="col-md-6">
+          <div className="col-md-4">
             <label className="form-label">Assign To *</label>
             <select className={`form-select ${errors.assigned_to ? 'is-invalid' : ''}`} {...register("assigned_to")}>
               <option value="">Select User</option>
@@ -154,12 +162,19 @@ export default function ProjectFormModal({ open, onClose, onSubmit, initialValue
             </select>
             {errors.assigned_to && <div className="invalid-feedback">{errors.assigned_to.message}</div>}
           </div>
-          <div className="col-md-6">
+          <div className="col-md-4">
             <label className="form-label">Status *</label>
             <select className={`form-select ${errors.status ? 'is-invalid' : ''}`} {...register("status")}>
               {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             {errors.status && <div className="invalid-feedback">{errors.status.message}</div>}
+          </div>
+          <div className="col-md-4">
+            <label className="form-label">Stage *</label>
+            <select className={`form-select ${errors.stage ? 'is-invalid' : ''}`} {...register("stage")}>
+              {Object.entries(STAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            {errors.stage && <div className="invalid-feedback">{errors.stage.message}</div>}
           </div>
         </div>
 

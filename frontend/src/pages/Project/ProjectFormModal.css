@@ -1,7 +1,5 @@
 .project-form-scrollable {
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* Removed max-height and overflow-y to prevent double scrollbars inside standard Modal component */
   padding-right: 8px;
 }
 

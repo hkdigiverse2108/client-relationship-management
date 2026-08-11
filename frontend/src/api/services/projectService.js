@@ -5,6 +5,10 @@ export const projectService = {
     return await api.get("/projects");
   },
 
+  getAnalytics: async () => {
+    return await api.get("/projects/analytics");
+  },
+
   get: async (id) => {
     return await api.get(`/projects/${id}`);
   },

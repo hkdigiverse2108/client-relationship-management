@@ -351,6 +351,7 @@ class ProjectCreate(BaseModel):
     client_id: str
     deal_id: Optional[str] = None
     status: str = "active"
+    stage: str = "new"
     category: str
     priority: str
     department: str
@@ -367,6 +368,7 @@ class ProjectUpdate(BaseModel):
     client_id: Optional[str] = None
     deal_id: Optional[str] = None
     status: Optional[str] = None
+    stage: Optional[str] = None
     category: Optional[str] = None
     priority: Optional[str] = None
     department: Optional[str] = None
@@ -384,6 +386,7 @@ class ProjectResponse(BaseModel):
     client_id: str
     deal_id: Optional[str] = None
     status: str = "active"
+    stage: str = "new"
     category: Optional[str] = None
     priority: Optional[str] = None
     department: Optional[str] = None
