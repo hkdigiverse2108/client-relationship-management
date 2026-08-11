@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import PaymentCreate, PaymentResponse
-from db import payments_collection
+from db import payments_collection, client_history_collection
+from history_logger import log_client_history
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -16,6 +17,16 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
     
     result = await payments_collection.insert_one(data)
     created = await payments_collection.find_one({"_id": result.inserted_id})
+    
+    if data.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            data["client_id"],
+            current_user,
+            "Payment Received",
+            f"Payment of {data.get('amount_received', 0)} received via {data.get('payment_method', 'Unknown')}"
+        )
+        
     created["_id"] = str(created["_id"])
     return created
 
@@ -43,6 +54,16 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
         raise HTTPException(status_code=404, detail="Payment not found")
         
     updated = await payments_collection.find_one({"_id": ObjectId(obj_id)})
+    
+    if updated.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            updated["client_id"],
+            current_user,
+            "Payment Updated",
+            f"Payment details were updated."
+        )
+        
     updated["_id"] = str(updated["_id"])
     return updated
 

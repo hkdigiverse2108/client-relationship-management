@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import InvoiceCreate, InvoiceResponse
-from db import invoices_collection
+from db import invoices_collection, client_history_collection
+from history_logger import log_client_history
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -16,6 +17,16 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
     
     result = await invoices_collection.insert_one(data)
     created = await invoices_collection.find_one({"_id": result.inserted_id})
+    
+    if data.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            data["client_id"],
+            current_user,
+            "Invoice Created",
+            f"Invoice {data.get('invoice_number', '')} was created for {data.get('total_amount', 0)}"
+        )
+        
     created["_id"] = str(created["_id"])
     return created
 
@@ -43,6 +54,16 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
         raise HTTPException(status_code=404, detail="Invoice not found")
         
     updated = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
+    
+    if updated.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            updated["client_id"],
+            current_user,
+            "Invoice Updated",
+            f"Invoice {updated.get('invoice_number', '')} was updated."
+        )
+        
     updated["_id"] = str(updated["_id"])
     return updated
 
