@@ -7,6 +7,7 @@ import { leadService } from "@/api/services/leadService";
 import { userService } from "@/api/services/userService";
 import { contactService } from "@/api/services/contactService";
 import { clientService } from "@/api/services/clientService";
+import { projectService } from "@/api/services/projectService";
 import "./GlobalSearch.css";
 
 export default function GlobalSearch() {
@@ -21,6 +22,7 @@ export default function GlobalSearch() {
   const [users, setUsers] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Fetch data only once when first opened
@@ -30,6 +32,7 @@ export default function GlobalSearch() {
       userService.getList().then(res => setUsers(res || [])).catch(() => setUsers([]));
       contactService.list().then(res => setContacts(res?.data || res || [])).catch(() => setContacts([]));
       clientService.list().then(res => setClients(res?.data || res || [])).catch(() => setClients([]));
+      projectService.list().then(res => setProjects(res?.data || res || [])).catch(() => setProjects([]));
     }
   }, [isOpen]);
 
@@ -135,18 +138,32 @@ export default function GlobalSearch() {
 
     const filteredClients = Array.isArray(clients) ? clients.filter(c => 
       c.client_name?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q)
+      c.company_name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.mobile_number?.includes(q)
     ).map(c => ({
       type: "client",
       id: c.id || c._id,
-      title: c.client_name,
-      subtitle: c.email || "Client",
-      path: `/clients`,
+      title: c.client_name || c.company_name,
+      subtitle: c.company_name ? `${c.company_name} - ${c.email}` : c.email || "Client",
+      path: `/client-details/${c.id || c._id}`,
       icon: FiBriefcase
     })) : [];
 
-    return [...filteredPages, ...filteredLeads, ...filteredUsers, ...filteredContacts, ...filteredClients].slice(0, 15);
-  }, [query, pages, leads, users, contacts, clients]);
+    const filteredProjects = Array.isArray(projects) ? projects.filter(p => 
+      p.title?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    ).map(p => ({
+      type: "project",
+      id: p.id || p._id,
+      title: p.title,
+      subtitle: "Project",
+      path: `/projects`,
+      icon: FiFolder
+    })) : [];
+
+    return [...filteredPages, ...filteredLeads, ...filteredUsers, ...filteredContacts, ...filteredClients, ...filteredProjects].slice(0, 15);
+  }, [query, pages, leads, users, contacts, clients, projects]);
 
   // Handle keyboard navigation
   useEffect(() => {
