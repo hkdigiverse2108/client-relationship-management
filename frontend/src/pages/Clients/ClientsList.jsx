@@ -143,8 +143,8 @@ export default function ClientsList() {
 
   const columns = [
     { key: "client_id", label: "Client ID", sortable: true, width: 100, render: (r) => <div style={{ whiteSpace: "nowrap", fontWeight: 600, color: 'var(--color-primary)' }}>{r.client_id}</div> },
-    { key: "company_name", label: "Company Name", sortable: true, width: 160, render: (r) => <div style={{ whiteSpace: "nowrap", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}><Link to={`/clients/${r.id || r._id}`} style={{ textDecoration: 'none', color: 'var(--color-text)' }}>{r.company_name}</Link></div> },
-    { key: "client_name", label: "Client Name", sortable: true, width: 150, render: (r) => <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.client_name || "—"}</div> },
+    { key: "company_name", label: "Company Name", sortable: true, width: 160, render: (r) => <div style={{ whiteSpace: "nowrap", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}><Link to={`/clients/${r.id || r._id}`} style={{ textDecoration: 'none', color: 'var(--color-text)' }} title="View Company Dashboard">{r.company_name}</Link></div> },
+    { key: "client_name", label: "Client Name", sortable: true, width: 150, render: (r) => <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.client_name ? <Link to={`/client-details/${r.id || r._id}`} style={{ textDecoration: 'none', color: 'var(--color-text)', fontWeight: 500 }} title="View Client Profile">{r.client_name}</Link> : "—"}</div> },
     { key: "contact_person", label: "Contact Person", sortable: true, width: 150, render: (r) => <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.contact_person || "—"}</div> },
     { key: "email", label: "Email", sortable: true, width: 200, render: (r) => <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div> },
     { key: "mobile_number", label: "Mobile", sortable: true, width: 130, render: (r) => <div style={{ whiteSpace: "nowrap" }}>{r.mobile_number}</div> },

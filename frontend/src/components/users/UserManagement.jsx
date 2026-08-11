@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { FiPlus, FiChevronDown, FiChevronRight, FiKey } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiMoreVertical, FiShield, FiMail, FiPhone, FiKey, FiCheck, FiX, FiActivity, FiPlus, FiChevronDown, FiChevronRight, FiEye, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Badge from "@/components/common/Badge/Badge";
 import Button from "@/components/common/Button/Button";
+import Input from "@/components/common/Input/Input";
 import { userService } from "@/api/services/userService";
+import { dashboardService } from "@/api/services/dashboardService";
 import UserFormModal from "./UserFormModal";
+import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "@/context/AuthContext";
 import { classNames, getProfilePhotoUrl } from "@/utils/helpers";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
@@ -19,12 +22,41 @@ export default function UserManagement() {
   
   // Track which parent nodes are expanded
   const [expanded, setExpanded] = useState({});
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const [editingUser, setEditingUser] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
+
+  const [salesTarget, setSalesTarget] = useState("");
+  const [savingTarget, setSavingTarget] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    fetchSalesTarget();
   }, []);
+
+  const fetchSalesTarget = async () => {
+    try {
+      const res = await dashboardService.getSalesTarget();
+      if (res && res.monthly_sales_target) {
+        setSalesTarget(res.monthly_sales_target.toString());
+      }
+    } catch (error) {
+      console.error("Failed to fetch sales target", error);
+    }
+  };
+
+  const handleSaveTarget = async () => {
+    try {
+      setSavingTarget(true);
+      await dashboardService.updateSalesTarget({ monthly_sales_target: parseFloat(salesTarget) });
+      toast.success("Sales target updated successfully");
+    } catch (error) {
+      toast.error("Failed to update sales target");
+    } finally {
+      setSavingTarget(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -42,6 +74,10 @@ export default function UserManagement() {
     setExpanded(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
+  const togglePasswordVisibility = (userId) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
   const openCreateModal = () => {
     setEditingUser(null);
     setModalOpen(true);
@@ -50,6 +86,10 @@ export default function UserManagement() {
   const openEditModal = (user) => {
     setEditingUser(user);
     setModalOpen(true);
+  };
+
+  const openViewModal = (user) => {
+    setViewingUser(user);
   };
 
   const handleSaveUser = async (values, isEdit) => {
@@ -170,12 +210,28 @@ export default function UserManagement() {
           </div>
 
           {/* Password Field (Protected) */}
-          <div className="text-muted" style={{ width: 150, fontSize: 13 }}>
-            ******** (Protected)
+          <div className="text-muted d-flex align-items-center justify-content-between" style={{ width: 150, fontSize: 13 }}>
+            <span>{visiblePasswords[user.id] && user.plain_password ? user.plain_password : "********"}</span>
+            {user.plain_password && (
+              <button 
+                className="btn btn-link p-0 text-muted"
+                onClick={() => togglePasswordVisibility(user.id)}
+                title={visiblePasswords[user.id] ? "Hide Password" : "Show Password"}
+              >
+                {visiblePasswords[user.id] ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            )}
           </div>
 
           {/* Actions */}
           <div style={{ width: 270 }} className="text-end d-flex gap-2 justify-content-end">
+            <button 
+              className="btn btn-sm btn-light"
+              onClick={() => openViewModal(user)}
+              title="View Details"
+            >
+              View
+            </button>
             <button 
               className="btn btn-sm btn-light"
               onClick={() => openEditModal(user)}
@@ -218,6 +274,25 @@ export default function UserManagement() {
 
   return (
     <div>
+      {/* Sales Configuration */}
+      <div className="mb-4">
+        <h3 className="mb-3" style={{ fontSize: "1.15rem" }}>Sales Configuration</h3>
+        <div className="d-flex align-items-end gap-3" style={{ maxWidth: "400px" }}>
+          <div className="flex-grow-1">
+            <Input 
+              label="Monthly Sales Target (₹)" 
+              type="number" 
+              value={salesTarget} 
+              onChange={(e) => setSalesTarget(e.target.value)} 
+            />
+          </div>
+          <div className="mb-3">
+            <Button onClick={handleSaveTarget} loading={savingTarget}>Save Target</Button>
+          </div>
+        </div>
+      </div>
+      <hr className="my-4" style={{ borderColor: "var(--color-divider)" }} />
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="m-0" style={{ fontSize: "1.15rem" }}>Team members & Hierarchy</h3>
         {["Super Admin", "admin", "HR", "manager"].includes(currentUser?.role) && (
@@ -245,6 +320,14 @@ export default function UserManagement() {
           onSubmit={handleSaveUser}
           submitting={submitting}
           initialData={editingUser}
+        />
+      )}
+
+      {viewingUser && (
+        <UserDetailsModal
+          open={!!viewingUser}
+          user={viewingUser}
+          onClose={() => setViewingUser(null)}
         />
       )}
     </div>

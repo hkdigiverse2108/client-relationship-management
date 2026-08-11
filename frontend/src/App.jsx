@@ -36,6 +36,7 @@ export default function App() {
                   <AppRouter />
                   <Toaster
                     position="top-right"
+                    containerStyle={{ zIndex: 999999 }}
                     toastOptions={{
                       duration: 3500,
                       style: {

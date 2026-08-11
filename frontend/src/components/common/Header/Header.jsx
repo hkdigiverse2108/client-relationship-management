@@ -15,12 +15,14 @@ import {
 } from "react-icons/fi";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useAppearance } from "@/context/AppearanceContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSearch } from "@/context/SearchContext";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Dropdown from "@/components/common/Dropdown/Dropdown";
 import NotificationDropdown from "./NotificationDropdown";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
+import GlobalSearch from "@/components/common/GlobalSearch/GlobalSearch";
 import toast from "react-hot-toast";
 import "./Header.css";
 import { LuClipboardList, LuPalette} from "react-icons/lu";
@@ -28,7 +30,8 @@ import { getProfilePhotoUrl } from "@/utils/helpers";
 
 export default function Header() {
   const { openMobile } = useSidebar();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, setTheme } = useTheme();
+  const { applyPreset } = useAppearance();
   const { user, logout } = useAuth();
   const { openSearch } = useSearch();
   const navigate = useNavigate();
@@ -43,6 +46,16 @@ export default function Header() {
     } else {
       setWaConnected(true);
       toast.success("Whatsapp API Connection Restored");
+    }
+  };
+
+  const handleToggleTheme = () => {
+    if (isDark) {
+      setTheme("light");
+      applyPreset("default");
+    } else {
+      setTheme("dark");
+      applyPreset("corporate");
     }
   };
 
@@ -68,17 +81,7 @@ export default function Header() {
       </div>
 
       <div className="aio-header__center">
-        <div className="aio-header__search" onClick={openSearch} style={{ cursor: "pointer" }}>
-          <FiSearch className="aio-header__search-icon" />
-          <input
-            type="text"
-            placeholder="Search CRM (contacts, leads, bills...)"
-            className="aio-header__search-input"
-            readOnly
-            style={{ cursor: "pointer" }}
-          />
-          <kbd className="aio-header__kbd">Ctrl + K</kbd>
-        </div>
+        <GlobalSearch />
       </div>
 
       <div className="aio-header__right">
@@ -115,7 +118,7 @@ export default function Header() {
         <NotificationDropdown />
 
         {/* Theme Toggle Icon */}
-        <button className="aio-header__icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
+        <button className="aio-header__icon-btn" onClick={handleToggleTheme} aria-label="Toggle theme">
           {isDark ? <FiSun /> : <FiMoon />}
         </button>
 
@@ -147,11 +150,6 @@ export default function Header() {
               email: user?.email || "pratvi@gmail.com",
             },
             { type: "divider" },
-            {
-              label: isDark ? "Switch to Light Mode" : "Switch to Dark Mode",
-              icon: isDark ? FiSun : FiMoon,
-              onClick: toggleTheme,
-            },
             { label: "Appearance & Theme", icon: LuPalette, onClick: () => navigate("/appearance") },
             { type: "divider" },
             { label: "Sign out", icon: FiLogOut, onClick: handleLogout, danger: true },

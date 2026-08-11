@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from models import ClientCreate, ClientResponse, ClientUpdate
-from db import clients_collection, audit_logs_collection, deals_collection, projects_collection, invoices_collection, payments_collection
+from db import clients_collection, audit_logs_collection, deals_collection, projects_collection, invoices_collection, payments_collection, client_history_collection
 from dependencies import get_current_user
 from audit_logger import log_audit_action
+from history_logger import log_client_history
 from bson import ObjectId
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -47,6 +48,14 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         f"Created client {client.company_name} ({client.client_id})"
     )
     
+    await log_client_history(
+        client_history_collection,
+        str(created_client["_id"]),
+        current_user,
+        "Client Created",
+        f"Client {client.client_name or client.company_name} was created."
+    )
+    
     created_client["_id"] = str(created_client["_id"])
     return ClientResponse(**created_client)
 
@@ -80,6 +89,14 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
         f"Updated client {updated_client.get('company_name')} ({updated_client.get('client_id')})"
     )
     
+    await log_client_history(
+        client_history_collection,
+        client_id,
+        current_user,
+        "Client Updated",
+        "Client details were updated."
+    )
+    
     updated_client["_id"] = str(updated_client["_id"])
     return ClientResponse(**updated_client)
 
@@ -100,6 +117,18 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     )
     
     return {"message": "Client deleted successfully"}
+
+@router.get("/{client_id}/history")
+async def get_client_history(client_id: str, current_user: dict = Depends(get_current_user)):
+    cursor = client_history_collection.find({"client_id": client_id}).sort("timestamp", -1)
+    history = []
+    async for entry in cursor:
+        entry["_id"] = str(entry["_id"])
+        if "timestamp" in entry and entry["timestamp"]:
+            entry["timestamp"] = entry["timestamp"].replace(tzinfo=timezone.utc)
+        history.append(entry)
+    return history
+
 @router.get("/{obj_id}/dashboard")
 async def get_client_dashboard(obj_id: str, current_user: dict = Depends(get_current_user)):
     try:

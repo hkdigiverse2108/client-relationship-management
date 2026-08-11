@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import DealCreate, DealResponse, NotificationCreate
-from db import deals_collection, notifications_collection
+from db import deals_collection, notifications_collection, client_history_collection
+from history_logger import log_client_history
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/deals", tags=["deals"])
@@ -18,6 +19,16 @@ async def create_deal(deal: DealCreate, current_user: dict = Depends(get_current
     
     result = await deals_collection.insert_one(data)
     created = await deals_collection.find_one({"_id": result.inserted_id})
+    
+    if data.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            data["client_id"],
+            current_user,
+            "Deal Created",
+            f"Deal '{data.get('title', '')}' was created with value {data.get('value', 0)}"
+        )
+        
     created["_id"] = str(created["_id"])
     
     # Notify assigned user
@@ -61,6 +72,16 @@ async def update_deal(obj_id: str, deal: DealUpdate, current_user: dict = Depend
     result = await deals_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
         
     updated = await deals_collection.find_one({"_id": ObjectId(obj_id)})
+    
+    if updated.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            updated["client_id"],
+            current_user,
+            "Deal Updated",
+            f"Deal '{updated.get('title', '')}' was updated (Stage: {updated.get('stage', 'Unknown')})."
+        )
+        
     updated["_id"] = str(updated["_id"])
     
     # Notify if assigned_to changed

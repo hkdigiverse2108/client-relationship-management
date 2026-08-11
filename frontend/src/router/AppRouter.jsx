@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard/Dashboard";
 import LeadsList from "@/pages/Leads/LeadsList";
 import ClientsList from "@/pages/Clients/ClientsList";
 import ClientProfile from "@/pages/Clients/ClientProfile";
+import ClientDetailsPage from "@/pages/Clients/ClientDetailsPage";
 import ContactsList from "@/pages/Contacts/ContactsList";
 import Pipeline from "@/pages/Pipeline/Pipeline";
 import TasksList from "@/pages/Tasks/TasksList";
@@ -28,6 +29,9 @@ import Orders from "@/pages/Ecommerce/Orders";
 import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
 import AuditLog from "@/pages/Audit/AuditLog";
+import UserManagementPage from "@/pages/Settings/UserManagementPage";
+import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -53,6 +57,7 @@ export default function AppRouter() {
         <Route path="/leads"     element={<LeadsList />} />
         <Route path="/clients"   element={<ClientsList />} />
         <Route path="/clients/:id" element={<ClientProfile />} />
+        <Route path="/client-details/:id" element={<ClientDetailsPage />} />
         <Route path="/contacts"  element={<ContactsList />} />
         <Route path="/pipeline"     element={<Pipeline />} />
         <Route path="/tasks"     element={<TasksList />} />
@@ -60,6 +65,8 @@ export default function AppRouter() {
         <Route path="/reports"   element={<Reports />} />
         <Route path="/settings"  element={<Settings />} />
         <Route path="/appearance" element={<Appearance />} />
+        <Route path="/user-management" element={<UserManagementPage />} />
+        <Route path="/roles-and-permissions" element={<RolesPermissionsPage />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/projects-dashboard"  element={<ProjectDashboard />} />
         <Route path="/all-projects"  element={<AllProjects />} />

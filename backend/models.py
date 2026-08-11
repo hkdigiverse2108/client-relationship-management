@@ -4,6 +4,7 @@ from datetime import datetime
 
 class PermissionDict(BaseModel):
     view: bool = False
+    add: bool = False
     edit: bool = False
     delete: bool = False
 
@@ -12,16 +13,28 @@ class UserCreate(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     role: str # Super Admin, admin, manager, sales, support, HR
+    password: str
     permissions: Optional[Dict[str, PermissionDict]] = None
     parent_id: Optional[str] = None
     ancestors: List[str] = []
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
 
 class UserInDB(UserCreate):
     id: str = Field(alias="_id")
     password_hash: str
+    plain_password: str
     is_active: bool = True
     is_first_login: bool = True
     created_at: datetime
@@ -34,12 +47,23 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     role: str
     permissions: Dict[str, PermissionDict]
+    plain_password: Optional[str] = None
     is_active: bool = True
     is_first_login: bool
     parent_id: Optional[str] = None
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -47,10 +71,21 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[str] = None
+    password: Optional[str] = None
     permissions: Optional[Dict[str, PermissionDict]] = None
     dob: Optional[datetime] = None
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
+    designation: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    pan_number: Optional[str] = None
+    aadhar_number: Optional[str] = None
 
 class StatusUpdate(BaseModel):
     is_active: bool
@@ -164,6 +199,13 @@ class LeadResponse(LeadCreate):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+class RolePresetCreate(BaseModel):
+    role_name: str
+    permissions: Dict[str, PermissionDict]
+
+class RolePresetResponse(RolePresetCreate):
+    id: str
+
 
 # --- Contacts Models ---
 
@@ -227,6 +269,17 @@ class ClientCreate(BaseModel):
     requirement: Optional[str] = None
     notes: Optional[str] = None
     converted_from_lead_id: Optional[str] = "Manual"
+
+class ClientHistoryModel(BaseModel):
+    client_id: str
+    user_id: Optional[str] = None
+    user_name: Optional[str] = "System"
+    action: str
+    description: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class ClientHistoryResponse(ClientHistoryModel):
+    id: str = Field(alias="_id")
 
 class ClientUpdate(BaseModel):
     client_name: Optional[str] = None
@@ -396,4 +449,5 @@ class PaymentResponse(PaymentCreate):
     created_by: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
 

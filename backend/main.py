@@ -11,7 +11,7 @@ load_dotenv(dotenv_path="../.env")
 os.makedirs("uploads/profile_photos", exist_ok=True)
 
 from db import init_db
-from routers import auth_router, user_router, audit_router, dashboard_router, notifications_router, leads_router, contacts_router, clients_router, deals_router, projects_router, invoices_router, payments_router
+from routers import auth_router, user_router, audit_router, dashboard_router, notifications_router, leads_router, role_router, contacts_router, clients_router, deals_router, projects_router, invoices_router, payments_router
 
 app = FastAPI(title="AIO CRM API")
 
@@ -23,10 +23,9 @@ async def startup_event():
     await init_db()
 
 # Setup CORS
-origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,6 +39,7 @@ app.include_router(clients_router.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(dashboard_router.router, prefix="/api/v1")
 app.include_router(notifications_router.router, prefix="/api/v1")
+app.include_router(role_router.router, prefix="/api/v1")
 app.include_router(deals_router.router, prefix="/api/v1")
 app.include_router(projects_router.router, prefix="/api/v1")
 app.include_router(invoices_router.router, prefix="/api/v1")

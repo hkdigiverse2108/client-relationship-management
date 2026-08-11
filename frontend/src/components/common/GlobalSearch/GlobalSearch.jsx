@@ -1,36 +1,51 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiFile, FiUser, FiTarget } from "react-icons/fi";
-import { useSearch } from "@/context/SearchContext";
+import { FiSearch, FiFile, FiUser, FiTarget, FiX, FiBriefcase, FiUsers, FiFolder } from "react-icons/fi";
 import { NAV_SECTIONS } from "@/config/navConfig";
 import { useAuth } from "@/context/AuthContext";
 import { leadService } from "@/api/services/leadService";
 import { userService } from "@/api/services/userService";
+import { contactService } from "@/api/services/contactService";
+import { clientService } from "@/api/services/clientService";
+import { projectService } from "@/api/services/projectService";
 import "./GlobalSearch.css";
 
 export default function GlobalSearch() {
-  const { isSearchOpen, closeSearch } = useSearch();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [leads, setLeads] = useState([]);
   const [users, setUsers] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Fetch dynamic data when modal opens
+  // Fetch data only once when first opened
   useEffect(() => {
-    if (isSearchOpen) {
-      setQuery("");
-      setActiveIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 10);
-      
-      // Pre-fetch or fetch on open
+    if (isOpen && leads.length === 0) {
       leadService.list().then(setLeads).catch(() => setLeads([]));
       userService.getList().then(res => setUsers(res || [])).catch(() => setUsers([]));
+      contactService.list().then(res => setContacts(res?.data || res || [])).catch(() => setContacts([]));
+      clientService.list().then(res => setClients(res?.data || res || [])).catch(() => setClients([]));
+      projectService.list().then(res => setProjects(res?.data || res || [])).catch(() => setProjects([]));
     }
-  }, [isSearchOpen]);
+  }, [isOpen]);
+
+  // Handle outside click to close
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Flatten and filter pages based on permissions
   const pages = useMemo(() => {
@@ -90,7 +105,7 @@ export default function GlobalSearch() {
         id: l.id,
         title: l.name,
         subtitle: l.company || l.email || "No company",
-        path: `/leads`, // Ideally lead details page, but for now navigate to leads
+        path: `/leads`,
         icon: FiTarget
       }));
 
@@ -108,16 +123,55 @@ export default function GlobalSearch() {
         icon: FiUser
       }));
 
-    return [...filteredPages, ...filteredLeads, ...filteredUsers].slice(0, 15);
-  }, [query, pages, leads, users]);
+    const filteredContacts = Array.isArray(contacts) ? contacts.filter(c => 
+      c.contact_name?.toLowerCase().includes(q) ||
+      c.company_name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q)
+    ).map(c => ({
+      type: "contact",
+      id: c.id || c._id,
+      title: c.contact_name,
+      subtitle: c.company_name || c.email || "Contact",
+      path: `/contacts`,
+      icon: FiUsers
+    })) : [];
+
+    const filteredClients = Array.isArray(clients) ? clients.filter(c => 
+      c.client_name?.toLowerCase().includes(q) ||
+      c.company_name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.mobile_number?.includes(q)
+    ).map(c => ({
+      type: "client",
+      id: c.id || c._id,
+      title: c.client_name || c.company_name,
+      subtitle: c.company_name ? `${c.company_name} - ${c.email}` : c.email || "Client",
+      path: `/client-details/${c.id || c._id}`,
+      icon: FiBriefcase
+    })) : [];
+
+    const filteredProjects = Array.isArray(projects) ? projects.filter(p => 
+      p.title?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    ).map(p => ({
+      type: "project",
+      id: p.id || p._id,
+      title: p.title,
+      subtitle: "Project",
+      path: `/projects`,
+      icon: FiFolder
+    })) : [];
+
+    return [...filteredPages, ...filteredLeads, ...filteredUsers, ...filteredContacts, ...filteredClients, ...filteredProjects].slice(0, 15);
+  }, [query, pages, leads, users, contacts, clients, projects]);
 
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!isSearchOpen) return;
+      if (!isOpen) return;
       
       if (e.key === "Escape") {
-        closeSearch();
+        setIsOpen(false);
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex(prev => (prev < results.length - 1 ? prev + 1 : prev));
@@ -133,37 +187,44 @@ export default function GlobalSearch() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSearchOpen, results, activeIndex]);
+  }, [isOpen, results, activeIndex]);
 
   const handleSelect = (item) => {
     navigate(item.path);
-    closeSearch();
+    setIsOpen(false);
+    setQuery("");
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
-  if (!isSearchOpen) return null;
-
   return (
-    <div className="aio-global-search-backdrop" onClick={closeSearch}>
-      <div className="aio-global-search-modal" onClick={e => e.stopPropagation()}>
-        <div className="aio-global-search-header">
-          <FiSearch className="aio-global-search-icon" />
-          <input
-            ref={inputRef}
-            className="aio-global-search-input"
-            placeholder="Search pages, leads, users..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActiveIndex(0);
-            }}
-          />
-          <span className="aio-global-search-esc">ESC</span>
-        </div>
+    <div className="aio-inline-search-container" ref={wrapperRef}>
+      <div className="aio-header__search">
+        <FiSearch className="aio-header__search-icon" />
+        <input
+          ref={inputRef}
+          type="text"
+          className="aio-header__search-input"
+          placeholder="Search CRM (contacts, leads, bills...)"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActiveIndex(0);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+        />
+        {query && (
+          <button className="aio-inline-search-clear" onClick={() => { setQuery(""); setIsOpen(false); }}>
+            <FiX />
+          </button>
+        )}
+      </div>
 
-        <div className="aio-global-search-body">
-          {query.trim() === "" ? (
-            <div className="aio-global-search-empty">Type to start searching...</div>
-          ) : results.length === 0 ? (
+      {isOpen && query.trim() !== "" && (
+        <div className="aio-inline-search-dropdown">
+          {results.length === 0 ? (
             <div className="aio-global-search-empty">No results found for "{query}"</div>
           ) : (
             results.map((item, idx) => (
@@ -185,7 +246,7 @@ export default function GlobalSearch() {
             ))
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
