@@ -5,7 +5,6 @@ import { useSidebar } from "@/context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
 import { NAV_SECTIONS } from "@/config/navConfig";
 import PermissionDenied from "@/pages/PermissionDenied";
-import GlobalSearch from "@/components/common/GlobalSearch/GlobalSearch";
 import { classNames } from "@/utils/helpers";
 import "./MainLayout.css";
 
@@ -46,7 +45,6 @@ export default function MainLayout() {
   const isAllowed = hasPermission();
   return (
     <div className={classNames("aio-shell", collapsed && "is-collapsed")}>
-      <GlobalSearch />
       <Sidebar />
       <div className="aio-shell__main">
         <Header />

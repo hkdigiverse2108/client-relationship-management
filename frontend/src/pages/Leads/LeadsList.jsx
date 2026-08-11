@@ -10,6 +10,9 @@ import SearchBar from "@/components/common/SearchBar/SearchBar";
 import Dropdown from "@/components/common/Dropdown/Dropdown";
 import LeadFormModal from "./LeadFormModal";
 import LeadsSidebar from "./LeadsSidebar";
+import ExportModal from "@/components/common/ExportModal/ExportModal";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
 import { leadService } from "@/api/services/leadService";
 import { useAsync } from "@/hooks/useAsync";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -105,6 +108,7 @@ export default function LeadsList() {
   const [search, setSearch] = useState("");
   const [sidebarFilters, setSidebarFilters] = useState({ status: "all", source: "all", tag: "all" });
   const [modalOpen, setModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [usersMap, setUsersMap] = useState({});
@@ -142,6 +146,52 @@ export default function LeadsList() {
   }, [leads, sidebarFilters, debounced]);
   const openCreate = () => { setEditing(null); setModalOpen(true); };
   const openEdit = (lead) => { setEditing(lead); setModalOpen(true); };
+
+  const handleExportPDF = (startDate, endDate) => {
+    const toastId = toast.loading("Generating PDF...");
+    const filteredExport = leads.filter(lead => {
+      if (!lead.created_at) return false;
+      const leadDate = lead.created_at.split("T")[0];
+      return leadDate >= startDate && leadDate <= endDate;
+    });
+
+    if (filteredExport.length === 0) {
+      toast.error("No leads found in this date range.", { id: toastId });
+      setExportModalOpen(false);
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      doc.text(`Leads Report (${startDate} to ${endDate})`, 14, 15);
+      const tableColumn = ["Lead Name", "Company", "Email", "Status", "Expected Value"];
+      const tableRows = [];
+
+      filteredExport.forEach(lead => {
+        tableRows.push([
+          lead.lead_name || "-",
+          lead.company_name || "-",
+          lead.email || "-",
+          lead.status || "-",
+          lead.expected_value ? `$${lead.expected_value}` : "-"
+        ]);
+      });
+
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+      });
+
+      doc.save(`leads_report_${startDate}_to_${endDate}.pdf`);
+      toast.success("PDF Downloaded successfully", { id: toastId });
+      setExportModalOpen(false);
+    } catch (err) {
+      console.error("PDF Generation Error:", err);
+      toast.error(`Error: ${err.message || "Failed to generate PDF"}`, { id: toastId });
+    }
+  };
+
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
@@ -298,7 +348,7 @@ export default function LeadsList() {
               onChange={handleImport} 
             />
             <Button variant="hero" icon={FiDownload} onClick={() => fileInputRef.current?.click()}>Import</Button>
-            <Button variant="hero" icon={FiDownload}>Export</Button>
+            <Button variant="hero" icon={FiDownload} onClick={() => setExportModalOpen(true)}>Export</Button>
             <Button variant="gradient" icon={FiPlus} onClick={openCreate}>Create lead</Button>
           </>
         }
@@ -333,6 +383,12 @@ export default function LeadsList() {
         onSubmit={handleSubmit}
         initialValues={editing}
         submitting={submitting}
+      />
+      <ExportModal 
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExportPDF}
+        title="Export Leads to PDF"
       />
     </>
   );

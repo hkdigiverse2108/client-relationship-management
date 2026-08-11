@@ -22,6 +22,7 @@ import Avatar from "@/components/common/Avatar/Avatar";
 import Dropdown from "@/components/common/Dropdown/Dropdown";
 import NotificationDropdown from "./NotificationDropdown";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
+import GlobalSearch from "@/components/common/GlobalSearch/GlobalSearch";
 import toast from "react-hot-toast";
 import "./Header.css";
 import { LuClipboardList, LuPalette} from "react-icons/lu";
@@ -80,17 +81,7 @@ export default function Header() {
       </div>
 
       <div className="aio-header__center">
-        <div className="aio-header__search" onClick={openSearch} style={{ cursor: "pointer" }}>
-          <FiSearch className="aio-header__search-icon" />
-          <input
-            type="text"
-            placeholder="Search CRM (contacts, leads, bills...)"
-            className="aio-header__search-input"
-            readOnly
-            style={{ cursor: "pointer" }}
-          />
-          <kbd className="aio-header__kbd">Ctrl + K</kbd>
-        </div>
+        <GlobalSearch />
       </div>
 
       <div className="aio-header__right">
