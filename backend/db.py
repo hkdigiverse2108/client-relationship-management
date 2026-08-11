@@ -14,8 +14,18 @@ otps_collection = db.get_collection("otps")
 audit_logs_collection = db.get_collection("audit_logs")
 leads_collection = db.get_collection("leads")
 notifications_collection = db.get_collection("notifications")
+contacts_collection = db.get_collection("contacts")
+clients_collection = db.get_collection("clients")
+deals_collection = db.get_collection("deals")
+projects_collection = db.get_collection("projects")
+invoices_collection = db.get_collection("invoices")
+payments_collection = db.get_collection("payments")
+settings_collection = db.get_collection("settings")
+tasks_collection = db.get_collection("tasks")
+expenses_collection = db.get_collection("expenses")
 
 async def init_db():
     # Create unique indexes
     await users_collection.create_index("email", unique=True)
     await otps_collection.create_index("email")
+    await clients_collection.create_index("client_id", unique=True)

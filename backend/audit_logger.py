@@ -12,7 +12,7 @@ async def log_audit_action(
 ):
     log_entry = {
         "_id": str(uuid.uuid4()),
-        "user_id": user.get("_id") if user else None,
+        "user_id": user.get("_id") or user.get("id") if user else None,
         "user_name": user.get("name") if user else "System",
         "action": action,
         "module": module,

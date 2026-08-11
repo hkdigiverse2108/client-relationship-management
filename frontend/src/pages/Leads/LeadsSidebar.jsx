@@ -24,10 +24,10 @@ const SidebarSection = ({ title, items, selectedId, onSelect }) => {
 };
 
 export default function LeadsSidebar({ leads, filters, setFilters }) {
-  // Compute Stage Counts
-  const stages = ["new", "contacted", "qualified", "negotiation", "won", "lost"];
-  const stageCounts = { all: leads.length };
-  stages.forEach(s => stageCounts[s] = 0);
+  // Compute Status Counts
+  const statuses = ["new", "contacted", "qualified", "negotiation", "won", "lost"];
+  const statusCounts = { all: leads.length };
+  statuses.forEach(s => statusCounts[s] = 0);
   
   // Compute Source Counts
   const sourceCounts = { all: leads.length };
@@ -36,12 +36,12 @@ export default function LeadsSidebar({ leads, filters, setFilters }) {
   const tagCounts = { all: leads.length };
 
   leads.forEach(l => {
-    // Stage
-    const stage = l.stage ? l.stage.toLowerCase() : "new";
-    if (stageCounts[stage] !== undefined) {
-      stageCounts[stage]++;
+    // Status
+    const status = l.status ? l.status.toLowerCase() : "new";
+    if (statusCounts[status] !== undefined) {
+      statusCounts[status]++;
     } else {
-       stageCounts[stage] = 1;
+       statusCounts[status] = 1;
     }
 
     // Source
@@ -55,10 +55,10 @@ export default function LeadsSidebar({ leads, filters, setFilters }) {
     });
   });
 
-  const stageItems = [
-    { id: "all", label: "All", count: stageCounts.all },
-    ...stages.map(s => ({
-       id: s, label: s.charAt(0).toUpperCase() + s.slice(1), count: stageCounts[s] || 0
+  const statusItems = [
+    { id: "all", label: "All", count: statusCounts.all },
+    ...statuses.map(s => ({
+       id: s, label: s.charAt(0).toUpperCase() + s.slice(1), count: statusCounts[s] || 0
     }))
   ];
 
@@ -80,10 +80,10 @@ export default function LeadsSidebar({ leads, filters, setFilters }) {
     <div className="lead-sidebar card">
       <div className="p-4">
         <SidebarSection 
-          title="LEAD STAGES" 
-          items={stageItems} 
-          selectedId={filters.stage} 
-          onSelect={(id) => setFilters(prev => ({ ...prev, stage: id }))} 
+          title="LEAD STATUSES" 
+          items={statusItems} 
+          selectedId={filters.status} 
+          onSelect={(id) => setFilters(prev => ({ ...prev, status: id }))} 
         />
         <hr className="lead-sb-divider" />
         <SidebarSection 

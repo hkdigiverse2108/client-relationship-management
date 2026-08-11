@@ -15,6 +15,14 @@ export async function confirmDialog({ title = "Are you sure?", text = "This acti
     cancelButtonColor: "#64748b",
     reverseButtons: true,
     focusCancel: true,
+    customClass: {
+      container: 'high-z-swal'
+    },
+    didOpen: (popup) => {
+      if (popup && popup.parentElement) {
+        popup.parentElement.style.setProperty('z-index', '999999', 'important');
+      }
+    }
   });
   return res.isConfirmed;
 }

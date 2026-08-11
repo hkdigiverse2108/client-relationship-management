@@ -1,7 +1,9 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import utc from "dayjs/plugin/utc";
 import { APP_CONFIG } from "@/config/appConfig";
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
 export const formatCurrency = (value, currency = APP_CONFIG.currency) => {
   if (value == null || Number.isNaN(Number(value))) return "—";
   return new Intl.NumberFormat("en-IN", {
@@ -16,13 +18,13 @@ export const formatNumber = (value) => {
 };
 export const formatDate = (value, pattern = APP_CONFIG.dateFormat) => {
   if (!value) return "—";
-  const d = dayjs(value);
+  const d = dayjs.utc(value).local();
   return d.isValid() ? d.format(pattern) : "—";
 };
 export const formatDateTime = (value) => formatDate(value, APP_CONFIG.dateTimeFormat);
 export const timeAgo = (value) => {
   if (!value) return "—";
-  const d = dayjs(value);
+  const d = dayjs.utc(value).local();
   return d.isValid() ? d.fromNow() : "—";
 };
 export const initials = (name = "") =>

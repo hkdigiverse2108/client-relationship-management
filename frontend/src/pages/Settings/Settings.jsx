@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { FiUser, FiLock, FiBell, FiUsers } from "react-icons/fi";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
@@ -10,7 +10,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAppearance } from "@/context/AppearanceContext";
 import { classNames, getProfilePhotoUrl } from "@/utils/helpers";
-import UserManagement from "@/components/users/UserManagement";
 import { userService } from "@/api/services/userService";
 import { authService } from "@/api/services/authService";
 import { APP_CONFIG } from "@/config/appConfig";
@@ -129,6 +128,8 @@ export default function Settings() {
       setSavingPassword(false);
     }
   };
+
+
 
   return (
     <>
@@ -280,6 +281,7 @@ export default function Settings() {
                 ))}
               </div>
             )}
+
           </div>
         </div>
       </div>

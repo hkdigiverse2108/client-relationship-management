@@ -4,7 +4,9 @@ import toast from "react-hot-toast";
 import Avatar from "@/components/common/Avatar/Avatar";
 import Badge from "@/components/common/Badge/Badge";
 import Button from "@/components/common/Button/Button";
+import Input from "@/components/common/Input/Input";
 import { userService } from "@/api/services/userService";
+import { dashboardService } from "@/api/services/dashboardService";
 import UserFormModal from "./UserFormModal";
 import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "@/context/AuthContext";
@@ -25,9 +27,36 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
 
+  const [salesTarget, setSalesTarget] = useState("");
+  const [savingTarget, setSavingTarget] = useState(false);
+
   useEffect(() => {
     fetchUsers();
+    fetchSalesTarget();
   }, []);
+
+  const fetchSalesTarget = async () => {
+    try {
+      const res = await dashboardService.getSalesTarget();
+      if (res && res.monthly_sales_target) {
+        setSalesTarget(res.monthly_sales_target.toString());
+      }
+    } catch (error) {
+      console.error("Failed to fetch sales target", error);
+    }
+  };
+
+  const handleSaveTarget = async () => {
+    try {
+      setSavingTarget(true);
+      await dashboardService.updateSalesTarget({ monthly_sales_target: parseFloat(salesTarget) });
+      toast.success("Sales target updated successfully");
+    } catch (error) {
+      toast.error("Failed to update sales target");
+    } finally {
+      setSavingTarget(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -245,6 +274,25 @@ export default function UserManagement() {
 
   return (
     <div>
+      {/* Sales Configuration */}
+      <div className="mb-4">
+        <h3 className="mb-3" style={{ fontSize: "1.15rem" }}>Sales Configuration</h3>
+        <div className="d-flex align-items-end gap-3" style={{ maxWidth: "400px" }}>
+          <div className="flex-grow-1">
+            <Input 
+              label="Monthly Sales Target (₹)" 
+              type="number" 
+              value={salesTarget} 
+              onChange={(e) => setSalesTarget(e.target.value)} 
+            />
+          </div>
+          <div className="mb-3">
+            <Button onClick={handleSaveTarget} loading={savingTarget}>Save Target</Button>
+          </div>
+        </div>
+      </div>
+      <hr className="my-4" style={{ borderColor: "var(--color-divider)" }} />
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="m-0" style={{ fontSize: "1.15rem" }}>Team members & Hierarchy</h3>
         {["Super Admin", "admin", "HR", "manager"].includes(currentUser?.role) && (

@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useState } from "react";
 import { FiBell, FiCheck, FiInfo, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/context/NotificationContext";
 import { timeAgo } from "@/utils/formatters";
 import "./NotificationDropdown.css";
 
 export default function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -39,10 +41,10 @@ export default function NotificationDropdown() {
 
   const handleNotificationClick = (notif) => {
     if (!notif.is_read) {
-      markAsRead(notif.id);
+      markAsRead(notif.id || notif._id);
     }
     if (notif.link) {
-      window.location.href = notif.link; // Or use navigate(notif.link) if you import useNavigate
+      navigate(notif.link);
     }
     setIsOpen(false);
   };
@@ -80,7 +82,7 @@ export default function NotificationDropdown() {
             ) : (
               notifications.map((notif) => (
                 <div
-                  key={notif.id}
+                  key={notif.id || notif._id}
                   className={`notif-item ${!notif.is_read ? "is-unread" : ""}`}
                   onClick={() => handleNotificationClick(notif)}
                 >
