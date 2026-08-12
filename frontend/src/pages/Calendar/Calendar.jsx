@@ -1,78 +1,201 @@
-import { useMemo, useState } from "react";
-import dayjs from "dayjs";
-import { FiChevronLeft, FiChevronRight, FiPlus } from "react-icons/fi";
-import PageHeader from "@/components/common/PageHeader/PageHeader";
-import Button from "@/components/common/Button/Button";
-import { tasksData } from "@/data/tasksData";
-import "./Calendar.css";
-const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-/** Simple month-view calendar — reads events from the mock task fixtures. */
-export default function Calendar() {
-  const [cursor, setCursor] = useState(dayjs());
-  const grid = useMemo(() => {
-    const start = cursor.startOf("month").startOf("week");
-    const end = cursor.endOf("month").endOf("week");
-    const days = [];
-    let d = start;
-    while (d.isBefore(end) || d.isSame(end, "day")) {
-      days.push(d);
-      d = d.add(1, "day");
-    }
-    return days;
-  }, [cursor]);
-  const eventsByDay = useMemo(() => {
-    const map = {};
-    tasksData.forEach((t) => {
-      const key = dayjs(t.dueDate).format("YYYY-MM-DD");
-      (map[key] ||= []).push(t);
-    });
-    return map;
+import React, { useState, useEffect } from 'react';
+import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import enUS from 'date-fns/locale/en-US';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { FiChevronLeft, FiChevronRight, FiPlus } from 'react-icons/fi';
+import PageHeader from '@/components/common/PageHeader/PageHeader';
+import Button from '@/components/common/Button/Button';
+import axiosClient from '@/api/axiosClient';
+import './Calendar.css';
+
+const locales = {
+  'en-US': enUS,
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
+
+// Custom Toolbar to match the UI screenshot
+const CustomEvent = ({ event }) => {
+  let colorClass = 'bg-primary';
+  if (event.type === 'task') colorClass = 'bg-success';
+  else if (event.type === 'reminder') colorClass = 'bg-danger';
+
+  return (
+    <div className="d-flex align-items-center gap-1 px-1">
+      <span className={`legend-dot ${colorClass}`} style={{ flexShrink: 0 }}></span>
+      <span className="text-truncate" style={{ fontSize: '0.8rem', color: 'var(--color-text)', fontWeight: 500 }}>{event.title}</span>
+    </div>
+  );
+};
+
+const CustomToolbar = (toolbar) => {
+  const goToBack = () => toolbar.onNavigate('PREV');
+  const goToNext = () => toolbar.onNavigate('NEXT');
+  const goToCurrent = () => toolbar.onNavigate('TODAY');
+
+  const label = () => {
+    const date = toolbar.date;
+    return format(date, 'MMMM yyyy');
+  };
+
+  return (
+    <div className="calendar-toolbar">
+      <div className="d-flex justify-content-between align-items-center w-100 p-3">
+        <div className="d-flex align-items-center gap-3">
+          <button className="btn btn-link text-dark p-0" onClick={goToBack}>
+            <FiChevronLeft size={20} />
+          </button>
+          <h4 className="mb-0 fw-bold" style={{ fontSize: '1.1rem', minWidth: '130px', textAlign: 'center' }}>
+            {label()}
+          </h4>
+          <button className="btn btn-link text-dark p-0" onClick={goToNext}>
+            <FiChevronRight size={20} />
+          </button>
+        </div>
+        <div className="calendar-view-buttons d-flex gap-1">
+          <button 
+            className={`btn btn-sm rounded-pill px-3 ${toolbar.view === 'month' ? 'btn-primary text-white' : 'btn-light'}`}
+            onClick={() => toolbar.onView('month')}
+          >
+            Month
+          </button>
+          <button 
+            className={`btn btn-sm rounded-pill px-3 ${toolbar.view === 'week' ? 'btn-primary text-white' : 'btn-light'}`}
+            onClick={() => toolbar.onView('week')}
+          >
+            Week
+          </button>
+          <button 
+            className={`btn btn-sm rounded-pill px-3 ${toolbar.view === 'day' ? 'btn-primary text-white' : 'btn-light'}`}
+            onClick={() => toolbar.onView('day')}
+          >
+            Day
+          </button>
+        </div>
+      </div>
+      <div className="calendar-legend px-3 pb-2 border-bottom">
+        <span className="legend-item"><span className="legend-dot bg-primary"></span> Meetings</span>
+        <span className="legend-item"><span className="legend-dot bg-success"></span> Tasks</span>
+        <span className="legend-item"><span className="legend-dot bg-danger"></span> Reminders</span>
+      </div>
+    </div>
+  );
+};
+
+export default function Calendar({ hideHeader = false }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('month');
+  const [date, setDate] = useState(new Date());
+
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        // Fetch tasks and reminders simultaneously
+        const [tasksRes, remindersRes] = await Promise.all([
+          axiosClient.get('/tasks'),
+          axiosClient.get('/reminders')
+        ]);
+
+        const mappedEvents = [];
+
+        // Map Tasks
+        if (Array.isArray(tasksRes)) {
+          tasksRes.forEach(task => {
+            if (task.end_date) {
+              // Show task only on due date (Option A)
+              mappedEvents.push({
+                id: `task_${task.id || task._id}`,
+                title: task.title,
+                start: new Date(task.end_date),
+                end: new Date(task.end_date),
+                type: 'task',
+                allDay: true,
+                resource: task
+              });
+            }
+          });
+        }
+
+        // Map Reminders
+        if (Array.isArray(remindersRes)) {
+          remindersRes.forEach(rem => {
+            if (rem.due_date) {
+              mappedEvents.push({
+                id: `rem_${rem.id || rem._id}`,
+                title: rem.description || 'Reminder',
+                start: new Date(rem.due_date),
+                end: new Date(rem.due_date),
+                type: 'reminder',
+                allDay: false, // Reminders might have specific times
+                resource: rem
+              });
+            }
+          });
+        }
+
+        setEvents(mappedEvents);
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalendarData();
   }, []);
-  const today = dayjs();
+
+  const eventStyleGetter = (event, start, end, isSelected) => {
+    return {
+      style: {
+        backgroundColor: 'transparent',
+        borderRadius: '0',
+        color: 'inherit',
+        border: 'none',
+        display: 'block',
+        padding: '0',
+        boxShadow: 'none'
+      }
+    };
+  };
+
   return (
     <>
-      <PageHeader
-        title="Calendar"
-        description="Meetings, follow-ups and deadlines at a glance."
-        actions={<Button icon={FiPlus}>New event</Button>}
-      />
-      <div className="card p-3">
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn btn-light btn-sm" onClick={() => setCursor((c) => c.subtract(1, "month"))} aria-label="Previous month">
-              <FiChevronLeft />
-            </button>
-            <button className="btn btn-light btn-sm" onClick={() => setCursor((c) => c.add(1, "month"))} aria-label="Next month">
-              <FiChevronRight />
-            </button>
-            <button className="btn btn-light btn-sm" onClick={() => setCursor(dayjs())}>Today</button>
-          </div>
-          <h3 style={{ fontSize: "1.15rem" }}>{cursor.format("MMMM YYYY")}</h3>
-          <div style={{ width: 120 }} />
-        </div>
-        <div className="aio-cal">
-          {WEEKDAYS.map((d) => (
-            <div key={d} className="aio-cal__head">{d}</div>
-          ))}
-          {grid.map((d) => {
-            const key = d.format("YYYY-MM-DD");
-            const events = eventsByDay[key] || [];
-            const outside = d.month() !== cursor.month();
-            const isToday = d.isSame(today, "day");
-            return (
-              <div key={key} className={`aio-cal__cell ${outside ? "is-outside" : ""} ${isToday ? "is-today" : ""}`}>
-                <div className="aio-cal__date">{d.date()}</div>
-                <div className="aio-cal__events">
-                  {events.slice(0, 3).map((e) => (
-                    <div key={e.id} className="aio-cal__event" title={e.title}>
-                      {e.title}
-                    </div>
-                  ))}
-                  {events.length > 3 && <div className="aio-cal__more">+{events.length - 3} more</div>}
-                </div>
-              </div>
-            );
-          })}
+      {!hideHeader && (
+        <PageHeader
+          title="Calendar"
+          description="Manage your schedule, tasks, and follow-ups in one view."
+          actions={<Button icon={FiPlus}>New event</Button>}
+        />
+      )}
+      <div className="card border-0 shadow-sm overflow-hidden">
+        <div className="calendar-container">
+          <BigCalendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: 'calc(100vh - 220px)', minHeight: '600px' }}
+            views={['month', 'week', 'day']}
+            view={view}
+            onView={setView}
+            date={date}
+            onNavigate={setDate}
+            components={{
+              toolbar: CustomToolbar,
+              event: CustomEvent
+            }}
+            eventPropGetter={eventStyleGetter}
+            popup={true}
+          />
         </div>
       </div>
     </>

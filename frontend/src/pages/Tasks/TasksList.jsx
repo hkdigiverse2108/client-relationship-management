@@ -7,6 +7,7 @@ import Loader from "@/components/common/Loader/Loader";
 import api from "@/api/axiosClient";
 import toast from "react-hot-toast";
 import TaskFormModal from "./TaskFormModal";
+import CalendarView from "@/pages/Calendar/Calendar";
 import { formatDate } from "@/utils/formatters";
 import "@/pages/Project/ProjectPipeline.css";
 
@@ -167,10 +168,8 @@ export default function TasksList() {
       />
 
       {viewMode === "calendar" ? (
-        <div className="card border-0 shadow-sm p-5 text-center mt-4">
-          <FiCalendar size={48} className="text-subtle mb-3" />
-          <h5>Calendar View</h5>
-          <p className="text-subtle">The calendar module will be implemented in the next phase.</p>
+        <div className="mt-4">
+          <CalendarView hideHeader={true} />
         </div>
       ) : (
         <div className="pipeline-board-container mt-4">

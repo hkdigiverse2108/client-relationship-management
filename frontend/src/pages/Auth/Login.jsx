@@ -16,7 +16,7 @@ export default function Login() {
   const from = location.state?.from?.pathname || "/dashboard";
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(loginSchema),
-    defaultValues: { email: "admin@aiocrm.com", password: "admin123" },
+    defaultValues: { email: "", password: "" },
   });
   const onSubmit = async (values) => {
     try {
@@ -37,7 +37,7 @@ export default function Login() {
         <Input
           label="Email address"
           type="email"
-          placeholder="you@company.com"
+          placeholder="Enter Your Email"
           icon={FiMail}
           error={errors.email?.message}
           {...register("email")}
@@ -46,7 +46,7 @@ export default function Login() {
           <Input
             label="Password"
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder="Enter Password"
             icon={FiLock}
             error={errors.password?.message}
             {...register("password")}

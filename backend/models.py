@@ -492,4 +492,27 @@ class PaymentResponse(PaymentCreate):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+# --- Reminder Models ---
+class ReminderCreate(BaseModel):
+    description: str
+    category: str
+    priority: str
+    client_id: str
+    due_date: str
+    status: str = "pending"
+
+class ReminderUpdate(BaseModel):
+    description: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    client_id: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+
+class ReminderResponse(ReminderCreate):
+    id: str
+    created_at: str
+    updated_at: str
+    created_by: str
+
 

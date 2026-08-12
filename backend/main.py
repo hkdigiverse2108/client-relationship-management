@@ -11,7 +11,24 @@ load_dotenv(dotenv_path="../.env")
 os.makedirs("uploads/profile_photos", exist_ok=True)
 
 from db import init_db
-from routers import auth_router, user_router, audit_router, dashboard_router, notifications_router, leads_router, role_router, contacts_router, clients_router, deals_router, projects_router, invoices_router, payments_router, tasks_router
+from scheduler import start_scheduler, stop_scheduler
+from routers import (
+    auth_router,
+    user_router,
+    audit_router,
+    dashboard_router,
+    notifications_router,
+    leads_router,
+    role_router,
+    contacts_router,
+    clients_router,
+    deals_router,
+    projects_router,
+    invoices_router,
+    payments_router,
+    tasks_router,
+    reminders_router
+)
 
 app = FastAPI(title="AIO CRM API")
 
@@ -21,6 +38,11 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+    start_scheduler()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_scheduler()
 
 # Setup CORS
 app.add_middleware(
@@ -45,6 +67,7 @@ app.include_router(projects_router.router, prefix="/api/v1")
 app.include_router(tasks_router.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(invoices_router.router, prefix="/api/v1")
 app.include_router(payments_router.router, prefix="/api/v1")
+app.include_router(reminders_router.router, prefix="/api/v1", tags=["reminders"])
 
 @app.get("/")
 def read_root():

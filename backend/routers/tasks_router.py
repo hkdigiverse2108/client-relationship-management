@@ -5,6 +5,7 @@ from datetime import datetime
 
 from db import db
 from models import TaskCreate, TaskUpdate, TaskResponse
+from routers.notifications_router import create_notification
 
 router = APIRouter()
 
@@ -25,6 +26,20 @@ async def create_task(task: TaskCreate):
     
     result = await db.tasks.insert_one(task_dict)
     created_task = await db.tasks.find_one({"_id": result.inserted_id})
+    
+    # Send notification if assigned to a specific user
+    if task_dict.get("assigned_to"):
+        assignee_name = task_dict["assigned_to"]
+        user_doc = await db.users.find_one({"$or": [{"name": assignee_name}, {"email": assignee_name}]})
+        if user_doc:
+            await create_notification(
+                user_id=str(user_doc["_id"]),
+                title="New Task Assigned",
+                message=f"You have been assigned a new task: {task_dict.get('title', 'Untitled')}",
+                type="info",
+                link="/tasks"
+            )
+        
     return serialize_doc(created_task)
 
 @router.get("/", response_model=List[TaskResponse])
@@ -52,6 +67,9 @@ async def update_task(task_id: str, task_update: TaskUpdate):
         
     update_data["updated_at"] = datetime.utcnow().isoformat()
     
+    # Fetch old task to see if assigned_to is changing
+    old_task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    
     result = await db.tasks.update_one(
         {"_id": ObjectId(task_id)},
         {"$set": update_data}
@@ -61,6 +79,20 @@ async def update_task(task_id: str, task_update: TaskUpdate):
         raise HTTPException(status_code=404, detail="Task not found")
         
     updated_task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    
+    # Check if assigned_to changed or was just updated
+    new_assignee = update_data.get("assigned_to")
+    if new_assignee and (not old_task or old_task.get("assigned_to") != new_assignee):
+        user_doc = await db.users.find_one({"$or": [{"name": new_assignee}, {"email": new_assignee}]})
+        if user_doc:
+            await create_notification(
+                user_id=str(user_doc["_id"]),
+                title="Task Assigned to You",
+                message=f"You have been assigned a task: {updated_task.get('title', 'Untitled')}",
+                type="info",
+                link="/tasks"
+            )
+        
     return serialize_doc(updated_task)
 
 @router.delete("/{task_id}")

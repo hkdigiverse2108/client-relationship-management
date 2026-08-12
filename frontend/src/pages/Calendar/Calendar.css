@@ -1,80 +1,189 @@
-.aio-cal {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+/* Base Calendar Container Styles */
+.calendar-container {
+  background: #ffffff;
+  border-radius: var(--border-radius-lg);
+  padding: 0;
   overflow: hidden;
 }
-.aio-cal__head {
-  background: var(--color-surface-alt);
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 12px;
+
+/* Custom Toolbar Styles */
+.calendar-toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.calendar-toolbar h4 {
+  color: var(--color-text);
   font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
-.aio-cal__cell {
-  background: var(--color-surface);
-  min-height: 110px;
-  padding: 0.5rem;
+
+.calendar-toolbar .btn-link {
+  color: var(--color-text-subtle) !important;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: background-color var(--transition-fast);
-}
-.aio-cal__cell:hover {
-  background: var(--color-surface-alt);
-}
-.aio-cal__cell.is-outside {
-  opacity: 0.4;
-}
-.aio-cal__cell.is-today .aio-cal__date {
-  background: var(--color-primary);
-  color: #fff;
-}
-.aio-cal__date {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.calendar-toolbar .btn-link:hover {
+  background-color: var(--bg-hover);
+  color: var(--color-text) !important;
+}
+
+.calendar-view-buttons .btn {
+  font-weight: 500;
+  font-size: 0.85rem;
+  border: none;
+  box-shadow: none;
+  padding: 0.4rem 1rem;
+}
+
+.calendar-view-buttons .btn-light {
+  background-color: transparent;
+  color: var(--color-text-subtle);
+}
+
+.calendar-view-buttons .btn-light:hover {
+  background-color: var(--bg-hover);
   color: var(--color-text);
-  align-self: flex-start;
 }
-.aio-cal__events {
+
+.calendar-view-buttons .btn-primary {
+  background-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
+}
+
+/* Legend Styles */
+.calendar-legend {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: hidden;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  padding-top: 0.5rem;
 }
-.aio-cal__event {
-  font-size: 11px;
-  padding: 3px 6px;
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* React Big Calendar Overrides */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-month-view {
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+}
+
+.rbc-header {
+  padding: 12px 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-border);
+  text-transform: capitalize;
+}
+
+.rbc-header + .rbc-header {
+  border-left: 1px solid var(--color-border);
+}
+
+.rbc-month-row + .rbc-month-row {
+  border-top: 1px solid var(--color-border);
+}
+
+.rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid var(--color-border);
+}
+
+.rbc-date-cell {
+  padding: 8px 10px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.rbc-off-range-bg {
+  background-color: #fcfcfc;
+}
+
+.rbc-off-range .rbc-button-link {
+  color: var(--color-text-muted);
+}
+
+.rbc-today {
+  background-color: rgba(var(--color-primary-rgb), 0.03);
+}
+
+.rbc-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  margin: 1px 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: transform 0.1s ease;
+}
+
+.rbc-event:hover {
+  transform: translateY(-1px);
+}
+
+.rbc-event-content {
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
 }
-.aio-cal__more {
-  font-size: 10px;
-  color: var(--color-text-subtle);
+
+/* Week & Day View Overrides */
+.rbc-time-view {
+  border: none;
 }
-@media (max-width: 767.98px) {
-  .aio-cal__cell {
-    min-height: 74px;
-    padding: 0.35rem;
-  }
-  .aio-cal__event {
-    font-size: 10px;
-  }
+
+.rbc-time-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid var(--border-color);
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid rgba(0,0,0,0.03);
+}
+
+.rbc-current-time-indicator {
+  background-color: var(--color-danger);
+  height: 2px;
+}
+
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-danger);
 }
