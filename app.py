@@ -30,6 +30,20 @@ def run_process(command, cwd, name):
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Load .env variables manually to avoid requiring python-dotenv in global python
+    env_path = os.path.join(base_dir, ".env")
+    if os.path.exists(env_path):
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    key, _, value = line.partition('=')
+                    os.environ[key.strip()] = value.strip()
+                    
+    backend_port = os.environ.get("BACKEND_PORT", "8000")
+    backend_host = os.environ.get("BACKEND_HOST", "0.0.0.0")
+
     backend_dir = os.path.join(base_dir, "backend")
     frontend_dir = os.path.join(base_dir, "frontend")
     
@@ -41,12 +55,12 @@ def main():
     python_exe = os.path.join(venv_scripts, "python.exe")
     
     if os.path.exists(python_exe):
-        backend_cmd = f'"{python_exe}" -m uvicorn main:app --reload --port 8000'
+        backend_cmd = f'"{python_exe}" -m uvicorn main:app --reload --host {backend_host} --port {backend_port}'
     else:
         # Fallback to system python/uvicorn if venv is missing
         print("[WARNING] Virtual environment not found at backend/.venv/Scripts/python.exe")
         print("[WARNING] Falling back to global python")
-        backend_cmd = "python -m uvicorn main:app --reload --port 8000"
+        backend_cmd = f"python -m uvicorn main:app --reload --host {backend_host} --port {backend_port}"
 
     frontend_cmd = "npm run dev"
     

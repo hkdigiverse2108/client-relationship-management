@@ -43,9 +43,7 @@ export default function GanttChart() {
     try {
       const res = await api.get("/projects");
       setProjects(res || []);
-      if (res && res.length > 0) {
-        setSelectedProjectId(res[0].id || res[0]._id);
-      }
+      setSelectedProjectId("all"); // Default to all projects
     } catch (err) {
       toast.error("Failed to load projects");
     } finally {
@@ -56,7 +54,8 @@ export default function GanttChart() {
   const loadTasks = async (projectId) => {
     if (!projectId) return;
     try {
-      const res = await api.get(`/tasks?project_id=${projectId}`);
+      const endpoint = projectId === "all" ? "/tasks" : `/tasks?project_id=${projectId}`;
+      const res = await api.get(endpoint);
       setTasks(res || []);
     } catch (err) {
       toast.error("Failed to load tasks");
@@ -100,7 +99,12 @@ export default function GanttChart() {
       };
     }
 
-    const dates = tasks.map(t => [new Date(t.start_date), new Date(t.end_date)]).flat();
+    const dates = tasks.map(t => {
+      const sDate = t.start_date ? new Date(t.start_date) : new Date();
+      const eDate = t.end_date ? new Date(t.end_date) : addDays(sDate, 1);
+      return [sDate, eDate];
+    }).flat();
+    
     const mDate = minDate(dates);
     const mxDate = maxDate(dates);
     
@@ -134,6 +138,7 @@ export default function GanttChart() {
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
+              <option value="all">All Projects</option>
               <option value="" disabled>Select Project...</option>
               {projects.map(p => (
                 <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
@@ -150,8 +155,8 @@ export default function GanttChart() {
         {tasks.length === 0 ? (
           <div className="gantt-empty-state">
             <FiCalendar size={48} className="text-subtle mb-3" />
-            <h5>No tasks scheduled yet</h5>
-            <p className="text-subtle mb-4">Tasks will be displayed here once the Tasks module is completed later.</p>
+            <h5>No tasks found</h5>
+            <p className="text-subtle mb-4">Create some tasks in the Task Board and assign them to this project to view them here.</p>
           </div>
         ) : (
           <div className="gantt-grid" style={{ gridTemplateColumns: getGridTemplate() }}>
@@ -179,6 +184,12 @@ export default function GanttChart() {
               const left = `${startOffset * 40}px`;
               const width = `${duration * 40}px`;
 
+              let statusColor = 'var(--color-primary)';
+              if (task.status === 'Completed') statusColor = 'var(--color-success)';
+              else if (task.status === 'In Progress') statusColor = 'var(--color-info)';
+              else if (task.status === 'In Review') statusColor = 'var(--color-warning)';
+              else if (task.status === 'Blocked') statusColor = 'var(--color-danger)';
+
               return (
                 <div key={task.id || task._id} className="gantt-task-row">
                   <div className="gantt-task-cell task-title-col">
@@ -192,7 +203,11 @@ export default function GanttChart() {
                         title={`${task.title} - ${formatMonth(taskStart)} ${formatDay(taskStart)}`}
                       />
                     ) : (
-                      <div className="gantt-bar-wrapper" style={{ left, width }}>
+                      <div 
+                        className="gantt-bar-wrapper" 
+                        style={{ left, width, backgroundColor: statusColor }} 
+                        title={`${task.title} (${task.status})\n${formatMonth(taskStart)} ${formatDay(taskStart)} - ${formatMonth(taskEnd)} ${formatDay(taskEnd)}`}
+                      >
                         <div className="gantt-bar-title">{task.title}</div>
                       </div>
                     )}
