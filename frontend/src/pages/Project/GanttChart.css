@@ -4,7 +4,7 @@
   border-radius: var(--radius-lg);
   overflow-x: auto;
   overflow-y: hidden;
-  min-height: 400px;
+  min-height: 150px;
 }
 
 .gantt-grid {
@@ -18,7 +18,7 @@
 }
 
 .gantt-header-cell {
-  background: var(--color-background);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
   padding: 0.5rem;
@@ -33,10 +33,12 @@
 
 .gantt-header-cell.task-col {
   position: sticky;
+  top: 0;
   left: 0;
-  z-index: 20;
+  z-index: 100 !important;
   text-align: left;
   min-width: 250px;
+  background: var(--color-surface) !important;
 }
 
 .gantt-task-row {
@@ -54,13 +56,13 @@
 .gantt-task-cell.task-title-col {
   position: sticky;
   left: 0;
-  z-index: 15;
+  z-index: 90 !important;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text-main);
-  background: var(--color-surface);
-  box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+  background: var(--color-surface) !important;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
 }
 
 .gantt-bar-wrapper {
@@ -71,7 +73,9 @@
   background: var(--color-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,4 +124,42 @@
   padding: 4rem;
   text-align: center;
   color: var(--color-text-muted);
+}
+
+/* Hierarchical Styles */
+.gantt-project-row {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.gantt-project-title {
+  font-weight: 600 !important;
+  background: var(--color-surface) !important;
+}
+
+.gantt-task-title {
+  font-weight: 400 !important;
+}
+
+.task-indent {
+  color: var(--color-border);
+  margin-right: 8px;
+  margin-left: 8px;
+}
+
+.gantt-project-bar {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gantt-project-bar .gantt-bar-title {
+  color: var(--color-text-main);
+  font-size: 0.7rem;
+  opacity: 0.8;
 }

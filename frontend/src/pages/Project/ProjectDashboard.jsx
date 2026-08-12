@@ -4,6 +4,7 @@ import PageHeader from "@/components/common/PageHeader/PageHeader";
 import Loader from "@/components/common/Loader/Loader";
 import SearchInput from "@/components/common/PageHeaderSearchBar/SearchInput";
 import { projectService } from "@/api/services/projectService";
+import api from "@/api/axiosClient";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -16,13 +17,15 @@ export default function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
+  const [teamProductivityData, setTeamProductivityData] = useState([]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [analyticsData, projectsData] = await Promise.all([
+      const [analyticsData, projectsData, tasksRes] = await Promise.all([
         projectService.getAnalytics(),
-        projectService.list()
+        projectService.list(),
+        api.get("/tasks")
       ]);
       
       setAnalytics(analyticsData.data || analyticsData);
@@ -32,6 +35,35 @@ export default function ProjectDashboard() {
         new Date(b.created_at) - new Date(a.created_at)
       );
       setRecentProjects(sorted.slice(0, 5));
+      
+      // Process tasks for Team Productivity chart (last 6 months)
+      const tasks = Array.isArray(tasksRes) ? tasksRes : (tasksRes?.data || []);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const today = new Date();
+      const prodData = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        prodData.push({ 
+          name: months[d.getMonth()], 
+          monthNum: d.getMonth(),
+          yearNum: d.getFullYear(),
+          tasksCompleted: 0, 
+          totalTasks: 0 
+        });
+      }
+      
+      tasks.forEach(task => {
+        const d = new Date(task.created_at || task.start_date || new Date());
+        const item = prodData.find(m => m.monthNum === d.getMonth() && m.yearNum === d.getFullYear());
+        if (item) {
+          item.totalTasks += 1;
+          if (task.status === 'Completed') item.tasksCompleted += 1;
+        }
+      });
+      
+      setTeamProductivityData(prodData);
+
     } catch (error) {
       console.error("Failed to load project dashboard data", error);
     } finally {
@@ -50,14 +82,6 @@ export default function ProjectDashboard() {
   // Formatting for charts
   const statusData = charts?.statuses || [];
   const categoryData = charts?.categories || [];
-
-  // Mock data for Team Productivity
-  const teamProductivityData = [
-    { name: 'Jan', tasksCompleted: 40, totalTasks: 50 },
-    { name: 'Feb', tasksCompleted: 55, totalTasks: 70 },
-    { name: 'Mar', tasksCompleted: 45, totalTasks: 55 },
-    { name: 'Apr', tasksCompleted: 70, totalTasks: 80 },
-  ];
 
   // Mock data for Financial Overview
   const financialOverviewData = [

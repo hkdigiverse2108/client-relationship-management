@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FiPlus, FiCalendar, FiClock } from "react-icons/fi";
+import { FiPlus, FiCalendar, FiFolder, FiChevronDown, FiChevronRight } from "react-icons/fi";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
 import Button from "@/components/common/Button/Button";
 import Loader from "@/components/common/Loader/Loader";
@@ -37,6 +37,14 @@ export default function GanttChart() {
   const [loading, setLoading] = useState(true);
   
   const [modalOpen, setModalOpen] = useState(false);
+  const [collapsedProjects, setCollapsedProjects] = useState({});
+
+  const toggleProject = (projectId) => {
+    setCollapsedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
   const [submitting, setSubmitting] = useState(false);
 
   const loadProjects = async () => {
@@ -87,37 +95,69 @@ export default function GanttChart() {
   };
 
   // Gantt Chart Logic
-  const { chartDates, totalDays, startDate } = useMemo(() => {
+  const { groupedProjects, chartDates, totalDays, startDate } = useMemo(() => {
     if (tasks.length === 0) {
       const today = new Date();
       const start = startOfMonth(today);
       const end = endOfMonth(today);
       return { 
+        groupedProjects: [],
         chartDates: eachDayOfInterval({ start, end }), 
         totalDays: differenceInDays(end, start) + 1,
         startDate: start
       };
     }
 
-    const dates = tasks.map(t => {
-      const sDate = t.start_date ? new Date(t.start_date) : new Date();
-      const eDate = t.end_date ? new Date(t.end_date) : addDays(sDate, 1);
-      return [sDate, eDate];
-    }).flat();
-    
-    const mDate = minDate(dates);
-    const mxDate = maxDate(dates);
+    const projectMap = new Map();
+    projects.forEach(p => projectMap.set(p.id || p._id, p));
+
+    const taskGroups = {};
+    tasks.forEach(task => {
+      const pid = task.project_id || 'unassigned';
+      if (!taskGroups[pid]) taskGroups[pid] = [];
+      taskGroups[pid].push(task);
+    });
+
+    const groups = [];
+    let globalDates = [];
+
+    for (const [projectId, projectTasks] of Object.entries(taskGroups)) {
+      const project = projectMap.get(projectId) || { title: projectId === 'unassigned' ? "Unassigned Tasks" : "Unknown Project" };
+      
+      const pDates = projectTasks.map(t => {
+        const sDate = t.start_date ? new Date(t.start_date) : new Date();
+        const eDate = t.end_date ? new Date(t.end_date) : addDays(sDate, 1);
+        return [sDate, eDate];
+      }).flat();
+      
+      const pStart = minDate(pDates);
+      const pEnd = maxDate(pDates);
+      
+      globalDates.push(...pDates);
+
+      groups.push({
+        id: projectId,
+        title: project.title,
+        startDate: pStart,
+        endDate: pEnd,
+        tasks: projectTasks
+      });
+    }
+
+    const mDate = minDate(globalDates);
+    const mxDate = maxDate(globalDates);
     
     // Pad by a few days
     const start = addDays(mDate, -3);
     const end = addDays(mxDate, 5);
     
     return {
+      groupedProjects: groups,
       chartDates: eachDayOfInterval({ start, end }),
       totalDays: differenceInDays(end, start) + 1,
       startDate: start
     };
-  }, [tasks]);
+  }, [tasks, projects]);
 
   const getGridTemplate = () => {
     return `250px repeat(${totalDays}, 40px)`;
@@ -162,57 +202,97 @@ export default function GanttChart() {
           <div className="gantt-grid" style={{ gridTemplateColumns: getGridTemplate() }}>
             {/* Header Row */}
             <div className="gantt-header-row">
-              <div className="gantt-header-cell task-col d-flex align-items-center">
+              <div 
+                className="gantt-header-cell task-col d-flex align-items-center"
+                style={{ zIndex: 999, backgroundColor: 'var(--color-surface)' }}
+              >
                 Task Name
               </div>
               {chartDates.map((date, i) => (
-                <div key={i} className="gantt-header-cell">
+                <div key={i} className="gantt-header-cell" style={{ zIndex: 10 }}>
                   <div style={{ fontWeight: 600 }}>{formatDay(date)}</div>
                   <div style={{ fontSize: 10 }}>{formatMonth(date)}</div>
                 </div>
               ))}
             </div>
 
-            {/* Task Rows */}
-            {tasks.map(task => {
-              const taskStart = new Date(task.start_date);
-              const taskEnd = new Date(task.end_date);
+            {/* Hierarchical Rows */}
+            {groupedProjects.map(group => {
+              const groupStart = group.startDate;
+              const groupEnd = group.endDate;
               
-              const startOffset = differenceInDays(taskStart, startDate);
-              const duration = differenceInDays(taskEnd, taskStart) + 1;
+              const gStartOffset = differenceInDays(groupStart, startDate);
+              const gDuration = differenceInDays(groupEnd, groupStart) + 1;
               
-              const left = `${startOffset * 40}px`;
-              const width = `${duration * 40}px`;
-
-              let statusColor = 'var(--color-primary)';
-              if (task.status === 'Completed') statusColor = 'var(--color-success)';
-              else if (task.status === 'In Progress') statusColor = 'var(--color-info)';
-              else if (task.status === 'In Review') statusColor = 'var(--color-warning)';
-              else if (task.status === 'Blocked') statusColor = 'var(--color-danger)';
+              const gLeft = `${gStartOffset * 40}px`;
+              const gWidth = `${gDuration * 40}px`;
 
               return (
-                <div key={task.id || task._id} className="gantt-task-row">
-                  <div className="gantt-task-cell task-title-col">
-                    {task.is_milestone ? '💎 ' : ''}{task.title}
-                  </div>
-                  <div className="gantt-task-cell" style={{ gridColumn: `2 / span ${totalDays}` }}>
-                    {task.is_milestone ? (
+                <React.Fragment key={group.id}>
+                  {/* Project Row */}
+                  <div className="gantt-task-row gantt-project-row">
+                    <div 
+                      className="gantt-task-cell task-title-col gantt-project-title d-flex align-items-center" 
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleProject(group.id)}
+                    >
+                      {collapsedProjects[group.id] ? <FiChevronRight className="me-2" /> : <FiChevronDown className="me-2" />}
+                      <FiFolder className="me-2" style={{ color: 'var(--color-primary)' }} /> {group.title}
+                    </div>
+                    <div className="gantt-task-cell" style={{ gridColumn: `2 / span ${totalDays}`, zIndex: 1 }}>
                       <div 
-                        className="gantt-milestone" 
-                        style={{ left: `calc(${left} + 20px)` }} 
-                        title={`${task.title} - ${formatMonth(taskStart)} ${formatDay(taskStart)}`}
-                      />
-                    ) : (
-                      <div 
-                        className="gantt-bar-wrapper" 
-                        style={{ left, width, backgroundColor: statusColor }} 
-                        title={`${task.title} (${task.status})\n${formatMonth(taskStart)} ${formatDay(taskStart)} - ${formatMonth(taskEnd)} ${formatDay(taskEnd)}`}
+                        className="gantt-project-bar" 
+                        style={{ left: gLeft, width: gWidth }} 
+                        title={`Project: ${group.title}\n${formatMonth(groupStart)} ${formatDay(groupStart)} - ${formatMonth(groupEnd)} ${formatDay(groupEnd)}`}
                       >
-                        <div className="gantt-bar-title">{task.title}</div>
+                        <div className="gantt-bar-title">{group.title}</div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Task Rows */}
+                  {!collapsedProjects[group.id] && group.tasks.map(task => {
+                    const taskStart = new Date(task.start_date || new Date());
+                    const taskEnd = new Date(task.end_date || addDays(taskStart, 1));
+                    
+                    const startOffset = differenceInDays(taskStart, startDate);
+                    const duration = differenceInDays(taskEnd, taskStart) + 1;
+                    
+                    const left = `${startOffset * 40}px`;
+                    const width = `${duration * 40}px`;
+
+                    let statusColor = 'var(--color-primary)';
+                    if (task.status === 'Completed') statusColor = 'var(--color-success)';
+                    else if (task.status === 'In Progress') statusColor = 'var(--color-info)';
+                    else if (task.status === 'In Review') statusColor = 'var(--color-warning)';
+                    else if (task.status === 'Blocked') statusColor = 'var(--color-danger)';
+
+                    return (
+                      <div key={task.id || task._id} className="gantt-task-row">
+                        <div className="gantt-task-cell task-title-col gantt-task-title">
+                          <span className="task-indent"></span> {task.is_milestone ? '💎 ' : ''}{task.title}
+                        </div>
+                        <div className="gantt-task-cell" style={{ gridColumn: `2 / span ${totalDays}`, zIndex: 1 }}>
+                          {task.is_milestone ? (
+                            <div 
+                              className="gantt-milestone" 
+                              style={{ left: `calc(${left} + 20px)` }} 
+                              title={`${task.title} - ${formatMonth(taskStart)} ${formatDay(taskStart)}`}
+                            />
+                          ) : (
+                            <div 
+                              className="gantt-bar-wrapper" 
+                              style={{ left, width, backgroundColor: statusColor }} 
+                              title={`${task.title} (${task.status})\n${formatMonth(taskStart)} ${formatDay(taskStart)} - ${formatMonth(taskEnd)} ${formatDay(taskEnd)}`}
+                            >
+                              <div className="gantt-bar-title">{task.title}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
               );
             })}
           </div>
