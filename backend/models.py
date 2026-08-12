@@ -404,28 +404,38 @@ class ProjectResponse(BaseModel):
 # --- Task Models (For Gantt Chart & Task Management) ---
 class TaskCreate(BaseModel):
     title: str
+    task_type: str
+    priority: str
     project_id: str
     start_date: str
     end_date: str
-    status: str = "todo"
+    status: str = "To Do"
+    assigned_to: str
+    reminder_date: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    # Fields for Gantt Compatibility
     dependencies: List[str] = []
     is_milestone: bool = False
-    assigned_to: Optional[str] = None
-    description: Optional[str] = None
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
+    task_type: Optional[str] = None
+    priority: Optional[str] = None
     project_id: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    reminder_date: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    # Fields for Gantt Compatibility
     dependencies: Optional[List[str]] = None
     is_milestone: Optional[bool] = None
-    assigned_to: Optional[str] = None
-    description: Optional[str] = None
 
 class TaskResponse(TaskCreate):
-    id: str = Field(alias="_id")
+    id: str
     created_at: str
     updated_at: str
     created_by: str
