@@ -401,6 +401,35 @@ class ProjectResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+# --- Task Models (For Gantt Chart & Task Management) ---
+class TaskCreate(BaseModel):
+    title: str
+    project_id: str
+    start_date: str
+    end_date: str
+    status: str = "todo"
+    dependencies: List[str] = []
+    is_milestone: bool = False
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    project_id: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: Optional[str] = None
+    dependencies: Optional[List[str]] = None
+    is_milestone: Optional[bool] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class TaskResponse(TaskCreate):
+    id: str = Field(alias="_id")
+    created_at: str
+    updated_at: str
+    created_by: str
+
 # --- Invoice Models (Accounting Source of Truth) ---
 class InvoiceCreate(BaseModel):
     invoice_number: str

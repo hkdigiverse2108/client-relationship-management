@@ -1,0 +1,123 @@
+.gantt-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 400px;
+}
+
+.gantt-grid {
+  display: grid;
+  min-width: 100%;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gantt-header-row {
+  display: contents;
+}
+
+.gantt-header-cell {
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gantt-header-cell.task-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  text-align: left;
+  min-width: 250px;
+}
+
+.gantt-task-row {
+  display: contents;
+}
+
+.gantt-task-cell {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: 48px;
+  position: relative;
+}
+
+.gantt-task-cell.task-title-col {
+  position: sticky;
+  left: 0;
+  z-index: 15;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-main);
+  background: var(--color-surface);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+}
+
+.gantt-bar-wrapper {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gantt-bar-wrapper:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
+  z-index: 12;
+}
+
+.gantt-bar-title {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-milestone {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 16px;
+  height: 16px;
+  background: var(--color-warning);
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+  cursor: pointer;
+  z-index: 11;
+}
+
+.gantt-milestone:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
+}
+
+.gantt-dependency-line {
+  position: absolute;
+  background: var(--color-border);
+  z-index: 5;
+}
+
+.gantt-empty-state {
+  padding: 4rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
