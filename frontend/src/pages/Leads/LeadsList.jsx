@@ -97,10 +97,8 @@ const AssigneeDropdown = ({ lead, usersMap, users, onAssign }) => {
 export default function LeadsList() {
   const load = useCallback(async () => {
     const leadsData = await leadService.list();
-    // Also fetch users to map names
-    const usersData = await leadService.list().then(() => fetch('http://localhost:8000/api/v1/users', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('crm_token')}` }
-    }).then(r => r.json()).catch(() => [])); // Or just use api client. Wait, I should import api from "@/api/axiosClient"
+    // Also fetch users to map names (via api client to avoid hardcoded ports)
+    const usersData = await leadService.list().then(() => api.get("/users").catch(() => []));
     return leadsData;
   }, []);
   const { data: rawLeads, loading, refetch } = useAsync(load, [], []);
