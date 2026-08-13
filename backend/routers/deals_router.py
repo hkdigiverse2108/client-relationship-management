@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import DealCreate, DealResponse, NotificationCreate
-from db import deals_collection, notifications_collection, client_history_collection
+from db import deals_collection, notifications_collection, client_history_collection, audit_logs_collection
 from history_logger import log_client_history
+from audit_logger import log_audit_action
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/deals", tags=["deals"])
@@ -42,7 +43,16 @@ async def create_deal(deal: DealCreate, current_user: dict = Depends(get_current
         )
         notif_data = notification.model_dump(exclude_unset=True)
         notif_data["created_at"] = datetime.utcnow()
+        notif_data["created_at"] = datetime.utcnow()
         await notifications_collection.insert_one(notif_data)
+
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Create",
+        "Deals",
+        f"Created deal '{data.get('title', '')}'"
+    )
 
     return created
 
@@ -95,13 +105,33 @@ async def update_deal(obj_id: str, deal: DealUpdate, current_user: dict = Depend
         )
         notif_data = notification.model_dump(exclude_unset=True)
         notif_data["created_at"] = datetime.utcnow()
+        notif_data["created_at"] = datetime.utcnow()
         await notifications_collection.insert_one(notif_data)
+
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Deals",
+        f"Updated deal '{updated.get('title', '')}'"
+    )
 
     return updated
 
 @router.delete("/{obj_id}")
 async def delete_deal(obj_id: str, current_user: dict = Depends(get_current_user)):
+    deal = await deals_collection.find_one({"_id": ObjectId(obj_id)})
+    
     result = await deals_collection.delete_one({"_id": ObjectId(obj_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Deal not found")
+        
+    title = deal.get("title", "") if deal else obj_id
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Delete",
+        "Deals",
+        f"Deleted deal '{title}'"
+    )
     return {"message": "Deal deleted successfully"}

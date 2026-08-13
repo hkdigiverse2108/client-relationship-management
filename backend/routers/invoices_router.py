@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import InvoiceCreate, InvoiceResponse
-from db import invoices_collection, client_history_collection
+from db import invoices_collection, client_history_collection, audit_logs_collection
 from history_logger import log_client_history
+from audit_logger import log_audit_action
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -26,6 +27,14 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
             "Invoice Created",
             f"Invoice {data.get('invoice_number', '')} was created for {data.get('total_amount', 0)}"
         )
+        
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Create",
+        "Invoices",
+        f"Created invoice '{data.get('invoice_number', '')}'"
+    )
         
     created["_id"] = str(created["_id"])
     return created
@@ -64,12 +73,32 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
             f"Invoice {updated.get('invoice_number', '')} was updated."
         )
         
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Invoices",
+        f"Updated invoice '{updated.get('invoice_number', '')}'"
+    )
+        
     updated["_id"] = str(updated["_id"])
     return updated
 
 @router.delete("/{obj_id}")
 async def delete_invoice(obj_id: str, current_user: dict = Depends(get_current_user)):
+    invoice = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
+    
     result = await invoices_collection.delete_one({"_id": ObjectId(obj_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    invoice_number = invoice.get("invoice_number", "") if invoice else obj_id
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Delete",
+        "Invoices",
+        f"Deleted invoice '{invoice_number}'"
+    )
+    
     return {"message": "Invoice deleted successfully"}

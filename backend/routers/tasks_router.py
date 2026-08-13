@@ -3,7 +3,8 @@ from typing import List
 from bson import ObjectId
 from datetime import datetime
 
-from db import db
+from db import db, audit_logs_collection
+from audit_logger import log_audit_action
 from models import TaskCreate, TaskUpdate, TaskResponse
 from routers.notifications_router import create_notification
 
@@ -40,6 +41,15 @@ async def create_task(task: TaskCreate):
                 link="/tasks"
             )
         
+        
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Create",
+        "Tasks",
+        f"Created task '{task_dict.get('title', 'Untitled')}'"
+    )
+
     return serialize_doc(created_task)
 
 @router.get("/", response_model=List[TaskResponse])
@@ -93,11 +103,32 @@ async def update_task(task_id: str, task_update: TaskUpdate):
                 link="/tasks"
             )
         
+        
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Update",
+        "Tasks",
+        f"Updated task '{updated_task.get('title', 'Untitled')}'"
+    )
+
     return serialize_doc(updated_task)
 
 @router.delete("/{task_id}")
 async def delete_task(task_id: str):
+    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    
     result = await db.tasks.delete_one({"_id": ObjectId(task_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Task not found")
+        
+    title = task.get("title", "Untitled") if task else task_id
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Delete",
+        "Tasks",
+        f"Deleted task '{title}'"
+    )
+        
     return {"status": "deleted"}

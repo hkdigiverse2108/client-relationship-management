@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from models import RolePresetCreate, RolePresetResponse
-from db import db
+from db import db, audit_logs_collection
 from dependencies import get_current_user
+from audit_logger import log_audit_action
 import pymongo
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
@@ -44,5 +45,13 @@ async def update_role_preset(role_name: str, preset: RolePresetCreate, current_u
         
     if updated and "_id" in updated:
         updated["id"] = str(updated.pop("_id"))
+        
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Roles",
+        f"Updated role preset '{role_name}'"
+    )
         
     return RolePresetResponse(**updated)

@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import PaymentCreate, PaymentResponse
-from db import payments_collection, client_history_collection
+from db import payments_collection, client_history_collection, audit_logs_collection
 from history_logger import log_client_history
+from audit_logger import log_audit_action
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -26,6 +27,14 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
             "Payment Received",
             f"Payment of {data.get('amount_received', 0)} received via {data.get('payment_method', 'Unknown')}"
         )
+        
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Create",
+        "Payments",
+        f"Created payment of {data.get('amount_received', 0)}"
+    )
         
     created["_id"] = str(created["_id"])
     return created
@@ -64,12 +73,32 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
             f"Payment details were updated."
         )
         
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Payments",
+        f"Updated payment of {updated.get('amount_received', 0)}"
+    )
+        
     updated["_id"] = str(updated["_id"])
     return updated
 
 @router.delete("/{obj_id}")
 async def delete_payment(obj_id: str, current_user: dict = Depends(get_current_user)):
+    payment = await payments_collection.find_one({"_id": ObjectId(obj_id)})
+    
     result = await payments_collection.delete_one({"_id": ObjectId(obj_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Payment not found")
+        
+    amount = payment.get("amount_received", 0) if payment else "unknown"
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Delete",
+        "Payments",
+        f"Deleted payment of {amount}"
+    )
+    
     return {"message": "Payment deleted successfully"}

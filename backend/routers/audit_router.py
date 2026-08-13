@@ -11,7 +11,7 @@ router = APIRouter(prefix="/audit", tags=["Audit Logs"])
 async def get_audit_logs(
     current_user: UserResponse = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100)
+    limit: int = Query(100000, ge=1)
 ):
     # Only super admin or admin should view audit logs (adjust per requirement, but usually true)
     if current_user.get("role") not in ["Super Admin", "admin"]:

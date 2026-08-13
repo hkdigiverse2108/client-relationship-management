@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
 from models import ProjectCreate, ProjectResponse
-from db import projects_collection, client_history_collection, payments_collection
+from db import projects_collection, client_history_collection, payments_collection, audit_logs_collection
 from history_logger import log_client_history
+from audit_logger import log_audit_action
 from dependencies import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -26,6 +27,14 @@ async def create_project(project: ProjectCreate, current_user: dict = Depends(ge
             "Project Created",
             f"Project '{data.get('title', '')}' was created."
         )
+        
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Create",
+        "Projects",
+        f"Created project '{data.get('title', '')}'"
+    )
         
     created["_id"] = str(created["_id"])
     return created
@@ -140,12 +149,32 @@ async def update_project(obj_id: str, project: ProjectUpdate, current_user: dict
             f"Project '{updated.get('title', '')}' was updated (Stage: {updated.get('stage', 'Unknown')}, Status: {updated.get('status', 'Unknown')})."
         )
         
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Projects",
+        f"Updated project '{updated.get('title', '')}'"
+    )
+        
     updated["_id"] = str(updated["_id"])
     return updated
 
 @router.delete("/{obj_id}")
 async def delete_project(obj_id: str, current_user: dict = Depends(get_current_user)):
+    project = await projects_collection.find_one({"_id": ObjectId(obj_id)})
+    
     result = await projects_collection.delete_one({"_id": ObjectId(obj_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    title = project.get("title", "") if project else obj_id
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Delete",
+        "Projects",
+        f"Deleted project '{title}'"
+    )
+    
     return {"message": "Project deleted successfully"}

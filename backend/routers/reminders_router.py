@@ -3,7 +3,8 @@ from typing import List
 from bson import ObjectId
 import datetime
 from models import ReminderCreate, ReminderUpdate, ReminderResponse
-from db import db
+from db import db, audit_logs_collection
+from audit_logger import log_audit_action
 
 router = APIRouter()
 
@@ -23,6 +24,15 @@ async def create_reminder(reminder: ReminderCreate, request: Request):
     
     result = await db["reminders"].insert_one(reminder_data)
     created = await db["reminders"].find_one({"_id": result.inserted_id})
+    
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Create",
+        "Reminders",
+        f"Created reminder '{reminder_data.get('title', 'Untitled')}'"
+    )
+    
     return serialize_doc(created)
 
 @router.get("/reminders", response_model=List[ReminderResponse])
@@ -47,11 +57,32 @@ async def update_reminder(id: str, reminder: ReminderUpdate, request: Request):
         raise HTTPException(status_code=404, detail="Reminder not found")
         
     updated = await db["reminders"].find_one({"_id": ObjectId(id)})
+    
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Update",
+        "Reminders",
+        f"Updated reminder '{updated.get('title', 'Untitled')}'"
+    )
+    
     return serialize_doc(updated)
 
 @router.delete("/reminders/{id}")
 async def delete_reminder(id: str, request: Request):
+    reminder = await db["reminders"].find_one({"_id": ObjectId(id)})
+    
     result = await db["reminders"].delete_one({"_id": ObjectId(id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Reminder not found")
+        
+    title = reminder.get("title", "Untitled") if reminder else id
+    await log_audit_action(
+        audit_logs_collection,
+        {"_id": "system", "name": "System"},
+        "Delete",
+        "Reminders",
+        f"Deleted reminder '{title}'"
+    )
+        
     return {"status": "deleted"}
