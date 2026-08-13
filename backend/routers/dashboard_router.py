@@ -494,14 +494,19 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
         uname = user_map.get(uid) or log.get("user_name", "Unknown")
         action = log.get("action", "")
         module = log.get("module", "")
-        details = log.get("details", {})
+        details = log.get("details", "")
         
         # Friendly message
-        msg = f"{uname} performed {action} in {module}"
-        if "title" in details:
-            msg = f"{uname} {action} {module}: {details['title']}"
-        elif "name" in details:
-            msg = f"{uname} {action} {module}: {details['name']}"
+        if isinstance(details, dict):
+            msg = f"{uname} performed {action} in {module}"
+            if "title" in details:
+                msg = f"{uname} {action} {module}: {details['title']}"
+            elif "name" in details:
+                msg = f"{uname} {action} {module}: {details['name']}"
+        elif isinstance(details, str) and details:
+            msg = f"{uname}: {details}"
+        else:
+            msg = f"{uname} performed {action} in {module}"
             
         dt_val = log.get("timestamp", datetime.utcnow())
         dt_str = dt_val.isoformat() if hasattr(dt_val, "isoformat") else str(dt_val)
