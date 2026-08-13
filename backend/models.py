@@ -425,3 +425,40 @@ class PaymentResponse(PaymentCreate):
     updated_at: Optional[datetime] = None
 
 
+# --- Order Models ---
+class OrderCreate(BaseModel):
+    order_id: Optional[str] = None
+    product_name: str
+    platform: str
+    quantity: int
+    unit_price: float
+    discount: float
+    tax: float
+    payment_status: str
+    order_status: str
+    customer_name: str
+    destination_city: str
+    description: Optional[str] = None
+
+class OrderResponse(OrderCreate):
+    id: str = Field(alias="_id")
+    order_id: Optional[str] = "N/A"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class OrderUpdate(BaseModel):
+    product_name: Optional[str] = None
+    platform: Optional[str] = None
+    quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    discount: Optional[float] = None
+    tax: Optional[float] = None
+    payment_status: Optional[str] = None
+    order_status: Optional[str] = None
+    customer_name: Optional[str] = None
+    destination_city: Optional[str] = None
+    description: Optional[str] = None
+
+
+

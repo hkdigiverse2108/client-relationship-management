@@ -126,3 +126,18 @@ export const projectSchema = yup.object({
   end_date: yup.string().nullable(),
   description: yup.string().nullable(),
 });
+
+export const orderSchema = yup.object({
+  product_name: yup.string().required("Product Name is required"),
+  platform: yup.string().required("Platform is required"),
+  quantity: yup.number().typeError("Quantity must be a number").integer("Quantity must be a whole number").min(1, "Quantity must be at least 1").required("Quantity is required"),
+  unit_price: yup.number().typeError("Unit Price must be a number").min(0, "Unit Price cannot be negative").required("Unit Price is required"),
+  discount: yup.number().typeError("Discount must be a number").min(0, "Discount cannot be negative").required("Discount is required"),
+  tax: yup.number().typeError("Tax must be a number").min(0, "Tax cannot be negative").required("Tax is required"),
+  payment_status: yup.string().required("Payment Status is required"),
+  order_status: yup.string().required("Order Status is required"),
+  customer_name: yup.string().required("Customer Name is required"),
+  destination_city: yup.string().required("Destination City is required"),
+  description: yup.string().nullable(),
+});
+

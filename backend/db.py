@@ -24,6 +24,7 @@ settings_collection = db.get_collection("settings")
 tasks_collection = db.get_collection("tasks")
 expenses_collection = db.get_collection("expenses")
 client_history_collection = db.get_collection("client_history")
+orders_collection = db.get_collection("orders")
 
 async def init_db():
     # Create unique indexes
