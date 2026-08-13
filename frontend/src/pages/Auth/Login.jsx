@@ -37,7 +37,7 @@ export default function Login() {
         <Input
           label="Email address"
           type="email"
-          placeholder="you@company.com"
+          placeholder="Enter Your Email"
           icon={FiMail}
           error={errors.email?.message}
           {...register("email")}
@@ -46,7 +46,7 @@ export default function Login() {
           <Input
             label="Password"
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder="Enter Password"
             icon={FiLock}
             error={errors.password?.message}
             {...register("password")}
