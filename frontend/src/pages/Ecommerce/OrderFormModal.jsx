@@ -5,6 +5,8 @@ import Modal from "@/components/common/Modal/Modal";
 import Input from "@/components/common/Input/Input";
 import Button from "@/components/common/Button/Button";
 import { orderSchema } from "@/utils/validators";
+import { productService } from "@/api/services/productService";
+import { useAsync } from "@/hooks/useAsync";
 import "./OrderFormModal.css";
 
 const PLATFORMS = [
@@ -50,7 +52,10 @@ const CITIES = [
 export default function OrderFormModal({ open, onClose, onSubmit, initialValues, submitting }) {
   const isEdit = !!(initialValues?.id || initialValues?._id);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { data: rawProducts } = useAsync(() => productService.list(), [], []);
+  const products = rawProducts || [];
+
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(orderSchema),
     defaultValues: initialValues || {
       product_name: "",
@@ -99,6 +104,17 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
 
   const submit = async (values) => {
     await onSubmit(values);
+  };
+
+  const handleProductChange = (e) => {
+    const selectedProductName = e.target.value;
+    setValue("product_name", selectedProductName, { shouldValidate: true });
+    
+    // Auto-fill price if product is found
+    const selectedProduct = products.find(p => p.product_name === selectedProductName);
+    if (selectedProduct) {
+      setValue("unit_price", selectedProduct.retail_price, { shouldValidate: true });
+    }
   };
 
   return (
@@ -202,12 +218,23 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
         <h5 className="form-section-title">Product Details & Pricing</h5>
         <div className="row g-3 mb-4">
           <div className="col-md-6">
-            <Input 
-              label="Product Name *" 
-              placeholder="e.g. iPhone 15 Pro Max"
-              error={errors.product_name?.message} 
-              {...register("product_name")} 
-            />
+            <label className="form-label">Product Name *</label>
+            <select 
+              className={`form-select ${errors.product_name ? 'is-invalid' : ''}`} 
+              {...register("product_name")}
+              onChange={(e) => {
+                register("product_name").onChange(e);
+                handleProductChange(e);
+              }}
+            >
+              <option value="">Select a Product</option>
+              {products.map(p => (
+                <option key={p._id || p.id} value={p.product_name}>
+                  {p.product_name}
+                </option>
+              ))}
+            </select>
+            {errors.product_name && <div className="invalid-feedback d-block">{errors.product_name.message}</div>}
           </div>
           <div className="col-md-6">
             <Input 

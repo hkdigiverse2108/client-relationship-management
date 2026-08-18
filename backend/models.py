@@ -569,6 +569,201 @@ class CustomerCreate(BaseModel):
     phone: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
+    tags: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class ProjectResponse(BaseModel):
+    id: str = Field(alias="_id")
+    title: str
+    client_id: str
+    deal_id: Optional[str] = None
+    status: str = "active"
+    stage: str = "new"
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    department: Optional[str] = None
+    budget: Optional[float] = None
+    project_value: Optional[float] = None
+    tags: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Task Models (For Gantt Chart & Task Management) ---
+class TaskCreate(BaseModel):
+    title: str
+    task_type: str
+    priority: str
+    project_id: str
+    start_date: str
+    end_date: str
+    status: str = "To Do"
+    assigned_to: str
+    reminder_date: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    # Fields for Gantt Compatibility
+    dependencies: List[str] = []
+    is_milestone: bool = False
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    task_type: Optional[str] = None
+    priority: Optional[str] = None
+    project_id: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    reminder_date: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    # Fields for Gantt Compatibility
+    dependencies: Optional[List[str]] = None
+    is_milestone: Optional[bool] = None
+
+class TaskResponse(TaskCreate):
+    id: str
+    created_at: str
+    updated_at: str
+    created_by: str
+
+# --- Invoice Models (Accounting Source of Truth) ---
+class InvoiceCreate(BaseModel):
+    invoice_number: str
+    client_id: str
+    deal_id: Optional[str] = None
+    total_amount: float
+    status: str = "draft"  # draft, sent, paid, partial, overdue
+    issue_date: str
+    due_date: str
+    notes: Optional[str] = None
+
+class InvoiceUpdate(BaseModel):
+    invoice_number: Optional[str] = None
+    client_id: Optional[str] = None
+    deal_id: Optional[str] = None
+    total_amount: Optional[float] = None
+    status: Optional[str] = None
+    issue_date: Optional[str] = None
+    due_date: Optional[str] = None
+    notes: Optional[str] = None
+
+class InvoiceResponse(InvoiceCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Payment Models ---
+class PaymentCreate(BaseModel):
+    client_id: str
+    invoice_id: Optional[str] = None
+    amount_received: float
+    payment_date: str
+    payment_method: str = "bank_transfer"
+    transaction_reference: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentUpdate(BaseModel):
+    client_id: Optional[str] = None
+    invoice_id: Optional[str] = None
+    amount_received: Optional[float] = None
+    payment_date: Optional[str] = None
+    payment_method: Optional[str] = None
+    transaction_reference: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentResponse(PaymentCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Reminder Models ---
+class ReminderCreate(BaseModel):
+    description: str
+    category: str
+    priority: str
+    client_id: str
+    due_date: str
+    status: str = "pending"
+
+class ReminderUpdate(BaseModel):
+    description: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    client_id: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+
+class ReminderResponse(ReminderCreate):
+    id: str
+    created_at: str
+    updated_at: str
+    created_by: str
+
+
+# --- Order Models ---
+class OrderCreate(BaseModel):
+    order_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    product_name: str
+    platform: str
+    quantity: int
+    unit_price: float
+    discount: float
+    tax: float
+    payment_status: str
+    order_status: str
+    customer_name: str
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: str
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+class OrderResponse(OrderCreate):
+    id: str = Field(alias="_id")
+    order_id: Optional[str] = "N/A"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class OrderUpdate(BaseModel):
+    customer_id: Optional[str] = None
+    product_name: Optional[str] = None
+    platform: Optional[str] = None
+    quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    discount: Optional[float] = None
+    tax: Optional[float] = None
+    payment_status: Optional[str] = None
+    order_status: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: Optional[str] = None
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+# --- E-Commerce Customer Models ---
+class CustomerCreate(BaseModel):
+    customer_id: Optional[str] = None
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
     country: Optional[str] = None
     status: str = "Active"
     tags: Optional[str] = ""
@@ -591,4 +786,49 @@ class CustomerResponse(CustomerCreate):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+# --- Product Models ---
+class ProductVariant(BaseModel):
+    name: str
+    values: List[str]
 
+class ProductCreate(BaseModel):
+    product_name: str
+    sku_code: str
+    category: str
+    brand_name: str
+    image: Optional[str] = None
+    status: str = "active"
+    initial_stock_qty: int = 0
+    safety_stock_limit: int = 0
+    cost_price: float = 0.0
+    retail_price: float
+    tax: float
+    discount: float = 0.0
+    fulfillment_warehouse: str
+    platforms: List[str] = []
+    variants: List[ProductVariant] = []
+    description: Optional[str] = None
+
+class ProductUpdate(BaseModel):
+    product_name: Optional[str] = None
+    sku_code: Optional[str] = None
+    category: Optional[str] = None
+    brand_name: Optional[str] = None
+    image: Optional[str] = None
+    status: Optional[str] = None
+    initial_stock_qty: Optional[int] = None
+    safety_stock_limit: Optional[int] = None
+    cost_price: Optional[float] = None
+    retail_price: Optional[float] = None
+    tax: Optional[float] = None
+    discount: Optional[float] = None
+    fulfillment_warehouse: Optional[str] = None
+    platforms: Optional[List[str]] = None
+    variants: Optional[List[ProductVariant]] = None
+    description: Optional[str] = None
+
+class ProductResponse(ProductCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

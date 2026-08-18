@@ -1,0 +1,45 @@
+.product-form-scrollable {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+}
+
+.product-form-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.product-form-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.product-form-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+
+.form-section-title {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.form-section-title:first-child {
+  margin-top: 0;
+}
+
+.platform-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.platform-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
