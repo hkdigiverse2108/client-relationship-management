@@ -73,7 +73,7 @@ export default function ContactsList() {
                   <div className="d-flex align-items-center gap-2"><FiPhone /> <span>{c.phone}</span></div>
                 </div>
                 <div className="d-flex flex-wrap gap-1">
-                  {(c.tags || []).map((t) => <Badge key={t} variant="primary" size="sm">{t}</Badge>)}
+                  {(Array.isArray(c.tags) ? c.tags : typeof c.tags === 'string' ? JSON.parse(c.tags) : []).map((t) => <Badge key={t} variant="primary" size="sm">{t}</Badge>)}
                 </div>
               </div>
             </div>
