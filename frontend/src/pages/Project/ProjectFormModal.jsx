@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -6,10 +6,11 @@ import Modal from "@/components/common/Modal/Modal";
 import Input from "@/components/common/Input/Input";
 import Button from "@/components/common/Button/Button";
 import api from "@/api/axiosClient";
-import "../../pages/Project/ProjectFormModal.css"; // Reuse the css from Project folder
+import "./ProjectFormModal.css";
 
 const projectSchema = yup.object().shape({
   title: yup.string().required("Project Name is required"),
+  client_id: yup.string().required("Client is required"),
   category: yup.string().required("Category is required"),
   priority: yup.string().required("Priority is required"),
   department: yup.string().required("Department is required"),
@@ -19,6 +20,7 @@ const projectSchema = yup.object().shape({
   project_value: yup.number().typeError("Project Value must be a number").required("Project Value is required"),
   assigned_to: yup.string().required("Assigned To is required"),
   status: yup.string().required("Status is required"),
+  stage: yup.string().required("Stage is required"),
   tags: yup.string().nullable(),
   description: yup.string().nullable(),
 });
@@ -32,56 +34,80 @@ const STATUSES = {
   completed: "Completed",
   cancelled: "Cancelled"
 };
+const STAGES = {
+  new: "New",
+  in_progress: "In Progress",
+  review: "In Review",
+  completed: "Completed",
+  hold: "On Hold"
+};
 
-export default function ProjectFormModal({ open, onClose, onSubmit, submitting, initialData }) {
+export default function ProjectFormModal({ open, onClose, onSubmit, initialValues, submitting }) {
+  const isEdit = !!(initialValues?.id || initialValues?._id);
   const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: yupResolver(projectSchema),
-    defaultValues: initialData || {
-      title: "", category: "Web Development", priority: "medium",
+    defaultValues: initialValues || {
+      title: "", client_id: "", category: "Web Development", priority: "medium",
       department: "Engineering", start_date: "", end_date: "",
-      budget: "", project_value: "", assigned_to: "", status: "active",
+      budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
       tags: "", description: ""
     },
   });
 
   useEffect(() => {
     if (open) {
-      if (initialData) {
-        reset(initialData);
+      if (initialValues) {
+        reset(initialValues);
       } else {
         reset({
-          title: "", category: "Web Development", priority: "medium",
+          title: "", client_id: "", category: "Web Development", priority: "medium",
           department: "Engineering", start_date: "", end_date: "",
-          budget: "", project_value: "", assigned_to: "", status: "active",
+          budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
           tags: "", description: ""
         });
       }
+      
       api.get("/users").then((res) => setUsers(res || [])).catch(console.error);
+      api.get("/clients").then((res) => setClients(res || [])).catch(console.error);
     }
-  }, [open, initialData, reset]);
+  }, [open, initialValues, reset]);
+
+  const submit = async (values) => {
+    await onSubmit(values);
+  };
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={initialData ? "Edit Project" : "Create New Project"}
+      title={isEdit ? "Edit Project" : "Create New Project"}
       size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit(onSubmit)} loading={submitting}>
-            {initialData ? "Save Changes" : "Create Project"}
+          <Button onClick={handleSubmit(submit)} loading={submitting}>
+            {isEdit ? "Save Changes" : "Create Project"}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="project-form-scrollable">
+      <form onSubmit={handleSubmit(submit)} noValidate className="project-form-scrollable">
+        
         <h5 className="form-section-title">General Details</h5>
         <div className="row g-3 mb-4">
-          <div className="col-md-12">
+          <div className="col-md-6">
             <Input label="Project Name *" error={errors.title?.message} {...register("title")} />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label">Client Name *</label>
+            <select className={`form-select ${errors.client_id ? 'is-invalid' : ''}`} {...register("client_id")}>
+              <option value="">Select Client</option>
+              {clients.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.company_name || c.client_name || c.name || "Unknown Client"}</option>)}
+            </select>
+            {errors.client_id && <div className="invalid-feedback">{errors.client_id.message}</div>}
           </div>
         </div>
 
@@ -128,7 +154,7 @@ export default function ProjectFormModal({ open, onClose, onSubmit, submitting, 
 
         <h5 className="form-section-title">Management</h5>
         <div className="row g-3 mb-4">
-          <div className="col-md-6">
+          <div className="col-md-4">
             <label className="form-label">Assign To *</label>
             <select className={`form-select ${errors.assigned_to ? 'is-invalid' : ''}`} {...register("assigned_to")}>
               <option value="">Select User</option>
@@ -136,12 +162,19 @@ export default function ProjectFormModal({ open, onClose, onSubmit, submitting, 
             </select>
             {errors.assigned_to && <div className="invalid-feedback">{errors.assigned_to.message}</div>}
           </div>
-          <div className="col-md-6">
+          <div className="col-md-4">
             <label className="form-label">Status *</label>
             <select className={`form-select ${errors.status ? 'is-invalid' : ''}`} {...register("status")}>
               {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             {errors.status && <div className="invalid-feedback">{errors.status.message}</div>}
+          </div>
+          <div className="col-md-4">
+            <label className="form-label">Stage *</label>
+            <select className={`form-select ${errors.stage ? 'is-invalid' : ''}`} {...register("stage")}>
+              {Object.entries(STAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            {errors.stage && <div className="invalid-feedback">{errors.stage.message}</div>}
           </div>
         </div>
 
@@ -155,6 +188,7 @@ export default function ProjectFormModal({ open, onClose, onSubmit, submitting, 
             <textarea className="form-control" rows="3" {...register("description")}></textarea>
           </div>
         </div>
+
       </form>
     </Modal>
   );

@@ -158,7 +158,7 @@ export default function GlobalSearch() {
       id: p.id || p._id,
       title: p.title,
       subtitle: "Project",
-      path: `/projects`,
+      path: `/all-projects`,
       icon: FiFolder
     })) : [];
 

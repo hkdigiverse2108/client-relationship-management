@@ -13,6 +13,7 @@ import ClientDetailsPage from "@/pages/Clients/ClientDetailsPage";
 import ContactsList from "@/pages/Contacts/ContactsList";
 import Pipeline from "@/pages/Pipeline/Pipeline";
 import TasksList from "@/pages/Tasks/TasksList";
+import RemindersList from "@/pages/Reminders/RemindersList";
 import Calendar from "@/pages/Calendar/Calendar";
 import Reports from "@/pages/Reports/Reports";
 import Settings from "@/pages/Settings/Settings";
@@ -61,6 +62,7 @@ export default function AppRouter() {
         <Route path="/contacts"  element={<ContactsList />} />
         <Route path="/pipeline"     element={<Pipeline />} />
         <Route path="/tasks"     element={<TasksList />} />
+        <Route path="/reminders" element={<RemindersList />} />
         <Route path="/calendar"  element={<Calendar />} />
         <Route path="/reports"   element={<Reports />} />
         <Route path="/settings"  element={<Settings />} />

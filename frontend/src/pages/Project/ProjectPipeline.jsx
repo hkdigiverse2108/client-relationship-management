@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FiPlus, FiClock, FiDollarSign, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiPlus, FiClock, FiDollarSign } from "react-icons/fi";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
-import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import Button from "@/components/common/Button/Button";
 import Loader from "@/components/common/Loader/Loader";
-import SearchInput from "@/components/common/PageHeaderSearchBar/SearchInput";
 import api from "@/api/axiosClient";
 import toast from "react-hot-toast";
 import ProjectFormModal from "./ProjectFormModal";
@@ -19,15 +17,12 @@ const STAGES = [
   { id: "hold", label: "On Hold" }
 ];
 
-export default function PipelineBoard() {
+export default function ProjectPipeline() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [stageFilter, setStageFilter] = useState("all");
-  const [editingProject, setEditingProject] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -56,20 +51,10 @@ export default function PipelineBoard() {
     return map;
   }, [clients]);
 
-  const filteredProjects = useMemo(() => {
-    return projects.filter(p => {
-      const matchesSearch = !searchQuery || 
-        p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (clientsMap[p.client_id] || "").toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStage = stageFilter === "all" || (p.stage || "new") === stageFilter;
-      return matchesSearch && matchesStage;
-    });
-  }, [projects, searchQuery, stageFilter, clientsMap]);
-
   const grouped = useMemo(() => {
     const g = {};
     STAGES.forEach(s => g[s.id] = []);
-    filteredProjects.forEach(p => {
+    projects.forEach(p => {
       const stage = p.stage || "new"; // fallback to 'new' if no stage
       if (g[stage]) {
         g[stage].push(p);
@@ -78,7 +63,7 @@ export default function PipelineBoard() {
       }
     });
     return g;
-  }, [filteredProjects]);
+  }, [projects]);
 
   const handleDragStart = (e, projectId) => {
     e.dataTransfer.setData("projectId", projectId);
@@ -108,47 +93,18 @@ export default function PipelineBoard() {
     }
   };
 
-  const handleSaveProject = async (values) => {
+  const handleCreateProject = async (values) => {
     setSubmitting(true);
     try {
-      if (editingProject) {
-        await api.put(`/projects/${editingProject.id || editingProject._id}`, values);
-        toast.success("Project updated successfully");
-      } else {
-        await api.post("/projects", values);
-        toast.success("Project created successfully");
-      }
+      await api.post("/projects", values);
+      toast.success("Project created successfully");
       setModalOpen(false);
-      setEditingProject(null);
       loadData();
     } catch (err) {
-      toast.error("Failed to save project");
+      toast.error("Failed to create project");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleDeleteProject = async (projectId) => {
-    const confirmed = await confirmDialog({ text: "Are you sure you want to delete this project?" });
-    if (confirmed) {
-      try {
-        await api.delete(`/projects/${projectId}`);
-        toast.success("Project deleted successfully");
-        loadData();
-      } catch (err) {
-        toast.error("Failed to delete project");
-      }
-    }
-  };
-
-  const openEdit = (project) => {
-    setEditingProject(project);
-    setModalOpen(true);
-  };
-
-  const openCreate = () => {
-    setEditingProject(null);
-    setModalOpen(true);
   };
 
   if (loading) return <Loader />;
@@ -156,31 +112,12 @@ export default function PipelineBoard() {
   return (
     <>
       <PageHeader 
-        title="Pipeline Board"
+        title="Project Pipeline"
         description="Manage project lifecycle stages visually"
-        actions={
-          <div className="d-flex align-items-center gap-2">
-            <SearchInput
-              dark
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select 
-              className="form-select form-select-sm"
-              style={{ width: "150px", height: "38px", borderRadius: "var(--radius-full)" }}
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-            >
-              <option value="all">All Stages</option>
-              {STAGES.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-            <Button onClick={openCreate}>
-              <FiPlus className="me-2" /> New Project
-            </Button>
-          </div>
+        action={
+          <Button onClick={() => setModalOpen(true)}>
+            <FiPlus className="me-2" /> New Project
+          </Button>
         }
       />
 
@@ -220,22 +157,6 @@ export default function PipelineBoard() {
                           <h4 className="card-title">{project.title}</h4>
                           <div className="card-client">{clientsMap[project.client_id] || "Unknown Client"}</div>
                         </div>
-                        <div className="d-flex gap-2">
-                          <button 
-                            className="btn btn-sm text-muted p-0" 
-                            onClick={() => openEdit(project)}
-                            title="Edit"
-                          >
-                            <FiEdit2 size={14} />
-                          </button>
-                          <button 
-                            className="btn btn-sm text-danger p-0" 
-                            onClick={() => handleDeleteProject(project.id || project._id)}
-                            title="Delete"
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
-                        </div>
                       </div>
 
                       <div className="card-badges">
@@ -265,9 +186,8 @@ export default function PipelineBoard() {
       {modalOpen && (
         <ProjectFormModal 
           open={modalOpen}
-          onClose={() => { setModalOpen(false); setEditingProject(null); }}
-          onSubmit={handleSaveProject}
-          initialValues={editingProject}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleCreateProject}
           submitting={submitting}
         />
       )}
