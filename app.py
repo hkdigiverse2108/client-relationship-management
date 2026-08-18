@@ -28,6 +28,34 @@ def run_process(command, cwd, name):
     process.wait()
     print(f"[{name}] Exited with code {process.returncode}")
 
+def load_env_port_and_host(base_dir):
+    env_path = os.path.join(base_dir, ".env")
+    port = "8000"
+    host = "0.0.0.0"
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        key, val = line.split("=", 1)
+                        key = key.strip()
+                        val = val.strip()
+                        # Remove quotes if present
+                        if val.startswith('"') and val.endswith('"'):
+                            val = val[1:-1]
+                        elif val.startswith("'") and val.endswith("'"):
+                            val = val[1:-1]
+                        if key == "BACKEND_PORT":
+                            port = val
+                        elif key == "BACKEND_HOST":
+                            host = val
+        except Exception as e:
+            print(f"[WARNING] Error reading .env file: {e}")
+    return port, host
+
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -46,6 +74,10 @@ def main():
 
     backend_dir = os.path.join(base_dir, "backend")
     frontend_dir = os.path.join(base_dir, "frontend")
+    
+    # Load backend port and host dynamically from .env
+    backend_port, backend_host = load_env_port_and_host(base_dir)
+    print(f"[INFO] Loaded backend configuration from .env: Host={backend_host}, Port={backend_port}")
     
     # Check for backend virtual environment
     venv_scripts = os.path.join(backend_dir, ".venv", "Scripts")
