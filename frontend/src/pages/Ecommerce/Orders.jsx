@@ -145,8 +145,13 @@ export default function OrdersList() {
         <div>
           <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
           <div className="text-subtle" style={{ fontSize: 12 }}>
-            {r.destination_city}
+            {[r.destination_city, r.destination_state, r.destination_country].filter(Boolean).join(", ")}
           </div>
+          {(r.customer_email || r.customer_phone) && (
+            <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>
+              {[r.customer_email, r.customer_phone].filter(Boolean).join(" | ")}
+            </div>
+          )}
         </div>
       )
     },

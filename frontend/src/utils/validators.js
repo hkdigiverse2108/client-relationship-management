@@ -137,7 +137,11 @@ export const orderSchema = yup.object({
   payment_status: yup.string().required("Payment Status is required"),
   order_status: yup.string().required("Order Status is required"),
   customer_name: yup.string().required("Customer Name is required"),
+  customer_email: yup.string().email("Invalid email").nullable(),
+  customer_phone: yup.string().nullable(),
   destination_city: yup.string().required("Destination City is required"),
+  destination_state: yup.string().nullable(),
+  destination_country: yup.string().nullable(),
   description: yup.string().nullable(),
 });
 

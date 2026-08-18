@@ -519,6 +519,7 @@ class ReminderResponse(ReminderCreate):
 # --- Order Models ---
 class OrderCreate(BaseModel):
     order_id: Optional[str] = None
+    customer_id: Optional[str] = None
     product_name: str
     platform: str
     quantity: int
@@ -528,7 +529,11 @@ class OrderCreate(BaseModel):
     payment_status: str
     order_status: str
     customer_name: str
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
     destination_city: str
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
     description: Optional[str] = None
 
 class OrderResponse(OrderCreate):
@@ -539,6 +544,7 @@ class OrderResponse(OrderCreate):
     updated_at: Optional[datetime] = None
 
 class OrderUpdate(BaseModel):
+    customer_id: Optional[str] = None
     product_name: Optional[str] = None
     platform: Optional[str] = None
     quantity: Optional[int] = None
@@ -548,8 +554,41 @@ class OrderUpdate(BaseModel):
     payment_status: Optional[str] = None
     order_status: Optional[str] = None
     customer_name: Optional[str] = None
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
     destination_city: Optional[str] = None
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
     description: Optional[str] = None
 
+# --- E-Commerce Customer Models ---
+class CustomerCreate(BaseModel):
+    customer_id: Optional[str] = None
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    status: str = "Active"
+    tags: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[str] = None
+    notes: Optional[str] = None
+
+class CustomerResponse(CustomerCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 

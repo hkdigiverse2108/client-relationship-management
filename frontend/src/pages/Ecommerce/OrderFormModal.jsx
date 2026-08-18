@@ -62,7 +62,11 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
       payment_status: "pending",
       order_status: "processing",
       customer_name: "",
+      customer_email: "",
+      customer_phone: "",
       destination_city: "",
+      destination_state: "",
+      destination_country: "",
       description: ""
     }
   });
@@ -82,7 +86,11 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
           payment_status: "pending",
           order_status: "processing",
           customer_name: "",
+          customer_email: "",
+          customer_phone: "",
           destination_city: "",
+          destination_state: "",
+          destination_country: "",
           description: ""
         });
       }
@@ -112,7 +120,7 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
         
         <h5 className="form-section-title">Customer & Destination</h5>
         <div className="row g-3 mb-4">
-          <div className="col-md-6">
+          <div className="col-md-4">
             <Input 
               label="Customer Name *" 
               placeholder="e.g. Rahul Sharma"
@@ -120,7 +128,23 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
               {...register("customer_name")} 
             />
           </div>
-          <div className="col-md-6">
+          <div className="col-md-4">
+            <Input 
+              label="Email" 
+              placeholder="e.g. rahul@example.com"
+              error={errors.customer_email?.message} 
+              {...register("customer_email")} 
+            />
+          </div>
+          <div className="col-md-4">
+            <Input 
+              label="Phone Number" 
+              placeholder="e.g. +91 9876543210"
+              error={errors.customer_phone?.message} 
+              {...register("customer_phone")} 
+            />
+          </div>
+          <div className="col-md-4">
             <Input 
               label="Destination City *" 
               placeholder="Type to search city..."
@@ -131,6 +155,22 @@ export default function OrderFormModal({ open, onClose, onSubmit, initialValues,
             <datalist id="city-list">
               {CITIES.map(city => <option key={city} value={city} />)}
             </datalist>
+          </div>
+          <div className="col-md-4">
+            <Input 
+              label="State" 
+              placeholder="e.g. Maharashtra"
+              error={errors.destination_state?.message} 
+              {...register("destination_state")} 
+            />
+          </div>
+          <div className="col-md-4">
+            <Input 
+              label="Country" 
+              placeholder="e.g. India"
+              error={errors.destination_country?.message} 
+              {...register("destination_country")} 
+            />
           </div>
         </div>
 
