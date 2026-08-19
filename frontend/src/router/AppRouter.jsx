@@ -30,6 +30,7 @@ import Orders from "@/pages/Ecommerce/Orders";
 import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
 import Inventory from "@/pages/Ecommerce/Inventory";
+import AbandonedCarts from "@/pages/Ecommerce/AbandonedCarts";
 import AuditLog from "@/pages/Audit/AuditLog";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
 import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
@@ -79,6 +80,7 @@ export default function AppRouter() {
         <Route path="/products" element={<Products/>}/>
         <Route path="/inventory" element={<Inventory/>}/>
         <Route path="/customers" element={<Customers/>}/>
+        <Route path="/abandoned-carts" element={<AbandonedCarts/>}/>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
