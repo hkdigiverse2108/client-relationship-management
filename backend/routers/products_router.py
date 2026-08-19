@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import List
 from datetime import datetime
 from bson import ObjectId
-from models import ProductCreate, ProductResponse, ProductUpdate
+from models import ProductCreate, ProductResponse, ProductUpdate, TransferStockRequest
 from db import products_collection, audit_logs_collection
 from audit_logger import log_audit_action
 from dependencies import get_current_user
@@ -112,3 +112,50 @@ async def delete_product(obj_id: str, current_user: dict = Depends(get_current_u
     )
     
     return {"message": "Product deleted successfully"}
+
+@router.post("/{obj_id}/transfer", response_model=ProductResponse)
+async def transfer_stock(obj_id: str, transfer: TransferStockRequest, current_user: dict = Depends(get_current_user)):
+    product = await products_collection.find_one({"_id": ObjectId(obj_id)})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    warehouse_stocks = product.get("warehouse_stocks") or {}
+    
+    # Initialize Main Warehouse with total stock if no warehouse data exists
+    if not warehouse_stocks and product.get("initial_stock_qty"):
+        warehouse_stocks["Main Warehouse"] = product.get("initial_stock_qty")
+        
+    from_loc = transfer.from_location
+    to_loc = transfer.to_location
+    qty = transfer.quantity
+    
+    if qty <= 0:
+        raise HTTPException(status_code=400, detail="Transfer quantity must be greater than zero")
+        
+    current_from_qty = warehouse_stocks.get(from_loc, 0)
+    if current_from_qty < qty:
+        raise HTTPException(status_code=400, detail=f"Insufficient stock in {from_loc}. Available: {current_from_qty}")
+        
+    # Deduct from source
+    warehouse_stocks[from_loc] -= qty
+    # Add to destination
+    warehouse_stocks[to_loc] = warehouse_stocks.get(to_loc, 0) + qty
+    
+    # Update document
+    await products_collection.update_one(
+        {"_id": ObjectId(obj_id)}, 
+        {"$set": {"warehouse_stocks": warehouse_stocks, "updated_at": datetime.utcnow()}}
+    )
+    
+    updated = await products_collection.find_one({"_id": ObjectId(obj_id)})
+    updated["_id"] = str(updated["_id"])
+    
+    await log_audit_action(
+        audit_logs_collection,
+        current_user,
+        "Update",
+        "Products",
+        f"Transferred {qty} units of {updated.get('product_name')} from {from_loc} to {to_loc}"
+    )
+    
+    return ProductResponse(**updated)

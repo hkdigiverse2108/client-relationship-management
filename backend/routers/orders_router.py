@@ -3,7 +3,7 @@ from typing import List
 from datetime import datetime
 from bson import ObjectId
 from models import OrderCreate, OrderResponse, OrderUpdate
-from db import orders_collection, audit_logs_collection, customers_collection
+from db import orders_collection, audit_logs_collection, customers_collection, products_collection
 from audit_logger import log_audit_action
 from dependencies import get_current_user
 
@@ -28,6 +28,30 @@ async def generate_order_id():
 
 @router.post("", response_model=OrderResponse)
 async def create_order(order: OrderCreate, current_user: dict = Depends(get_current_user)):
+    # Pre-check stock availability before anything else
+    product = None
+    warehouse_stocks = {}
+    current_initial = 0
+    current_main = 0
+    
+    if order.product_name and order.quantity:
+        product = await products_collection.find_one({"product_name": order.product_name})
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product '{order.product_name}' not found in inventory")
+            
+        current_initial = product.get("initial_stock_qty", 0)
+        if current_initial < order.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for '{order.product_name}'. Total available: {current_initial} units")
+            
+        warehouse_stocks = product.get("warehouse_stocks") or {}
+        # Initialize if empty
+        if not warehouse_stocks and current_initial:
+            warehouse_stocks["Main Warehouse"] = current_initial
+            
+        current_main = warehouse_stocks.get("Main Warehouse", 0)
+        if current_main < order.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock in Main Warehouse for '{order.product_name}'. Available: {current_main} units")
+
     data = order.model_dump()
     data["order_id"] = await generate_order_id()
     data["created_by"] = str(current_user["_id"])
@@ -70,6 +94,19 @@ async def create_order(order: OrderCreate, current_user: dict = Depends(get_curr
     
     result = await orders_collection.insert_one(data)
     data["_id"] = str(result.inserted_id)
+    
+    # Deduct stock safely after order is placed
+    if product and order.quantity:
+        warehouse_stocks["Main Warehouse"] = current_main - order.quantity
+        new_initial = current_initial - order.quantity
+        
+        await products_collection.update_one(
+            {"_id": product["_id"]},
+            {"$set": {
+                "initial_stock_qty": new_initial,
+                "warehouse_stocks": warehouse_stocks
+            }}
+        )
     
     await log_audit_action(
         audit_logs_collection,

@@ -808,6 +808,7 @@ class ProductCreate(BaseModel):
     platforms: List[str] = []
     variants: List[ProductVariant] = []
     description: Optional[str] = None
+    warehouse_stocks: Optional[Dict[str, int]] = None
 
 class ProductUpdate(BaseModel):
     product_name: Optional[str] = None
@@ -826,9 +827,15 @@ class ProductUpdate(BaseModel):
     platforms: Optional[List[str]] = None
     variants: Optional[List[ProductVariant]] = None
     description: Optional[str] = None
+    warehouse_stocks: Optional[Dict[str, int]] = None
 
 class ProductResponse(ProductCreate):
     id: str = Field(alias="_id")
     created_by: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class TransferStockRequest(BaseModel):
+    from_location: str
+    to_location: str
+    quantity: int

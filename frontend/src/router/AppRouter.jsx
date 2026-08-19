@@ -29,6 +29,7 @@ import GanttChart from "@/pages/Project/GanttChart";
 import Orders from "@/pages/Ecommerce/Orders";
 import Products from "@/pages/Ecommerce/Products";
 import Customers from "@/pages/Ecommerce/Customers";
+import Inventory from "@/pages/Ecommerce/Inventory";
 import AuditLog from "@/pages/Audit/AuditLog";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
 import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
@@ -76,6 +77,7 @@ export default function AppRouter() {
         <Route path="/gantt-chart" element={<GanttChart />} />
         <Route path="/orders" element={<Orders/>}/>
         <Route path="/products" element={<Products/>}/>
+        <Route path="/inventory" element={<Inventory/>}/>
         <Route path="/customers" element={<Customers/>}/>
       </Route>
       <Route path="*" element={<NotFound />} />

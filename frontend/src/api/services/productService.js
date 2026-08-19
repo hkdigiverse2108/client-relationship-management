@@ -23,6 +23,10 @@ export const productService = {
     return api.delete(`/products/${id}`);
   },
 
+  transferStock: async (id, data) => {
+    return api.post(`/products/${id}/transfer`, data);
+  },
+
   uploadImage: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
