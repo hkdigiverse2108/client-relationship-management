@@ -30,7 +30,7 @@ export default function TasksList() {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/tasks");
+      const res = await api.get("/tasks/");
       setTasks(res || []);
     } catch (err) {
       toast.error("Failed to load tasks");
@@ -90,7 +90,7 @@ export default function TasksList() {
         await api.put(`/tasks/${editingTask.id || editingTask._id}`, values);
         toast.success("Task updated successfully");
       } else {
-        await api.post("/tasks", values);
+        await api.post("/tasks/", values);
         toast.success("Task created successfully");
       }
       setModalOpen(false);

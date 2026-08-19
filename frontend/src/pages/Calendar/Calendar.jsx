@@ -101,7 +101,7 @@ export default function Calendar({ hideHeader = false }) {
         setLoading(true);
         // Fetch tasks and reminders simultaneously
         const [tasksRes, remindersRes] = await Promise.all([
-          axiosClient.get('/tasks'),
+          axiosClient.get('/tasks/'),
           axiosClient.get('/reminders')
         ]);
 

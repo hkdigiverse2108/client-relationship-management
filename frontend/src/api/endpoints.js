@@ -30,7 +30,7 @@ export const ENDPOINTS = {
     byId: (id) => `/deals/${id}`,
   },
   tasks: {
-    list: "/tasks",
+    list: "/tasks/",
     byId: (id) => `/tasks/${id}`,
   },
   users: {
