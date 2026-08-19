@@ -62,7 +62,7 @@ export default function GanttChart() {
   const loadTasks = async (projectId) => {
     if (!projectId) return;
     try {
-      const endpoint = projectId === "all" ? "/tasks" : `/tasks?project_id=${projectId}`;
+      const endpoint = projectId === "all" ? "/tasks/" : `/tasks/?project_id=${projectId}`;
       const res = await api.get(endpoint);
       setTasks(res || []);
     } catch (err) {

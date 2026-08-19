@@ -25,7 +25,7 @@ export default function ProjectDashboard() {
       const [analyticsData, projectsData, tasksRes] = await Promise.all([
         projectService.getAnalytics(),
         projectService.list(),
-        api.get("/tasks")
+        api.get("/tasks/")
       ]);
       
       setAnalytics(analyticsData.data || analyticsData);
