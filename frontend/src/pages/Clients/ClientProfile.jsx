@@ -11,7 +11,7 @@ import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import toast from "react-hot-toast";
 import InvoiceModal from "@/pages/Finance/InvoiceModal";
-import PaymentFormModal from "./PaymentFormModal";
+import PaymentModal from "@/pages/Finance/PaymentModal";
 import DealFormModal from "./DealFormModal";
 import ProjectFormModal from "./ProjectFormModal";
 import "./ClientProfile.css"; // Basic CSS for tabs and cards
@@ -59,24 +59,6 @@ export default function ClientProfile() {
     }
   };
 
-  const handleSavePayment = async (values) => {
-    setSubmitting(true);
-    try {
-      if (editData) {
-        await api.put(`/payments/${editData.id || editData._id}`, values);
-        toast.success("Payment updated successfully");
-      } else {
-        await api.post("/payments", { ...values, client_id: id });
-        toast.success("Payment recorded successfully");
-      }
-      closeModals();
-      loadDashboard();
-    } catch (e) {
-      toast.error(e.message || "Failed to record payment");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleSaveDeal = async (values) => {
     setSubmitting(true);
@@ -305,13 +287,11 @@ export default function ClientProfile() {
         onSave={() => { closeModals(); loadDashboard(); }} 
         invoice={editData}
       />
-      
-      <PaymentFormModal 
-        open={paymentModalOpen} 
+      <PaymentModal 
+        isOpen={paymentModalOpen} 
         onClose={closeModals} 
-        onSubmit={handleSavePayment} 
-        submitting={submitting} 
-        initialData={editData}
+        onSave={() => { closeModals(); loadDashboard(); }} 
+        payment={editData || { client_id: id }}
       />
       
       <DealFormModal 

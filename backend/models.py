@@ -483,22 +483,26 @@ class InvoiceResponse(InvoiceCreate):
 
 # --- Payment Models ---
 class PaymentCreate(BaseModel):
+    payment_id: str
     client_id: Optional[str] = None
     invoice_id: Optional[str] = None
     source_type: str = "Project"
     amount_received: float
     payment_date: str
-    payment_method: str = "bank_transfer"
+    payment_method: str = "Bank NEFT/RTGS" # Razorpay, UPI Transfer, Bank NEFT/RTGS, Cheque, Cash
+    status: str = "completed" # pending, partial, completed, failed
     transaction_reference: Optional[str] = None
     notes: Optional[str] = None
 
 class PaymentUpdate(BaseModel):
+    payment_id: Optional[str] = None
     client_id: Optional[str] = None
     invoice_id: Optional[str] = None
     source_type: Optional[str] = None
     amount_received: Optional[float] = None
     payment_date: Optional[str] = None
     payment_method: Optional[str] = None
+    status: Optional[str] = None
     transaction_reference: Optional[str] = None
     notes: Optional[str] = None
 

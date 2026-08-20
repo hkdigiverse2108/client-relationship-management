@@ -35,6 +35,7 @@ import AuditLog from "@/pages/Audit/AuditLog";
 import BillingDashboard from "@/pages/Finance/BillingDashboard";
 import InvoiceList from "@/pages/Finance/InvoiceList";
 import QuotesList from "@/pages/Finance/QuotesList";
+import PaymentsList from "@/pages/Finance/PaymentsList";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
 import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
 
@@ -87,6 +88,7 @@ export default function AppRouter() {
         <Route path="/billing-dashboard" element={<BillingDashboard />} />
         <Route path="/invoices" element={<InvoiceList />} />
         <Route path="/quotes" element={<QuotesList />} />
+        <Route path="/payments" element={<PaymentsList />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
