@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
-from models import PaymentCreate, PaymentResponse
-from db import payments_collection, client_history_collection, audit_logs_collection
+from models import PaymentCreate, PaymentResponse, PaymentUpdate, LedgerEntryCreate
+from db import payments_collection, client_history_collection, audit_logs_collection, ledger_collection
 from history_logger import log_client_history
 from audit_logger import log_audit_action
 from dependencies import get_current_user
@@ -35,6 +35,23 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
         "Payments",
         f"Created payment of {data.get('amount_received', 0)}"
     )
+    
+    # Auto-create Ledger Entry (Credit)
+    if data.get("status", "").lower() == "completed":
+        ledger_entry = {
+            "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
+            "date": data.get("payment_date", datetime.utcnow().strftime('%Y-%m-%d')),
+            "description": f"Payment Received via {data.get('payment_method', 'Unknown')}",
+            "reference_id": str(result.inserted_id),
+            "client_id": data.get("client_id"),
+            "type": "Credit",
+            "amount": data.get("amount_received", 0),
+            "status": "settled",
+            "created_by": current_user["_id"],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        await ledger_collection.insert_one(ledger_entry)
         
     created["_id"] = str(created["_id"])
     return created
@@ -48,7 +65,6 @@ async def get_payments(current_user: dict = Depends(get_current_user)):
         payments.append(p)
     return payments
 
-from models import PaymentUpdate
 from bson import ObjectId
 
 @router.put("/{obj_id}", response_model=PaymentResponse)
@@ -78,9 +94,33 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
         current_user,
         "Update",
         "Payments",
-        f"Updated payment of {updated.get('amount_received', 0)}"
+        f"Updated payment {obj_id}"
     )
+    
+    # Update Ledger Entry if status changed to completed, or update amount
+    # Simplified approach: upsert based on reference_id
+    if updated.get("status", "").lower() == "completed":
+        ledger_entry = {
+            "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
+            "date": updated.get("payment_date", datetime.utcnow().strftime('%Y-%m-%d')),
+            "description": f"Payment Received via {updated.get('payment_method', 'Unknown')}",
+            "reference_id": str(updated["_id"]),
+            "client_id": updated.get("client_id"),
+            "type": "Credit",
+            "amount": updated.get("amount_received", 0),
+            "status": "settled",
+            "updated_at": datetime.utcnow()
+        }
         
+        # Check if ledger entry exists
+        existing = await ledger_collection.find_one({"reference_id": str(updated["_id"])})
+        if existing:
+            await ledger_collection.update_one({"_id": existing["_id"]}, {"$set": ledger_entry})
+        else:
+            ledger_entry["created_by"] = current_user["_id"]
+            ledger_entry["created_at"] = datetime.utcnow()
+            await ledger_collection.insert_one(ledger_entry)
+
     updated["_id"] = str(updated["_id"])
     return updated
 

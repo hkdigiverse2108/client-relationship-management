@@ -788,3 +788,20 @@ class QuoteResponse(QuoteCreate):
     created_by: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+# --- General Ledger Models ---
+class LedgerEntryCreate(BaseModel):
+    entry_id: str
+    date: str
+    description: str
+    reference_id: Optional[str] = None # e.g. Payment ID or Expense ID
+    client_id: Optional[str] = None
+    type: str # "Credit" (Inflow) or "Debit" (Outflow)
+    amount: float
+    status: str = "settled"
+
+class LedgerEntryResponse(LedgerEntryCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

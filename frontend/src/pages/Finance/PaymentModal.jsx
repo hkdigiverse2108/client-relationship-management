@@ -101,10 +101,6 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
       toast.error('Please select a billed client');
       return;
     }
-    if (!formData.invoice_id) {
-      toast.error('Please select an invoice');
-      return;
-    }
     
     setIsSubmitting(true);
     
@@ -172,13 +168,12 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
           </div>
 
           <div className="col-md-6">
-            <label className="form-label fw-medium">Invoice ID *</label>
+            <label className="form-label fw-medium">Invoice ID (Optional / Advance)</label>
             <select 
               className="form-select" 
               name="invoice_id" 
               value={formData.invoice_id} 
               onChange={handleChange}
-              required
             >
               <option value="">Select Invoice...</option>
               {availableInvoices.map(inv => (
