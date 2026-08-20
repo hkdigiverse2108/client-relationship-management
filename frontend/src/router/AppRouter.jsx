@@ -32,6 +32,9 @@ import Customers from "@/pages/Ecommerce/Customers";
 import Inventory from "@/pages/Ecommerce/Inventory";
 import AbandonedCarts from "@/pages/Ecommerce/AbandonedCarts";
 import AuditLog from "@/pages/Audit/AuditLog";
+import BillingDashboard from "@/pages/Finance/BillingDashboard";
+import InvoiceList from "@/pages/Finance/InvoiceList";
+import QuotesList from "@/pages/Finance/QuotesList";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
 import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
 
@@ -81,6 +84,9 @@ export default function AppRouter() {
         <Route path="/inventory" element={<Inventory/>}/>
         <Route path="/customers" element={<Customers/>}/>
         <Route path="/abandoned-carts" element={<AbandonedCarts/>}/>
+        <Route path="/billing-dashboard" element={<BillingDashboard />} />
+        <Route path="/invoices" element={<InvoiceList />} />
+        <Route path="/quotes" element={<QuotesList />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

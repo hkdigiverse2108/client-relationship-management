@@ -10,7 +10,7 @@ import Dropdown from "@/components/common/Dropdown/Dropdown";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import toast from "react-hot-toast";
-import InvoiceFormModal from "./InvoiceFormModal";
+import InvoiceModal from "@/pages/Finance/InvoiceModal";
 import PaymentFormModal from "./PaymentFormModal";
 import DealFormModal from "./DealFormModal";
 import ProjectFormModal from "./ProjectFormModal";
@@ -56,25 +56,6 @@ export default function ClientProfile() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSaveInvoice = async (values) => {
-    setSubmitting(true);
-    try {
-      if (editData) {
-        await api.put(`/invoices/${editData.id || editData._id}`, values);
-        toast.success("Invoice updated successfully");
-      } else {
-        await api.post("/invoices", { ...values, client_id: id });
-        toast.success("Invoice created successfully");
-      }
-      closeModals();
-      loadDashboard();
-    } catch (e) {
-      toast.error(e.message || "Failed to save invoice");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -279,7 +260,10 @@ export default function ClientProfile() {
               <div className="col-lg-7">
                 <div className="d-flex justify-content-between mb-3 align-items-center">
                   <h5 className="mb-0">Invoices</h5>
-                  <Button variant="primary" size="sm" onClick={() => setInvoiceModalOpen(true)}>+ New Invoice</Button>
+                  <Button variant="primary" size="sm" onClick={() => {
+                    setEditData({ client_id: client.id || client._id, source_id: client.name || client.company_name, source_type: 'Project' });
+                    setInvoiceModalOpen(true);
+                  }}>+ New Invoice</Button>
                 </div>
                 <Table columns={invoiceCols} data={invoices} />
               </div>
@@ -315,12 +299,11 @@ export default function ClientProfile() {
         </div>
       </div>
       
-      <InvoiceFormModal 
-        open={invoiceModalOpen} 
+      <InvoiceModal 
+        isOpen={invoiceModalOpen} 
         onClose={closeModals} 
-        onSubmit={handleSaveInvoice} 
-        submitting={submitting} 
-        initialData={editData}
+        onSave={() => { closeModals(); loadDashboard(); }} 
+        invoice={editData}
       />
       
       <PaymentFormModal 

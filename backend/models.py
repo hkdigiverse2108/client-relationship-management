@@ -443,23 +443,37 @@ class TaskResponse(TaskCreate):
 # --- Invoice Models (Accounting Source of Truth) ---
 class InvoiceCreate(BaseModel):
     invoice_number: str
-    client_id: str
+    client_id: Optional[str] = None
     deal_id: Optional[str] = None
+    source_type: str = "Project"  # Project, E-commerce, Retainer, Ad-hoc
+    source_id: Optional[str] = None
     total_amount: float
+    gst_amount: float = 0.0
     status: str = "draft"  # draft, sent, paid, partial, overdue
     issue_date: str
     due_date: str
     notes: Optional[str] = None
+    is_recurring: bool = False
+    recurring_frequency: Optional[str] = None
+    next_issue_date: Optional[str] = None
+    recurring_end_date: Optional[str] = None
 
 class InvoiceUpdate(BaseModel):
     invoice_number: Optional[str] = None
     client_id: Optional[str] = None
     deal_id: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[str] = None
     total_amount: Optional[float] = None
+    gst_amount: Optional[float] = None
     status: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     notes: Optional[str] = None
+    is_recurring: Optional[bool] = None
+    recurring_frequency: Optional[str] = None
+    next_issue_date: Optional[str] = None
+    recurring_end_date: Optional[str] = None
 
 class InvoiceResponse(InvoiceCreate):
     id: str = Field(alias="_id")
@@ -469,8 +483,9 @@ class InvoiceResponse(InvoiceCreate):
 
 # --- Payment Models ---
 class PaymentCreate(BaseModel):
-    client_id: str
+    client_id: Optional[str] = None
     invoice_id: Optional[str] = None
+    source_type: str = "Project"
     amount_received: float
     payment_date: str
     payment_method: str = "bank_transfer"
@@ -480,6 +495,7 @@ class PaymentCreate(BaseModel):
 class PaymentUpdate(BaseModel):
     client_id: Optional[str] = None
     invoice_id: Optional[str] = None
+    source_type: Optional[str] = None
     amount_received: Optional[float] = None
     payment_date: Optional[str] = None
     payment_method: Optional[str] = None
@@ -596,119 +612,7 @@ class ProjectResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-# --- Task Models (For Gantt Chart & Task Management) ---
-class TaskCreate(BaseModel):
-    title: str
-    task_type: str
-    priority: str
-    project_id: str
-    start_date: str
-    end_date: str
-    status: str = "To Do"
-    assigned_to: str
-    reminder_date: Optional[str] = None
-    description: Optional[str] = None
-    notes: Optional[str] = None
-    # Fields for Gantt Compatibility
-    dependencies: List[str] = []
-    is_milestone: bool = False
 
-class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    task_type: Optional[str] = None
-    priority: Optional[str] = None
-    project_id: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    status: Optional[str] = None
-    assigned_to: Optional[str] = None
-    reminder_date: Optional[str] = None
-    description: Optional[str] = None
-    notes: Optional[str] = None
-    # Fields for Gantt Compatibility
-    dependencies: Optional[List[str]] = None
-    is_milestone: Optional[bool] = None
-
-class TaskResponse(TaskCreate):
-    id: str
-    created_at: str
-    updated_at: str
-    created_by: str
-
-# --- Invoice Models (Accounting Source of Truth) ---
-class InvoiceCreate(BaseModel):
-    invoice_number: str
-    client_id: str
-    deal_id: Optional[str] = None
-    total_amount: float
-    status: str = "draft"  # draft, sent, paid, partial, overdue
-    issue_date: str
-    due_date: str
-    notes: Optional[str] = None
-
-class InvoiceUpdate(BaseModel):
-    invoice_number: Optional[str] = None
-    client_id: Optional[str] = None
-    deal_id: Optional[str] = None
-    total_amount: Optional[float] = None
-    status: Optional[str] = None
-    issue_date: Optional[str] = None
-    due_date: Optional[str] = None
-    notes: Optional[str] = None
-
-class InvoiceResponse(InvoiceCreate):
-    id: str = Field(alias="_id")
-    created_by: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-# --- Payment Models ---
-class PaymentCreate(BaseModel):
-    client_id: str
-    invoice_id: Optional[str] = None
-    amount_received: float
-    payment_date: str
-    payment_method: str = "bank_transfer"
-    transaction_reference: Optional[str] = None
-    notes: Optional[str] = None
-
-class PaymentUpdate(BaseModel):
-    client_id: Optional[str] = None
-    invoice_id: Optional[str] = None
-    amount_received: Optional[float] = None
-    payment_date: Optional[str] = None
-    payment_method: Optional[str] = None
-    transaction_reference: Optional[str] = None
-    notes: Optional[str] = None
-
-class PaymentResponse(PaymentCreate):
-    id: str = Field(alias="_id")
-    created_by: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-# --- Reminder Models ---
-class ReminderCreate(BaseModel):
-    description: str
-    category: str
-    priority: str
-    client_id: str
-    due_date: str
-    status: str = "pending"
-
-class ReminderUpdate(BaseModel):
-    description: Optional[str] = None
-    category: Optional[str] = None
-    priority: Optional[str] = None
-    client_id: Optional[str] = None
-    due_date: Optional[str] = None
-    status: Optional[str] = None
-
-class ReminderResponse(ReminderCreate):
-    id: str
-    created_at: str
-    updated_at: str
-    created_by: str
 
 
 # --- Order Models ---
@@ -839,3 +743,44 @@ class TransferStockRequest(BaseModel):
     from_location: str
     to_location: str
     quantity: int
+
+# --- Quote Models (Quotation Engine) ---
+class QuoteCreate(BaseModel):
+    quote_number: str
+    client_id: Optional[str] = None
+    product_name: str
+    unit_price: float
+    quantity: int
+    discount: float = 0.0
+    tax_percentage: float = 0.0
+    validity_days: int = 30
+    status: str = "Draft" # Draft, Sent, Accepted, Expired, Rejected
+    notes: Optional[str] = None
+    sub_total: float
+    tax_amount: float
+    total_amount: float
+    date_sent: Optional[str] = None
+    valid_until: Optional[str] = None
+
+class QuoteUpdate(BaseModel):
+    quote_number: Optional[str] = None
+    client_id: Optional[str] = None
+    product_name: Optional[str] = None
+    unit_price: Optional[float] = None
+    quantity: Optional[int] = None
+    discount: Optional[float] = None
+    tax_percentage: Optional[float] = None
+    validity_days: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    sub_total: Optional[float] = None
+    tax_amount: Optional[float] = None
+    total_amount: Optional[float] = None
+    date_sent: Optional[str] = None
+    valid_until: Optional[str] = None
+
+class QuoteResponse(QuoteCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

@@ -32,7 +32,9 @@ from routers import (
     orders_router,
     customers_router,
     products_router,
-    categories_router
+    categories_router,
+    finance_router,
+    quotes_router
 )
 
 app = FastAPI(title="AIO CRM API")
@@ -76,6 +78,8 @@ app.include_router(orders_router.router, prefix="/api/v1")
 app.include_router(customers_router.router, prefix="/api/v1")
 app.include_router(products_router.router, prefix="/api/v1")
 app.include_router(categories_router.router, prefix="/api/v1")
+app.include_router(finance_router.router, prefix="/api/v1")
+app.include_router(quotes_router.router, prefix="/api/v1")
 
 app.include_router(reminders_router.router, prefix="/api/v1", tags=["reminders"])
 
