@@ -6,6 +6,7 @@ export default function StatCard({ label, value, delta, trend, format = "number"
   const display =
     format === "currency" ? formatCurrency(value)
     : format === "percent"  ? `${value}%`
+    : format === "text" ? value
     : formatNumber(value);
   const positive = trend === "up";
   const TrendIcon = positive ? FiTrendingUp : FiTrendingDown;

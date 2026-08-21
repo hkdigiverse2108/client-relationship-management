@@ -512,6 +512,37 @@ class PaymentResponse(PaymentCreate):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+# --- Expense Models ---
+class ExpenseCreate(BaseModel):
+    expense_id: str
+    date: str
+    category: str
+    amount: float
+    merchant: str
+    payment_method: str
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    status: str = "Cleared" # Pending, Cleared
+
+class ExpenseUpdate(BaseModel):
+    expense_id: Optional[str] = None
+    date: Optional[str] = None
+    category: Optional[str] = None
+    amount: Optional[float] = None
+    merchant: Optional[str] = None
+    payment_method: Optional[str] = None
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    status: Optional[str] = None
+
+class ExpenseResponse(ExpenseCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
 # --- Reminder Models ---
 class ReminderCreate(BaseModel):
     description: str
