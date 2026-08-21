@@ -440,15 +440,44 @@ class TaskResponse(TaskCreate):
     updated_at: str
     created_by: str
 
+class InvoiceLineItem(BaseModel):
+    description: str
+    sac: Optional[str] = None
+    qty: float
+    rate: float
+    discount: float = 0.0
+    amount: float
+
 # --- Invoice Models (Accounting Source of Truth) ---
 class InvoiceCreate(BaseModel):
     invoice_number: str
     client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_gstin: str
+    state: Optional[str] = None
+    brand: Optional[str] = None
+    invoice_type: str = "Tax Invoice"
+    mode_of_payment: str = "Current Account"
+    
     deal_id: Optional[str] = None
     source_type: str = "Project"  # Project, E-commerce, Retainer, Ad-hoc
     source_id: Optional[str] = None
-    total_amount: float
-    gst_amount: float = 0.0
+    
+    line_items: List[InvoiceLineItem] = []
+    
+    total_amount: float # Total Before Tax
+    tax_type: str = "CGST + SGST"
+    cgst_percent: float = 0.0
+    sgst_percent: float = 0.0
+    igst_percent: float = 0.0
+    total_tax_amount: float = 0.0
+    additional_discount: float = 0.0
+    rounded_total: float = 0.0
+    calculated_round_off: float = 0.0
+    total_due: float = 0.0
+    
     status: str = "draft"  # draft, sent, paid, partial, overdue
     issue_date: str
     due_date: str
@@ -461,11 +490,32 @@ class InvoiceCreate(BaseModel):
 class InvoiceUpdate(BaseModel):
     invoice_number: Optional[str] = None
     client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_gstin: Optional[str] = None
+    state: Optional[str] = None
+    brand: Optional[str] = None
+    invoice_type: Optional[str] = None
+    mode_of_payment: Optional[str] = None
+    
     deal_id: Optional[str] = None
     source_type: Optional[str] = None
     source_id: Optional[str] = None
+    
+    line_items: Optional[List[InvoiceLineItem]] = None
+    
     total_amount: Optional[float] = None
-    gst_amount: Optional[float] = None
+    tax_type: Optional[str] = None
+    cgst_percent: Optional[float] = None
+    sgst_percent: Optional[float] = None
+    igst_percent: Optional[float] = None
+    total_tax_amount: Optional[float] = None
+    additional_discount: Optional[float] = None
+    rounded_total: Optional[float] = None
+    calculated_round_off: Optional[float] = None
+    total_due: Optional[float] = None
+    
     status: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
@@ -519,6 +569,8 @@ class ExpenseCreate(BaseModel):
     category: str
     amount: float
     merchant: str
+    merchant_gstin: Optional[str] = None
+    tax_amount: float = 0.0
     payment_method: str
     reference_id: Optional[str] = None
     notes: Optional[str] = None
@@ -531,6 +583,8 @@ class ExpenseUpdate(BaseModel):
     category: Optional[str] = None
     amount: Optional[float] = None
     merchant: Optional[str] = None
+    merchant_gstin: Optional[str] = None
+    tax_amount: Optional[float] = None
     payment_method: Optional[str] = None
     reference_id: Optional[str] = None
     notes: Optional[str] = None

@@ -24,6 +24,8 @@ const ExpenseModal = ({ isOpen, onClose, expense, onSave }) => {
     reference_id: '',
     notes: '',
     receipt_url: '',
+    merchant_gstin: '',
+    tax_amount: '',
     status: 'Cleared'
   });
   
@@ -42,6 +44,8 @@ const ExpenseModal = ({ isOpen, onClose, expense, onSave }) => {
           reference_id: expense.reference_id || '',
           notes: expense.notes || '',
           receipt_url: expense.receipt_url || '',
+          merchant_gstin: expense.merchant_gstin || '',
+          tax_amount: expense.tax_amount || '',
           status: expense.status || 'Cleared'
         });
       } else {
@@ -56,6 +60,8 @@ const ExpenseModal = ({ isOpen, onClose, expense, onSave }) => {
           reference_id: '',
           notes: '',
           receipt_url: '',
+          merchant_gstin: '',
+          tax_amount: '',
           status: 'Cleared'
         });
       }
@@ -66,7 +72,7 @@ const ExpenseModal = ({ isOpen, onClose, expense, onSave }) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'amount' ? (value ? parseFloat(value) : '') : value
+      [name]: (name === 'amount' || name === 'tax_amount') ? (value ? parseFloat(value) : '') : (name === 'merchant_gstin' ? value.toUpperCase() : value)
     }));
   };
 
@@ -169,6 +175,35 @@ const ExpenseModal = ({ isOpen, onClose, expense, onSave }) => {
               placeholder="e.g. Amazon, AWS, Office Depot"
               required 
             />
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Vendor GSTIN</label>
+            <input 
+              type="text" 
+              className="form-control text-uppercase" 
+              name="merchant_gstin"
+              value={formData.merchant_gstin}
+              onChange={handleChange}
+              placeholder="15-digit GSTIN (Optional)"
+              maxLength={15}
+            />
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Tax Amount (GST)</label>
+            <div className="input-group">
+              <span className="input-group-text">Rs.</span>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                className="form-control" 
+                name="tax_amount"
+                value={formData.tax_amount}
+                onChange={handleChange}
+              />
+            </div>
           </div>
 
           <div className="col-md-6">

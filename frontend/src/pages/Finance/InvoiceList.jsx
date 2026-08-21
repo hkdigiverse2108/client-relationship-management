@@ -5,6 +5,7 @@ import { FiPlus, FiSearch, FiFilter, FiEdit2, FiTrash2, FiFileText, FiDollarSign
 import { invoiceService } from '@/api/services/invoiceService';
 import { clientService } from '@/api/services/clientService';
 import InvoiceModal from './InvoiceModal';
+import InvoicePreviewModal from './InvoicePreviewModal';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/utils/formatters';
 import SearchBar from "@/components/common/SearchBar/SearchBar";
@@ -17,11 +18,15 @@ const InvoiceList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [clientsMap, setClientsMap] = useState({});
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewInvoiceData, setPreviewInvoiceData] = useState(null);
 
   const fetchInvoicesAndClients = async () => {
     setIsLoading(true);
@@ -68,8 +73,18 @@ const InvoiceList = () => {
       result = result.filter(inv => (inv.status || '').toLowerCase() === statusFilter.toLowerCase());
     }
 
+    if (startDate) {
+      result = result.filter(inv => new Date(inv.issue_date) >= new Date(startDate));
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter(inv => new Date(inv.issue_date) <= end);
+    }
+
     setFilteredInvoices(result);
-  }, [searchQuery, statusFilter, invoices]);
+  }, [searchQuery, statusFilter, startDate, endDate, invoices]);
 
   // Calculations for Metric Cards
   const totalInvoiced = invoices.reduce((acc, curr) => acc + (curr.total_amount || 0), 0);
@@ -106,6 +121,11 @@ const InvoiceList = () => {
   const handleCreateNew = () => {
     setSelectedInvoice(null);
     setIsModalOpen(true);
+  };
+
+  const handlePreview = (invoice) => {
+    setPreviewInvoiceData(invoice);
+    setIsPreviewOpen(true);
   };
 
   const onModalClose = (wasSaved) => {
@@ -213,12 +233,29 @@ const InvoiceList = () => {
                 placeholder="Search Invoice ID or Source..." 
               />
             </div>
-            <div className="col-md-8 d-flex justify-content-md-end gap-3">
+            <div className="col-md-8 d-flex justify-content-md-end gap-3 flex-wrap">
               <div className="d-flex align-items-center gap-2">
-                <FiFilter className="text-muted" />
+                <input 
+                  type="date" 
+                  className="form-control form-control-sm" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  title="Start Date"
+                />
+                <span className="text-muted small">to</span>
+                <input 
+                  type="date" 
+                  className="form-control form-control-sm" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  title="End Date"
+                />
+                
+                
+               
                 <select 
-                  className="form-select form-select-sm" 
-                  style={{ width: '150px' }}
+                  className="form-select form-select-sm w-auto" 
+                  style={{ paddingRight: '2rem' }}
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
@@ -263,8 +300,13 @@ const InvoiceList = () => {
               ) : (
                 filteredInvoices.map((inv) => (
                   <tr key={inv.id || inv._id}>
-                    <td className="ps-4 fw-medium text-primary">
-                      {inv.invoice_number}
+                    <td className="ps-4 fw-medium">
+                      <button 
+                        className="btn btn-link p-0 text-primary fw-bold text-decoration-none" 
+                        onClick={() => handlePreview(inv)}
+                      >
+                        {inv.invoice_number}
+                      </button>
                       {inv.is_recurring && (
                         <span className="ms-2 badge bg-primary-soft text-primary border border-primary p-1" title={`Recurring: ${inv.recurring_frequency}`}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
@@ -321,6 +363,12 @@ const InvoiceList = () => {
           onSave={() => onModalClose(true)}
         />
       )}
+
+      <InvoicePreviewModal 
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        invoice={previewInvoiceData}
+      />
     </div>
   );
 };

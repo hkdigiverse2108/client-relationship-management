@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 import urllib.request
 import json
 import re
+from db import invoices_collection, expenses_collection
 
 router = APIRouter(prefix="/gst", tags=["gst"])
 
@@ -74,3 +75,51 @@ async def verify_gst(request: GSTVerifyRequest):
         raise HTTPException(status_code=400, detail=str(message))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/crm-summary/{gstin}")
+async def get_crm_summary(gstin: str):
+    gstin = gstin.strip().upper()
+    
+    # 1. Sales (Invoices)
+    sales_pipeline = [
+        {"$match": {"client_gstin": gstin, "status": {"$ne": "draft"}}},
+        {"$group": {
+            "_id": None,
+            "total_billed": {"$sum": "$total_due"},
+            "total_gst_collected": {"$sum": "$total_tax_amount"},
+            "invoice_count": {"$sum": 1}
+        }}
+    ]
+    sales_cursor = invoices_collection.aggregate(sales_pipeline)
+    sales_results = await sales_cursor.to_list(length=1)
+    sales_data = sales_results[0] if sales_results else {"total_billed": 0, "total_gst_collected": 0, "invoice_count": 0}
+    
+    # 2. Purchases (Expenses)
+    purchases_pipeline = [
+        {"$match": {"merchant_gstin": gstin}},
+        {"$group": {
+            "_id": None,
+            "total_purchases": {"$sum": "$amount"},
+            "total_gst_paid": {"$sum": "$tax_amount"},
+            "expense_count": {"$sum": 1}
+        }}
+    ]
+    purchases_cursor = expenses_collection.aggregate(purchases_pipeline)
+    purchases_results = await purchases_cursor.to_list(length=1)
+    purchases_data = purchases_results[0] if purchases_results else {"total_purchases": 0, "total_gst_paid": 0, "expense_count": 0}
+    
+    return {
+        "status": "success",
+        "data": {
+            "sales": {
+                "total_billed": sales_data.get("total_billed", 0),
+                "total_gst_collected": sales_data.get("total_gst_collected", 0),
+                "count": sales_data.get("invoice_count", 0)
+            },
+            "purchases": {
+                "total_purchases": purchases_data.get("total_purchases", 0),
+                "total_gst_paid": purchases_data.get("total_gst_paid", 0),
+                "count": purchases_data.get("expense_count", 0)
+            }
+        }
+    }

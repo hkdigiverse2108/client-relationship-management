@@ -11,6 +11,7 @@ const GSTReports = () => {
   const [gstin, setGstin] = useState('');
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
+  const [crmSummary, setCrmSummary] = useState(null);
 
   const handleVerify = async (e) => {
     e?.preventDefault();
@@ -28,10 +29,19 @@ const GSTReports = () => {
 
     setLoading(true);
     setReportData(null);
+    setCrmSummary(null);
     try {
       const response = await gstService.verifyGSTIN(gstin.toUpperCase());
       const data = response.data?.data || response.data || response;
       setReportData(data);
+      
+      try {
+        const summaryResp = await gstService.getCrmSummary(gstin.toUpperCase());
+        setCrmSummary(summaryResp.data?.data || null);
+      } catch(err) {
+        console.error("CRM Summary fetch failed", err);
+      }
+
       toast.success('GST Details Verified');
     } catch (error) {
       const msg = error.response?.data?.detail || 'Failed to verify GSTIN';
@@ -180,6 +190,51 @@ const GSTReports = () => {
                     </div>
                   </div>
                 </div>
+
+                {crmSummary && (crmSummary.sales.count > 0 || crmSummary.purchases.count > 0) && (
+                  <>
+                    <h6 className="text-uppercase text-muted fw-bold mb-3 mt-2" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
+                      CRM Financial Summary
+                    </h6>
+                    <div className="row g-4 mb-5">
+                      <div className="col-md-6">
+                        <div className="p-3 bg-success bg-opacity-10 rounded-3 h-100 border border-success border-opacity-25">
+                          <h6 className="text-success fw-bold mb-3"><FiBriefcase className="me-2"/>Sales (We Billed Them)</h6>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted small">Invoices Generated</span>
+                            <span className="fw-bold">{crmSummary.sales.count}</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted small">Total Billed</span>
+                            <span className="fw-bold text-dark">₹ {crmSummary.sales.total_billed.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span className="text-muted small">Total GST Collected</span>
+                            <span className="fw-bold text-success">₹ {crmSummary.sales.total_gst_collected.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="col-md-6">
+                        <div className="p-3 bg-danger bg-opacity-10 rounded-3 h-100 border border-danger border-opacity-25">
+                          <h6 className="text-danger fw-bold mb-3"><FiFileText className="me-2"/>Purchases (We Paid Them)</h6>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted small">Expenses Logged</span>
+                            <span className="fw-bold">{crmSummary.purchases.count}</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted small">Total Paid</span>
+                            <span className="fw-bold text-dark">₹ {crmSummary.purchases.total_purchases.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span className="text-muted small">Total GST Paid</span>
+                            <span className="fw-bold text-danger">₹ {crmSummary.purchases.total_gst_paid.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <h6 className="text-uppercase text-muted fw-bold mb-3" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
                   Business Details
