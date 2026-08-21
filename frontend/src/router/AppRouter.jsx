@@ -38,6 +38,7 @@ import QuotesList from "@/pages/Finance/QuotesList";
 import PaymentsList from "@/pages/Finance/PaymentsList";
 import Ledger from "@/pages/Finance/Ledger";
 import Expenses from "@/pages/Finance/Expenses";
+import GSTReports from "@/pages/Finance/GSTReports";
 import UserManagementPage from "@/pages/Settings/UserManagementPage";
 import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
 
@@ -93,6 +94,7 @@ export default function AppRouter() {
         <Route path="/payments" element={<PaymentsList />} />
         <Route path="/ledger" element={<Ledger />} />
         <Route path="/expenses" element={<Expenses />} />
+        <Route path="/gst-reports" element={<GSTReports />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
