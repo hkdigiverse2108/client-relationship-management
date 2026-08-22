@@ -1,8 +1,24 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "@/layouts/MainLayout/MainLayout";
 import AuthLayout from "@/layouts/AuthLayout/AuthLayout";
+
+// Component to hide the global preloader smoothly once React is fully loaded
+const HidePreloader = () => {
+  useEffect(() => {
+    const preloader = document.getElementById("global-preloader");
+    if (preloader) {
+      preloader.classList.add("fade-out");
+      setTimeout(() => {
+        if (preloader.parentNode) {
+          preloader.parentNode.removeChild(preloader);
+        }
+      }, 500); // Matches the CSS transition duration
+    }
+  }, []);
+  return null;
+};
 
 // Lazy loaded pages
 const Login = lazy(() => import("@/pages/Auth/Login"));
@@ -38,12 +54,8 @@ const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermission
 
 export default function AppRouter() {
   return (
-    <Suspense fallback={
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
-        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}></div>
-        <div style={{ color: 'var(--color-text)' }}>Loading Application...</div>
-      </div>
-    }>
+    <Suspense fallback={null}>
+      <HidePreloader />
       <Routes>
       {/* Public / auth routes */}
       <Route element={<AuthLayout />}>
