@@ -175,3 +175,17 @@
   flex-shrink: 0;
   margin-top: 8px;
 }
+
+@media (max-width: 767.98px) {
+  .notif-dropdown {
+    position: fixed !important;
+    top: calc(var(--header-height, 68px) + 4px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .notif-body {
+    max-height: calc(100vh - 150px);
+  }
+}

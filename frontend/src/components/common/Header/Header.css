@@ -302,9 +302,10 @@
 }
 
 /* Responsive Styles */
-@media (max-width: 991.98px) {
+@media (max-width: 1199.98px) {
   .aio-header {
     padding: 0 1rem;
+    gap: 0.5rem;
   }
   .aio-header__menu {
     display: inline-flex;
@@ -312,21 +313,77 @@
   .aio-header__kbd {
     display: none;
   }
-}
-
-@media (max-width: 767.98px) {
-  .aio-header__wa-pill {
-    display: none;
-  }
-  .aio-header__quick-action span {
+  .aio-header__user-info,
+  .aio-header__quick-action span,
+  .aio-header__quick-chevron,
+  .aio-header__wa-text {
     display: none;
   }
   .aio-header__quick-action {
-    padding: 0 0.6rem;
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+  }
+  .aio-header__wa-pill {
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .aio-header__left,
+  .aio-header__center,
+  .aio-header__right {
+    display: contents;
+  }
+  .aio-header {
+    justify-content: space-between;
+  }
+  .aio-header__wa-pill {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+  }
+  .aio-header__wa-pill.is-disconnected {
+    padding: 0;
+  }
+  .aio-header__wa-text {
+    display: none;
+  }
+  .aio-header__quick-action span,
+  .aio-header__quick-chevron {
+    display: none;
+  }
+  .aio-header__quick-action {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+  .aio-header__quick-icon {
+    font-size: 20px;
+    margin: 0;
+  }
+  .aio-header__icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 19px;
+  }
+  .aio-header__divider {
+    display: none;
   }
 }
 
 @media (max-width: 575.98px) {
+  .aio-header {
+    padding: 0 0.5rem;
+    gap: 0.15rem;
+  }
   .aio-header__user-info {
     display: none;
   }
@@ -334,6 +391,23 @@
     display: none;
   }
   .aio-header__search-input {
-    padding-right: 1rem;
+    padding: 0 0.5rem 0 32px;
+    height: 36px;
+    font-size: 12px;
+  }
+  .aio-header__search-icon {
+    left: 10px;
+    font-size: 16px;
+  }
+  .aio-header__user {
+    padding: 0;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+  }
+  .aio-header__menu {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
   }
 }
