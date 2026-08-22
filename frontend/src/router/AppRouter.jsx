@@ -1,41 +1,50 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "@/layouts/MainLayout/MainLayout";
 import AuthLayout from "@/layouts/AuthLayout/AuthLayout";
-import Login from "@/pages/Auth/Login";
-import Register from "@/pages/Auth/Register";
-import ForgotPassword from "@/pages/Auth/ForgotPassword";
-import Dashboard from "@/pages/Dashboard/Dashboard";
-import LeadsList from "@/pages/Leads/LeadsList";
-import ClientsList from "@/pages/Clients/ClientsList";
-import ClientProfile from "@/pages/Clients/ClientProfile";
-import ClientDetailsPage from "@/pages/Clients/ClientDetailsPage";
-import ContactsList from "@/pages/Contacts/ContactsList";
-import Pipeline from "@/pages/Pipeline/Pipeline";
-import TasksList from "@/pages/Tasks/TasksList";
-import RemindersList from "@/pages/Reminders/RemindersList";
-import Calendar from "@/pages/Calendar/Calendar";
-import Reports from "@/pages/Reports/Reports";
-import Settings from "@/pages/Settings/Settings";
-import Appearance from "@/pages/Settings/Appearance";
-import NotFound from "@/pages/NotFound";
-import Sales from "@/pages/Dashboard/Sales";
-import Team from "@/pages/Dashboard/Team";
-import Analytics from "@/pages/Dashboard/Analytics";
-import ProjectDashboard from "@/pages/Project/ProjectDashboard";
-import AllProjects from "@/pages/Project/AllProjects";
-import PipelineBoard from "@/pages/Project/PipelineBoard";
-import GanttChart from "@/pages/Project/GanttChart";
-import Orders from "@/pages/Ecommerce/Orders";
-import Products from "@/pages/Ecommerce/Products";
-import Customers from "@/pages/Ecommerce/Customers";
-import AuditLog from "@/pages/Audit/AuditLog";
-import UserManagementPage from "@/pages/Settings/UserManagementPage";
-import RolesPermissionsPage from "@/pages/Settings/RolesPermissionsPage";
+
+// Lazy loaded pages
+const Login = lazy(() => import("@/pages/Auth/Login"));
+const Register = lazy(() => import("@/pages/Auth/Register"));
+const ForgotPassword = lazy(() => import("@/pages/Auth/ForgotPassword"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/Dashboard"));
+const LeadsList = lazy(() => import("@/pages/Leads/LeadsList"));
+const ClientsList = lazy(() => import("@/pages/Clients/ClientsList"));
+const ClientProfile = lazy(() => import("@/pages/Clients/ClientProfile"));
+const ClientDetailsPage = lazy(() => import("@/pages/Clients/ClientDetailsPage"));
+const ContactsList = lazy(() => import("@/pages/Contacts/ContactsList"));
+const Pipeline = lazy(() => import("@/pages/Pipeline/Pipeline"));
+const TasksList = lazy(() => import("@/pages/Tasks/TasksList"));
+const RemindersList = lazy(() => import("@/pages/Reminders/RemindersList"));
+const Calendar = lazy(() => import("@/pages/Calendar/Calendar"));
+const Reports = lazy(() => import("@/pages/Reports/Reports"));
+const Settings = lazy(() => import("@/pages/Settings/Settings"));
+const Appearance = lazy(() => import("@/pages/Settings/Appearance"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const Sales = lazy(() => import("@/pages/Dashboard/Sales"));
+const Team = lazy(() => import("@/pages/Dashboard/Team"));
+const Analytics = lazy(() => import("@/pages/Dashboard/Analytics"));
+const ProjectDashboard = lazy(() => import("@/pages/Project/ProjectDashboard"));
+const AllProjects = lazy(() => import("@/pages/Project/AllProjects"));
+const PipelineBoard = lazy(() => import("@/pages/Project/PipelineBoard"));
+const GanttChart = lazy(() => import("@/pages/Project/GanttChart"));
+const Orders = lazy(() => import("@/pages/Ecommerce/Orders"));
+const Products = lazy(() => import("@/pages/Ecommerce/Products"));
+const Customers = lazy(() => import("@/pages/Ecommerce/Customers"));
+const AuditLog = lazy(() => import("@/pages/Audit/AuditLog"));
+const UserManagementPage = lazy(() => import("@/pages/Settings/UserManagementPage"));
+const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermissionsPage"));
 
 export default function AppRouter() {
   return (
-    <Routes>
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
+        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}></div>
+        <div style={{ color: 'var(--color-text)' }}>Loading Application...</div>
+      </div>
+    }>
+      <Routes>
       {/* Public / auth routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
@@ -79,6 +88,7 @@ export default function AppRouter() {
         <Route path="/customers" element={<Customers/>}/>
       </Route>
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
