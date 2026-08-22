@@ -30,7 +30,15 @@ export default function SalesDashboard() {
   const targetProgress = Math.min((target.monthly_achieved / target.monthly_target) * 100, 100) || 0;
 
   // Chart Data preparation
-  const repLabels = rep_performance.map(r => r.name);
+  const formatRepName = (name) => {
+    const parts = name.trim().split(" ");
+    if (parts.length > 1) {
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    }
+    return name;
+  };
+  
+  const repLabels = rep_performance.map(r => formatRepName(r.name));
   const repWon = rep_performance.map(r => r.won_revenue);
   const repPipeline = rep_performance.map(r => r.pipeline);
 
@@ -90,7 +98,8 @@ export default function SalesDashboard() {
             <h3 className="mb-4" style={{ fontSize: "1.1rem" }}>Rep-wise Performance</h3>
             {repLabels.length > 0 ? (
               <BarChart
-                labels={repLabels}
+                labels={rep_performance.map(r => r.name)}
+                formatLabel={formatRepName}
                 datasets={[
                   { label: "Closed Won", data: repWon, backgroundColor: "#10b981", borderColor: "#10b981" },
                   { label: "Active Pipeline", data: repPipeline, backgroundColor: "#3b82f6", borderColor: "#3b82f6" }

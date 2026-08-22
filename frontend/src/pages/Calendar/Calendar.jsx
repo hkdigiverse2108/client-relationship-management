@@ -177,25 +177,27 @@ export default function Calendar({ hideHeader = false }) {
         />
       )}
       <div className="card border-0 shadow-sm overflow-hidden">
-        <div className="calendar-container">
-          <BigCalendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 'calc(100vh - 220px)', minHeight: '600px' }}
-            views={['month', 'week', 'day']}
-            view={view}
-            onView={setView}
-            date={date}
-            onNavigate={setDate}
-            components={{
-              toolbar: CustomToolbar,
-              event: CustomEvent
-            }}
-            eventPropGetter={eventStyleGetter}
-            popup={true}
-          />
+        <div className="calendar-container" style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: '800px' }}>
+            <BigCalendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: 'calc(100vh - 220px)', minHeight: '600px' }}
+              views={['month', 'week', 'day']}
+              view={view}
+              onView={setView}
+              date={date}
+              onNavigate={setDate}
+              components={{
+                toolbar: CustomToolbar,
+                event: CustomEvent
+              }}
+              eventPropGetter={eventStyleGetter}
+              popup={true}
+            />
+          </div>
         </div>
       </div>
     </>

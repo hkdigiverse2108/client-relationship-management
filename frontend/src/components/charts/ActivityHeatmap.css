@@ -27,13 +27,26 @@
   display: flex;
   flex-direction: column;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+/* Make scrollbar always visible on mobile/webkit */
+.aio-heatmap__body::-webkit-scrollbar {
+  height: 6px;
+}
+.aio-heatmap__body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+.aio-heatmap__body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
 .aio-heatmap__x-axis {
   display: flex;
   margin-bottom: 0.5rem;
-  padding-right: 0.5rem;
+  gap: 4px;
 }
 
 .aio-heatmap__y-spacer {
@@ -43,7 +56,7 @@
 }
 
 .aio-heatmap__x-label {
-  flex: 1;
+  flex: 1 0 16px;
   text-align: center;
   font-size: 0.7rem;
   color: var(--color-text-muted);
@@ -79,7 +92,7 @@
 }
 
 .aio-heatmap__cell {
-  flex: 1;
+  flex: 1 0 16px;
   aspect-ratio: 1 / 1;
   border-radius: 4px;
   background-color: #e2e8f0;

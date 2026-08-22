@@ -182,35 +182,72 @@ export default function Pipeline() {
         title="Sales Pipeline"
         description={`${DEAL_STAGES.length} Deal Stages • Drag & drop to manage deals`}
         actions={
-          <div className="d-flex align-items-center gap-2">
-            <div className="d-flex align-items-center bg-white rounded-5 shadow-sm border">
-              <Button 
-                variant={viewMode === 'board' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('board')}
-              >
-                Pipeline
-              </Button>
-              <Button 
-                variant={viewMode === 'forecast' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('forecast')}
-              >
-                Forecast
-              </Button>
+          <>
+            {/* Desktop Actions (Hidden on small screens) */}
+            <div className="d-none d-lg-flex align-items-center gap-2">
+              <div className="d-flex align-items-center bg-white rounded-5 shadow-sm border">
+                <Button 
+                  variant={viewMode === 'board' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('board')}
+                >
+                  Pipeline
+                </Button>
+                <Button 
+                  variant={viewMode === 'forecast' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('forecast')}
+                >
+                  Forecast
+                </Button>
+              </div>
+              {viewMode === "board" && (
+                <SearchInput
+                  dark
+                  placeholder="Search deals..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              )}
+              <Button icon={FiPlus} variant="gradient" onClick={() => { setEditData(null); setModalOpen(true); }}>Create deal</Button>
             </div>
-            {viewMode === "board" && (
-              <SearchInput
-                dark
-                placeholder="Search deals..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            )}
-            <Button icon={FiPlus} variant="gradient" onClick={() => { setEditData(null); setModalOpen(true); }}>Create deal</Button>
-          </div>
+            
+            {/* Mobile Actions for PageHeader (Only shows create button) */}
+            <div className="d-flex d-lg-none">
+              <Button icon={FiPlus} variant="gradient" onClick={() => { setEditData(null); setModalOpen(true); }}>Create deal</Button>
+            </div>
+          </>
         }
       />
+
+      {/* Mobile/Tablet Toolbar (Hidden on desktop) */}
+      <div className="d-flex d-lg-none flex-column align-items-start mb-4 gap-3">
+        <div className="d-flex align-items-center bg-white rounded-5 shadow-sm border p-1">
+          <Button 
+            variant={viewMode === 'board' ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('board')}
+          >
+            Pipeline
+          </Button>
+          <Button 
+            variant={viewMode === 'forecast' ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('forecast')}
+          >
+            Forecast
+          </Button>
+        </div>
+        {viewMode === "board" && (
+          <div style={{ width: "100%", maxWidth: "100%" }}>
+            <SearchInput
+              placeholder="Search deals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
 
       {viewMode === "forecast" ? (
         <ForecastView deals={deals} usersMap={usersMap} />

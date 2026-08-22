@@ -1,6 +1,8 @@
 import { Line } from "react-chartjs-2";
 import "./chartSetup";
-export default function LineChart({ labels, datasets, height = 280 }) {
+import "./LineChart.css";
+
+export default function LineChart({ labels, datasets, height = 280, minWidth = "500px" }) {
   const data = {
     labels,
     datasets: datasets.map((ds) => ({
@@ -24,5 +26,11 @@ export default function LineChart({ labels, datasets, height = 280 }) {
       y: { grid: { color: "rgba(148,163,184,0.15)" }, ticks: { color: "#94a3b8" }, beginAtZero: true },
     },
   };
-  return <div style={{ height }}><Line data={data} options={options} /></div>;
+  return (
+    <div className="aio-linechart-wrapper">
+      <div style={{ height, width: `max(100%, ${minWidth})`, position: "relative" }}>
+        <Line data={data} options={options} />
+      </div>
+    </div>
+  );
 }

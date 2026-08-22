@@ -48,7 +48,7 @@ export default function AnalyticsDashboard() {
   const growthDatasets = [
     {
       type: "bar",
-      label: "Annual Recurring Revenue (ARR)",
+      label: "ARR",
       data: growth_dynamics.arr,
       backgroundColor: "rgba(79, 70, 229, 0.2)",
       borderColor: "#4f46e5",
@@ -56,7 +56,7 @@ export default function AnalyticsDashboard() {
     },
     {
       type: "line",
-      label: "Monthly Recurring Revenue (MRR)",
+      label: "MRR",
       data: growth_dynamics.mrr,
       borderColor: "#10b981",
       backgroundColor: "#10b981",

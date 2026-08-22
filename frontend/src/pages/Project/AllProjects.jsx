@@ -217,14 +217,11 @@ export default function AllProjects() {
         <div className="col-12 col-xl-10 col-lg-9">
           <div className="card p-3 mb-3">
             <div className="row g-2 align-items-center">
-              <div className="col-12 col-md-6 col-lg-5">
+              <div className="col-12 col-md-6 col-lg-6">
                 <SearchBar value={search} onChange={setSearch} placeholder="Search by project name or category…" />
               </div>
 
-              <div className="col-6 col-md-3 col-lg-2">
-                <Button variant="secondary" icon={FiFilter} block>Filters</Button>
-              </div>
-              <div className="col-12 col-lg-3 text-lg-end">
+              <div className="col-12 col-md-6 col-lg-6 text-md-end mt-2 mt-md-0 d-flex align-items-center justify-content-md-end">
                 <span className="text-muted-2" style={{ fontSize: 13 }}>
                   {filtered.length} of {projects.length} projects
                 </span>

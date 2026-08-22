@@ -1,7 +1,7 @@
 import { Chart } from "react-chartjs-2";
 import "./chartSetup";
 
-export default function MixedChart({ labels, datasets, height = 300 }) {
+export default function MixedChart({ labels, datasets, height = 300, minWidth = "500px" }) {
   const data = {
     labels,
     datasets: datasets.map((ds) => {
@@ -72,8 +72,10 @@ export default function MixedChart({ labels, datasets, height = 300 }) {
   };
 
   return (
-    <div style={{ height, width: "100%" }}>
-      <Chart type="bar" data={data} options={options} />
+    <div className="aio-linechart-wrapper" style={{ overflowX: "auto", overflowY: "hidden", width: "100%", maxWidth: "100%", paddingBottom: "12px" }}>
+      <div style={{ height, width: `max(100%, ${minWidth})`, position: "relative" }}>
+        <Chart type="bar" data={data} options={options} />
+      </div>
     </div>
   );
 }

@@ -222,33 +222,72 @@ export default function Reports() {
         title="Project Reports"
         description="Comprehensive insights into project performance, workload, and financials."
         actions={
-          <div className="d-flex align-items-center gap-2">
-            <SearchInput
-              dark
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select 
-              className="form-select form-select-sm"
-              style={{ width: "130px", height: "38px", borderRadius: "var(--radius-full)" }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-            <select 
-              className="form-select form-select-sm"
-              style={{ width: "130px", height: "38px", borderRadius: "var(--radius-full)" }}
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-            >
-              {STAGE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-            <Button icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
-          </div>
+          <>
+            {/* Desktop Actions */}
+            <div className="d-none d-lg-flex align-items-center gap-2">
+              <SearchInput
+                dark
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <select 
+                className="form-select form-select-sm"
+                style={{ width: "130px", height: "38px", borderRadius: "var(--radius-full)" }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              <select 
+                className="form-select form-select-sm"
+                style={{ width: "130px", height: "38px", borderRadius: "var(--radius-full)" }}
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+              >
+                {STAGE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
+            </div>
+
+            {/* Mobile Actions */}
+            <div className="d-flex d-lg-none">
+              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
+            </div>
+          </>
         }
       />
+
+      {/* Mobile Toolbar */}
+      <div className="row d-lg-none g-3 mb-4">
+        <div className="col-12 col-md-4">
+          <SearchInput
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="col-6 col-md-4">
+          <select 
+            className="form-select"
+            style={{ borderRadius: "var(--radius-full)", width: "100%" }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+        <div className="col-6 col-md-4">
+          <select 
+            className="form-select"
+            style={{ borderRadius: "var(--radius-full)", width: "100%" }}
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+          >
+            {STAGE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+      </div>
 
       <div className="row g-3 mb-4">
         <div className="col-12 col-md-4">
@@ -289,6 +328,13 @@ export default function Reports() {
             <div className="card-body px-4 pb-4">
               <BarChart 
                 labels={workloadData.labels} 
+                formatLabel={(name) => {
+                  const parts = name.trim().split(" ");
+                  if (parts.length > 1) {
+                    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+                  }
+                  return name;
+                }}
                 datasets={workloadData.datasets} 
                 height={300} 
               />

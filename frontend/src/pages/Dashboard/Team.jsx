@@ -28,6 +28,14 @@ export default function TeamDashboard() {
   const { kpis, roles_distribution, workload, recent_activities_feed } = data;
 
   // Bar Chart Data for Workload
+  const formatRepName = (name) => {
+    const parts = name.trim().split(" ");
+    if (parts.length > 1) {
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    }
+    return name;
+  };
+
   const workloadLabels = workload.map((w) => w.name);
   const dealsData = workload.map((w) => w.deals);
   const projectsData = workload.map((w) => w.projects);
@@ -76,7 +84,7 @@ export default function TeamDashboard() {
             </div>
             <div className="card-body" style={{ height: "350px" }}>
               {workload.length > 0 ? (
-                <BarChart labels={workloadLabels} datasets={workloadDatasets} />
+                <BarChart labels={workloadLabels} formatLabel={formatRepName} datasets={workloadDatasets} />
               ) : (
                 <div className="d-flex h-100 align-items-center justify-content-center text-muted">
                   No workload data available

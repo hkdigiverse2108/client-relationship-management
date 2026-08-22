@@ -198,3 +198,13 @@
   color: var(--color-text-muted, #94a3b8);
   margin: 0;
 }
+
+@media (max-width: 575.98px) {
+  .wa-engage__body {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .wa-engage__metrics {
+    width: 100%;
+  }
+}

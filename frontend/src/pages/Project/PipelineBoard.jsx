@@ -159,30 +159,62 @@ export default function PipelineBoard() {
         title="Pipeline Board"
         description="Manage project lifecycle stages visually"
         actions={
-          <div className="d-flex align-items-center gap-2">
-            <SearchInput
-              dark
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select 
-              className="form-select form-select-sm"
-              style={{ width: "150px", height: "38px", borderRadius: "var(--radius-full)" }}
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-            >
-              <option value="all">All Stages</option>
-              {STAGES.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-            <Button onClick={openCreate}>
-              <FiPlus className="me-2" /> New Project
-            </Button>
-          </div>
+          <>
+            {/* Desktop Actions */}
+            <div className="d-none d-lg-flex align-items-center gap-2">
+              <SearchInput
+                dark
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <select 
+                className="form-select form-select-sm"
+                style={{ width: "150px", height: "38px", borderRadius: "var(--radius-full)" }}
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+              >
+                <option value="all">All Stages</option>
+                {STAGES.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+              <Button onClick={openCreate}>
+                <FiPlus className="me-2" /> New Project
+              </Button>
+            </div>
+
+            {/* Mobile Actions */}
+            <div className="d-flex d-lg-none">
+              <Button onClick={openCreate}>
+                <FiPlus className="me-2" /> New Project
+              </Button>
+            </div>
+          </>
         }
       />
+
+      {/* Mobile Toolbar */}
+      <div className="d-flex d-lg-none flex-wrap align-items-center mb-4 gap-2">
+        <select 
+          className="form-select"
+          style={{ width: "140px", flexShrink: 0, borderRadius: "var(--radius-full)" }}
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+        >
+          <option value="all">All Stages</option>
+          {STAGES.map(s => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+        <div style={{ flex: "1 1 200px" }}>
+          <SearchInput
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div className="project-pipeline-container">
         <div className="pipeline-board">

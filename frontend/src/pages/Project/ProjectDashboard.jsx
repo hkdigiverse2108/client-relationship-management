@@ -182,130 +182,146 @@ export default function ProjectDashboard() {
           </div>
         </div>
 
-        {/* Row 3: Charts */}
-        <div className="charts-grid mt-4">
-          <div className="chart-card glass">
-            <h5 className="chart-title">Category Distribution</h5>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+        {/* Row 3: Pie Charts */}
+        <div className="row g-4 mt-1">
+          <div className="col-12 col-xl-6">
+            <div className="chart-card glass h-100">
+              <h5 className="chart-title">Category Distribution</h5>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
           
-          <div className="chart-card glass">
-            <h5 className="chart-title">Status Breakdown</h5>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+          <div className="col-12 col-xl-6">
+            <div className="chart-card glass h-100">
+              <h5 className="chart-title">Status Breakdown</h5>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
-
-          <div className="chart-card glass">
-            <h5 className="chart-title">Team Productivity (Tasks)</h5>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={teamProductivityData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="name" stroke="var(--color-text-subtle)" />
-                  <YAxis stroke="var(--color-text-subtle)" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="tasksCompleted" name="Tasks Completed" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="totalTasks" name="Total Tasks" fill="var(--color-surface-hover)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
         </div>
 
-        {/* Row 4: Financial Overview & Recent Projects */}
-        <div className="bottom-grid mt-4">
-          <div className="chart-card glass">
-            <h5 className="chart-title">Financial Overview</h5>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financialOverviewData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="name" stroke="var(--color-text-subtle)" />
-                  <YAxis stroke="var(--color-text-subtle)" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="Value" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Received" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        {/* Row 4: Bar Charts (Productivity & Financials) */}
+        <div className="row g-4 mt-1">
+          <div className="col-12 col-xl-6">
+            <div className="chart-card glass h-100">
+              <h5 className="chart-title">Team Productivity (Tasks)</h5>
+              <div className="chart-wrapper aio-linechart-wrapper" style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: "12px" }}>
+                <div style={{ height: "100%", width: "max(100%, 400px)", position: "relative" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={teamProductivityData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="name" stroke="var(--color-text-subtle)" />
+                      <YAxis stroke="var(--color-text-subtle)" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="tasksCompleted" name="Tasks Completed" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="totalTasks" name="Total Tasks" fill="var(--color-surface-hover)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="table-card glass">
-            <h5 className="table-title">Recent Projects</h5>
-            <div className="table-responsive">
-              <table className="table align-middle border-light">
-                <thead>
-                  <tr className="text-muted-2">
-                    <th style={{ fontWeight: 500 }}>Project Name</th>
-                    <th style={{ fontWeight: 500 }}>Category</th>
-                    <th style={{ fontWeight: 500 }}>Status</th>
-                    <th style={{ fontWeight: 500 }}>End Date</th>
-                    <th style={{ fontWeight: 500 }}>Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentProjects.length > 0 ? recentProjects.map(p => (
-                    <tr key={p.id || p._id}>
-                      <td className="fw-medium">{p.title}</td>
-                      <td>{p.category || 'N/A'}</td>
-                      <td className="text-muted" style={{ fontSize: "14px", textTransform: "capitalize" }}>
-                        {(p.status || 'unknown').replace('_', ' ')}
-                      </td>
-                      <td className="text-muted" style={{ fontSize: "14px" }}>
-                        {p.end_date ? formatDate(p.end_date) : 'No Deadline'}
-                      </td>
-                      <td className="fw-bold text-success">{formatCurrency(p.project_value || 0)}</td>
+          <div className="col-12 col-xl-6">
+            <div className="chart-card glass h-100">
+              <h5 className="chart-title">Financial Overview</h5>
+              <div className="chart-wrapper aio-linechart-wrapper" style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: "12px" }}>
+                <div style={{ height: "100%", width: "max(100%, 400px)", position: "relative" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={financialOverviewData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="name" stroke="var(--color-text-subtle)" />
+                      <YAxis stroke="var(--color-text-subtle)" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="Value" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Received" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 5: Recent Projects */}
+        <div className="row g-4 mt-1">
+          <div className="col-12">
+            <div className="table-card glass h-100">
+              <h5 className="table-title">Recent Projects</h5>
+              <div className="table-responsive">
+                <table className="table align-middle border-light">
+                  <thead>
+                    <tr className="text-muted-2">
+                      <th style={{ fontWeight: 500 }}>Project Name</th>
+                      <th style={{ fontWeight: 500 }}>Category</th>
+                      <th style={{ fontWeight: 500 }}>Status</th>
+                      <th style={{ fontWeight: 500 }}>End Date</th>
+                      <th style={{ fontWeight: 500 }}>Value</th>
                     </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan="5" className="text-center py-4 text-muted">No recent projects found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {recentProjects.length > 0 ? recentProjects.map(p => (
+                      <tr key={p.id || p._id}>
+                        <td className="fw-medium">{p.title}</td>
+                        <td>{p.category || 'N/A'}</td>
+                        <td className="text-muted" style={{ fontSize: "14px", textTransform: "capitalize" }}>
+                          {(p.status || 'unknown').replace('_', ' ')}
+                        </td>
+                        <td className="text-muted" style={{ fontSize: "14px" }}>
+                          {p.end_date ? formatDate(p.end_date) : 'No Deadline'}
+                        </td>
+                        <td className="fw-bold text-success">{formatCurrency(p.project_value || 0)}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">No recent projects found</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

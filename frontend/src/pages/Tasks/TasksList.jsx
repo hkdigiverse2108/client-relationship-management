@@ -143,29 +143,69 @@ export default function TasksList() {
         title="Task Board"
         description="Manage and track all your tasks across projects."
         actions={
-          <div className="d-flex align-items-center gap-3">
-            <div className="btn-group bg-surface border rounded-pill">
-              <button 
-                className={`btn btn-sm rounded-pill border-0 ${viewMode !== 'board' ? 'bg-transparent text-subtle' : ''}`}
-                style={viewMode === 'board' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}}
-                onClick={() => setViewMode('board')}
-              >
-                <FiTrello className="me-1" /> Task Board
-              </button>
-              <button 
-                className={`btn btn-sm rounded-pill border-0 ${viewMode !== 'calendar' ? 'bg-transparent text-subtle' : ''}`}
-                style={viewMode === 'calendar' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}}
-                onClick={() => setViewMode('calendar')}
-              >
-                <FiCalendar className="me-1" /> Calendar
-              </button>
+          <>
+            {/* Desktop Actions */}
+            <div className="d-none d-md-flex align-items-center gap-3">
+              <div className="btn-group bg-surface border rounded-pill">
+                <button 
+                  className={`btn btn-sm rounded-pill border-0 ${viewMode !== 'board' ? 'bg-transparent text-subtle' : ''}`}
+                  style={{ whiteSpace: "nowrap", ...(viewMode === 'board' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}) }}
+                  onClick={() => setViewMode('board')}
+                >
+                  <FiTrello className="me-1" /> Task Board
+                </button>
+                <button 
+                  className={`btn btn-sm rounded-pill border-0 ${viewMode !== 'calendar' ? 'bg-transparent text-subtle' : ''}`}
+                  style={{ whiteSpace: "nowrap", ...(viewMode === 'calendar' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}) }}
+                  onClick={() => setViewMode('calendar')}
+                >
+                  <FiCalendar className="me-1" /> Calendar
+                </button>
+              </div>
+              <Button icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
+                New Task
+              </Button>
             </div>
-            <Button icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
-              New Task
-            </Button>
-          </div>
+
+            {/* Mobile Actions */}
+            <div className="d-flex d-md-none">
+              <Button icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
+                New Task
+              </Button>
+            </div>
+          </>
         }
       />
+
+      {/* Mobile Toolbar */}
+      <div className="d-flex d-md-none mb-4">
+        <div className="btn-group bg-surface border rounded-pill w-100">
+          <button 
+            className={`btn rounded-pill border-0 w-50 ${viewMode !== 'board' ? 'bg-transparent text-subtle' : ''}`}
+            style={{
+              padding: "0.4rem",
+              fontSize: "0.8rem", 
+              whiteSpace: "nowrap",
+              ...(viewMode === 'board' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {})
+            }}
+            onClick={() => setViewMode('board')}
+          >
+            <FiTrello className="me-1" /> Task Board
+          </button>
+          <button 
+            className={`btn rounded-pill border-0 w-50 ${viewMode !== 'calendar' ? 'bg-transparent text-subtle' : ''}`}
+            style={{
+              padding: "0.4rem",
+              fontSize: "0.8rem", 
+              whiteSpace: "nowrap",
+              ...(viewMode === 'calendar' ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {})
+            }}
+            onClick={() => setViewMode('calendar')}
+          >
+            <FiCalendar className="me-1" /> Calendar
+          </button>
+        </div>
+      </div>
 
       {viewMode === "calendar" ? (
         <div className="mt-4">

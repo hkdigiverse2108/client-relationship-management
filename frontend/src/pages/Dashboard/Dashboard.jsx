@@ -77,15 +77,15 @@ export default function Dashboard() {
               </select>
             </div>
             
-            <div style={{ height: 300, position: "relative" }}>
+            <div style={{ minHeight: 300, position: "relative" }}>
               {chartLoading ? (
-                <div className="d-flex justify-content-center align-items-center h-100">
+                <div className="d-flex justify-content-center align-items-center h-100" style={{ minHeight: 300 }}>
                   <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </div>
                 </div>
               ) : !hasChartData ? (
-                <div className="d-flex flex-column justify-content-center align-items-center h-100 text-muted-2">
+                <div className="d-flex flex-column justify-content-center align-items-center h-100 text-muted-2" style={{ minHeight: 300 }}>
                   <FiBarChart2 size={48} style={{ opacity: 0.2, marginBottom: "1rem" }} />
                   <p>No record found</p>
                 </div>

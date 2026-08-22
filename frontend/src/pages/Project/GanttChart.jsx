@@ -171,25 +171,51 @@ export default function GanttChart() {
         title="Gantt Chart"
         description="Visualize project timelines, tasks, and milestones."
         actions={
-          <div className="d-flex align-items-center gap-2">
-            <select 
-              className="form-select form-select-sm"
-              style={{ minWidth: "200px", height: "38px", borderRadius: "var(--radius-full)" }}
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-            >
-              <option value="all">All Projects</option>
-              <option value="" disabled>Select Project...</option>
-              {projects.map(p => (
-                <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
-              ))}
-            </select>
-            <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
-              New Project
-            </Button>
-          </div>
+          <>
+            {/* Desktop Actions */}
+            <div className="d-none d-lg-flex align-items-center gap-2">
+              <select 
+                className="form-select form-select-sm"
+                style={{ minWidth: "200px", height: "38px", borderRadius: "var(--radius-full)" }}
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+              >
+                <option value="all">All Projects</option>
+                <option value="" disabled>Select Project...</option>
+                {projects.map(p => (
+                  <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
+                ))}
+              </select>
+              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+                New Project
+              </Button>
+            </div>
+
+            {/* Mobile Actions */}
+            <div className="d-flex d-lg-none">
+              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+                New Project
+              </Button>
+            </div>
+          </>
         }
       />
+
+      {/* Mobile Toolbar */}
+      <div className="d-flex d-lg-none mb-4">
+        <select 
+          className="form-select"
+          style={{ width: "100%", borderRadius: "var(--radius-full)" }}
+          value={selectedProjectId}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+        >
+          <option value="all">All Projects</option>
+          <option value="" disabled>Select Project...</option>
+          {projects.map(p => (
+            <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="gantt-container">
         {tasks.length === 0 ? (

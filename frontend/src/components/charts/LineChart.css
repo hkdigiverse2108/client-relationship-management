@@ -1,0 +1,19 @@
+.aio-linechart-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
+  padding-bottom: 0.5rem;
+}
+
+.aio-linechart-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+.aio-linechart-wrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+.aio-linechart-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
