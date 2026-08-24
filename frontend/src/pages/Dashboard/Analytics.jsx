@@ -136,7 +136,7 @@ export default function AnalyticsDashboard() {
           <div className="card h-100">
             <div className="card-header border-0 bg-transparent pt-4 pb-0">
               <h5 className="mb-0">Growth Dynamics</h5>
-              <p className="text-muted small mb-0">Monthly vs Annual Recurring Revenue</p>
+              <p className="small mb-0" style={{ color: "var(--color-text-muted)" }}>Monthly vs Annual Recurring Revenue</p>
             </div>
             <div className="card-body" style={{ height: "360px" }}>
               <MixedChart labels={growth_dynamics.labels} datasets={growthDatasets} />
@@ -148,14 +148,14 @@ export default function AnalyticsDashboard() {
           <div className="card h-100">
             <div className="card-header border-0 bg-transparent pt-4 pb-0">
               <h5 className="mb-0">Channel Attribution</h5>
-              <p className="text-muted small mb-0">Revenue by Source</p>
+              <p className="small mb-0" style={{ color: "var(--color-text-muted)" }}>Revenue by Source</p>
             </div>
             <div className="card-body d-flex flex-column justify-content-center">
               {channel_attribution && channel_attribution.length > 0 ? (
                 channel_attribution.map((ch, idx) => (
                   <div key={idx} className="mb-4">
                     <div className="d-flex justify-content-between mb-2">
-                      <span className="fw-medium">{ch.name}</span>
+                      <span className="fw-medium" style={{ color: "var(--color-text)" }}>{ch.name}</span>
                       <span className="fw-bold" style={{ color: ch.color }}>{ch.percentage}%</span>
                     </div>
                     <div className="progress" style={{ height: "8px", backgroundColor: "rgba(148,163,184,0.15)" }}>
@@ -200,8 +200,8 @@ export default function AnalyticsDashboard() {
                 <FiPieChart size={32} />
               </div>
               <h3 className="display-4 fw-bold mb-2">{kpis.deal_velocity} <span style={{ fontSize: "1.5rem", color: "var(--color-text-muted)" }}>Days</span></h3>
-              <h5 className="mb-0 text-muted">Average Deal Velocity</h5>
-              <p className="mt-3 text-muted" style={{ maxWidth: "300px" }}>
+              <h5 className="mb-0" style={{ color: "var(--color-text-muted)" }}>Average Deal Velocity</h5>
+              <p className="mt-3" style={{ maxWidth: "300px", color: "var(--color-text-muted)" }}>
                 This is the average time it takes for your team to move a deal from "New Lead" to "Won".
               </p>
             </div>

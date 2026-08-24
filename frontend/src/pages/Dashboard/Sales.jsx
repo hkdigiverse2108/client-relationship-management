@@ -53,7 +53,7 @@ export default function SalesDashboard() {
       />
 
       {/* Target Progress Bar */}
-      <div className="card p-3 p-md-4 mb-4 border-0 shadow-sm" style={{ background: "linear-gradient(135deg, var(--color-primary-soft), #fff)" }}>
+      <div className="card p-3 p-md-4 mb-4 border-0 shadow-sm" style={{ background: "var(--sales-target-bg)" }}>
         <div className="d-flex justify-content-between align-items-end mb-2">
           <div>
             <h5 className="mb-1 fw-bold text-primary">Monthly Sales Target</h5>
@@ -156,7 +156,13 @@ export default function SalesDashboard() {
                       <td>{rep.won_deals} / {rep.total_deals}</td>
                       <td className="text-success fw-bold">{formatCurrency(rep.won_revenue)}</td>
                       <td>
-                        <span className={`badge ${rep.win_rate >= 50 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} border-0`}>
+                        <span 
+                          className="badge border-0" 
+                          style={{ 
+                            backgroundColor: rep.win_rate >= 50 ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
+                            color: rep.win_rate >= 50 ? 'var(--color-success)' : 'var(--color-warning)'
+                          }}
+                        >
                           {rep.win_rate}%
                         </span>
                       </td>
@@ -190,7 +196,7 @@ export default function SalesDashboard() {
                     <tr key={deal.id}>
                       <td>
                         <div className="fw-medium text-truncate" style={{ maxWidth: "150px" }}>{deal.title}</div>
-                        <div className="text-muted" style={{ fontSize: "12px" }}>{formatDateTime(deal.date)}</div>
+                        <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{formatDateTime(deal.date)}</div>
                       </td>
                       <td className="text-success fw-bold">{formatCurrency(deal.amount)}</td>
                       <td style={{ fontSize: "14px" }}>{deal.rep_name}</td>

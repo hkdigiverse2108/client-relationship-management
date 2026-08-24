@@ -182,7 +182,7 @@ export default function RolesPermissionsPage() {
 
   const renderPageRow = (path, label) => (
     <tr key={path}>
-      <td className="fw-medium text-muted ps-4" style={{ fontSize: 13 }}>{label}</td>
+      <td className="fw-medium ps-4" style={{ fontSize: 13, color: "var(--color-text-subtle)" }}>{label}</td>
       <td className="text-center">
         <input 
           type="checkbox" 
@@ -215,7 +215,7 @@ export default function RolesPermissionsPage() {
           onChange={(e) => handlePermissionChange(path, 'delete', e.target.checked)}
         />
       </td>
-      <td className="text-center bg-light">
+      <td className="text-center" style={{ backgroundColor: "var(--color-surface-alt)" }}>
         <input 
           type="checkbox" 
           className="form-check-input border-primary" 
@@ -253,7 +253,7 @@ export default function RolesPermissionsPage() {
                 </button>
               ))}
             </div>
-            <div className="mt-4 p-3 bg-light rounded text-muted" style={{ fontSize: 13 }}>
+            <div className="mt-4 p-3 rounded" style={{ fontSize: 13, backgroundColor: "var(--color-surface-alt)", color: "var(--color-text-subtle)" }}>
               Select a role to configure its default permission preset. These permissions will be automatically applied when creating a new user with this role.
             </div>
           </div>
@@ -287,28 +287,28 @@ export default function RolesPermissionsPage() {
 
                 <div className="table-responsive" style={{ maxHeight: 600, overflowY: "auto", border: "1px solid var(--color-divider)", borderRadius: 6 }}>
                   <table className="table table-bordered align-middle table-sm m-0" style={{ fontSize: 14 }}>
-                    <thead className="table-light sticky-top" style={{ zIndex: 1, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                    <thead className="sticky-top" style={{ zIndex: 1, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", backgroundColor: "var(--color-surface-alt)" }}>
                       <tr>
                         <th>Module / Page</th>
                         <th className="text-center" style={{ width: 80 }}>View</th>
                         <th className="text-center" style={{ width: 80 }}>Add</th>
                         <th className="text-center" style={{ width: 80 }}>Edit</th>
                         <th className="text-center" style={{ width: 80 }}>Delete</th>
-                        <th className="text-center bg-light" style={{ width: 80, borderBottom: "2px solid var(--color-primary)" }}>All</th>
+                        <th className="text-center" style={{ width: 80, borderBottom: "2px solid var(--color-primary)", backgroundColor: "var(--color-surface-alt)" }}>All</th>
                       </tr>
                     </thead>
                     <tbody>
                       {NAV_SECTIONS.map((section) => (
                         <React.Fragment key={section.id}>
-                          <tr className="table-secondary">
-                            <td className="fw-bold text-dark" style={{ fontSize: 13 }}>
+                          <tr style={{ backgroundColor: "var(--color-surface-alt)" }}>
+                            <td className="fw-bold" style={{ fontSize: 13, color: "var(--color-text)" }}>
                               <div className="d-flex align-items-center gap-2">
                                 <section.icon />
                                 {section.title}
                               </div>
                             </td>
-                            <td colSpan={4} className="table-secondary"></td>
-                            <td className="text-center table-secondary">
+                            <td colSpan={4} style={{ backgroundColor: "var(--color-surface-alt)" }}></td>
+                            <td className="text-center" style={{ backgroundColor: "var(--color-surface-alt)" }}>
                               <input 
                                 type="checkbox" 
                                 className="form-check-input border-primary" 

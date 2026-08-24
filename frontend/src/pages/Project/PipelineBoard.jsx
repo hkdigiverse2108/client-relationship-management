@@ -179,14 +179,14 @@ export default function PipelineBoard() {
                   <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
-              <Button onClick={openCreate}>
+              <Button variant="gradient" onClick={openCreate}>
                 <FiPlus className="me-2" /> New Project
               </Button>
             </div>
 
             {/* Mobile Actions */}
             <div className="d-flex d-lg-none">
-              <Button onClick={openCreate}>
+              <Button variant="gradient" onClick={openCreate}>
                 <FiPlus className="me-2" /> New Project
               </Button>
             </div>

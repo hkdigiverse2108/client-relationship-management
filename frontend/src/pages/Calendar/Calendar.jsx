@@ -49,13 +49,13 @@ const CustomToolbar = (toolbar) => {
     <div className="calendar-toolbar">
       <div className="d-flex justify-content-between align-items-center w-100 p-3">
         <div className="d-flex align-items-center gap-3">
-          <button className="btn btn-link text-dark p-0" onClick={goToBack}>
+          <button className="btn btn-link p-0" onClick={goToBack}>
             <FiChevronLeft size={20} />
           </button>
           <h4 className="mb-0 fw-bold" style={{ fontSize: '1.1rem', minWidth: '130px', textAlign: 'center' }}>
             {label()}
           </h4>
-          <button className="btn btn-link text-dark p-0" onClick={goToNext}>
+          <button className="btn btn-link p-0" onClick={goToNext}>
             <FiChevronRight size={20} />
           </button>
         </div>
@@ -110,7 +110,7 @@ export default function Calendar({ hideHeader = false }) {
         // Map Tasks
         if (Array.isArray(tasksRes)) {
           tasksRes.forEach(task => {
-            if (task.end_date) {
+            if (task.end_date && task.status !== 'Completed') {
               // Show task only on due date (Option A)
               mappedEvents.push({
                 id: `task_${task.id || task._id}`,
@@ -128,12 +128,15 @@ export default function Calendar({ hideHeader = false }) {
         // Map Reminders
         if (Array.isArray(remindersRes)) {
           remindersRes.forEach(rem => {
-            if (rem.due_date) {
+            if (rem.due_date && rem.status !== 'completed') {
+              // Give reminders at least a 60-minute duration so they aren't cut off in week/day views
+              const startDate = new Date(rem.due_date);
+              const endDate = new Date(startDate.getTime() + 60 * 60000); // +60 minutes
               mappedEvents.push({
                 id: `rem_${rem.id || rem._id}`,
                 title: rem.description || 'Reminder',
-                start: new Date(rem.due_date),
-                end: new Date(rem.due_date),
+                start: startDate,
+                end: endDate,
                 type: 'reminder',
                 allDay: false, // Reminders might have specific times
                 resource: rem
@@ -173,7 +176,7 @@ export default function Calendar({ hideHeader = false }) {
         <PageHeader
           title="Calendar"
           description="Manage your schedule, tasks, and follow-ups in one view."
-          actions={<Button icon={FiPlus}>New event</Button>}
+          actions={<Button variant="gradient" icon={FiPlus}>New event</Button>}
         />
       )}
       <div className="card border-0 shadow-sm overflow-hidden">

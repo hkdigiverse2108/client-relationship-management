@@ -40,7 +40,7 @@ export default function ContactsList() {
           { label: "Table", value: "table" },
         ]}
       />
- <Button icon={FiPlus}>New contact</Button> </> }
+ <Button variant="gradient" icon={FiPlus}>New contact</Button> </> }
       />
       <div className="card p-3 mb-3">
         <div className="row g-2">

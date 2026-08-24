@@ -247,12 +247,12 @@ export default function Reports() {
               >
                 {STAGE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
+              <Button variant="gradient" icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
             </div>
 
             {/* Mobile Actions */}
             <div className="d-flex d-lg-none">
-              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
+              <Button variant="gradient" icon={FiPlus} onClick={() => setModalOpen(true)}>New Project</Button>
             </div>
           </>
         }
@@ -380,15 +380,15 @@ export default function Reports() {
             </div>
             <div className="card-body px-4 pb-4">
               {overdueProjects.length === 0 ? (
-                <div className="text-center p-4 text-subtle bg-light rounded">
+                <div className="text-center p-4 text-subtle rounded" style={{ backgroundColor: "var(--color-surface-alt)" }}>
                   No overdue projects! 🎉
                 </div>
               ) : (
                 <ul className="list-unstyled mb-0 d-flex flex-column gap-3">
                   {overdueProjects.slice(0, 5).map(p => (
-                    <li key={p.id || p._id} className="p-3 border rounded bg-white shadow-sm">
+                    <li key={p.id || p._id} className="p-3 border rounded shadow-sm" style={{ backgroundColor: "var(--color-surface-alt)" }}>
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h6 className="mb-0 text-truncate pe-2">{p.title}</h6>
+                        <h6 className="mb-0 text-truncate pe-2" style={{ color: "var(--color-text)" }}>{p.title}</h6>
                         <Badge variant="danger" className="text-capitalize">{p.status}</Badge>
                       </div>
                       <div className="text-subtle mb-1" style={{ fontSize: 13 }}>

@@ -74,8 +74,14 @@
   position: absolute;
   left: 14px;
   font-size: 18px;
-  color: var(--color-text);
+  color: var(--color-text-muted);
   pointer-events: none;
+  z-index: 2;
+  transition: color var(--transition-fast, 150ms ease);
+}
+
+.aio-header__search:focus-within .aio-header__search-icon {
+  color: var(--color-primary);
 }
 
 .aio-header__search-input {
@@ -98,7 +104,7 @@
 }
 
 .aio-header__search-input:hover {
-  background-color: #e2e8f0;
+  background-color: var(--color-input-hover);
 }
 
 
@@ -117,7 +123,7 @@
   padding: 3px 8px;
   border-radius: var(--radius-full, 6px);
   border: 1px solid var(--color-border);
-  background-color: #e2e8f0;
+  background-color: var(--color-input-hover);
   color: var(--color-text-subtle);
   box-shadow: var(--shadow-sm);
   user-select: none;

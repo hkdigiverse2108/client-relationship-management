@@ -22,18 +22,40 @@ import { LEAD_STATUS_LABEL, LEAD_STATUS_VARIANT } from "@/utils/constants";
 import { confirmDialog } from "@/components/common/ConfirmDialog/confirmDialog";
 import api from "@/api/axiosClient";
 
+import { createPortal } from "react-dom";
+
 const AssigneeDropdown = ({ lead, usersMap, users, onAssign }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef();
+  const menuRef = useRef();
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
   
   useEffect(() => {
     if (!open) return;
+    
+    const updateCoords = () => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        setCoords({ top: rect.bottom + 6, left: rect.left });
+      }
+    };
+    
+    updateCoords();
+    window.addEventListener("resize", updateCoords);
+    window.addEventListener("scroll", updateCoords, true);
+    
     const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target) && menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("resize", updateCoords);
+      window.removeEventListener("scroll", updateCoords, true);
+      document.removeEventListener("mousedown", onClick);
+    };
   }, [open]);
 
   // Priority sorting: sales first, then match search
@@ -49,6 +71,46 @@ const AssigneeDropdown = ({ lead, usersMap, users, onAssign }) => {
      return sorted;
   }, [users, search]);
 
+  const menu = open ? createPortal(
+    <div 
+      ref={menuRef}
+      className="aio-dropdown__menu aio-dropdown__menu--left" 
+      style={{ position: "fixed", top: coords.top, left: coords.left, minWidth: 220, maxHeight: 300, overflowY: 'auto', padding: 0, zIndex: 9999 }}
+    >
+      <div style={{ padding: "8px" }}>
+        <input 
+          type="text" 
+          className="form-control form-control-sm" 
+          placeholder="Search user..." 
+          value={search} 
+          onChange={e => setSearch(e.target.value)}
+          onClick={e => e.stopPropagation()}
+          autoFocus
+        />
+      </div>
+      <div className="aio-dropdown__divider" style={{ margin: 0 }} />
+      <div style={{ padding: '4px' }}>
+        {filteredUsers.map(u => (
+          <button
+            key={u.id}
+            className="aio-dropdown__item"
+            onClick={() => {
+              setOpen(false);
+              onAssign(lead, u.id);
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600 }}>{u.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>{u.role}</span>
+            </div>
+          </button>
+        ))}
+        {filteredUsers.length === 0 && <div style={{ padding: '8px', fontSize: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>No users found</div>}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div className="aio-dropdown" ref={ref}>
       <div onClick={(e) => { e.stopPropagation(); setOpen(!open); }} style={{ cursor: "pointer", display: "inline-block" }}>
@@ -56,40 +118,7 @@ const AssigneeDropdown = ({ lead, usersMap, users, onAssign }) => {
            {usersMap[lead.assigned_to] || "Unknown"} <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
          </Badge>
       </div>
-      {open && (
-        <div className="aio-dropdown__menu aio-dropdown__menu--left" style={{ minWidth: 220, maxHeight: 300, overflowY: 'auto', padding: 0 }}>
-          <div style={{ padding: "8px" }}>
-            <input 
-              type="text" 
-              className="form-control form-control-sm" 
-              placeholder="Search user..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)}
-              onClick={e => e.stopPropagation()}
-              autoFocus
-            />
-          </div>
-          <div className="aio-dropdown__divider" style={{ margin: 0 }} />
-          <div style={{ padding: '4px' }}>
-            {filteredUsers.map(u => (
-              <button
-                key={u.id}
-                className="aio-dropdown__item"
-                onClick={() => {
-                  setOpen(false);
-                  onAssign(lead, u.id);
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontWeight: 600 }}>{u.name}</span>
-                  <span style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>{u.role}</span>
-                </div>
-              </button>
-            ))}
-            {filteredUsers.length === 0 && <div style={{ padding: '8px', fontSize: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>No users found</div>}
-          </div>
-        </div>
-      )}
+      {menu}
     </div>
   );
 };

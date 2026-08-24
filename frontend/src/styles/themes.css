@@ -1,5 +1,6 @@
 /* Dark theme overrides. Toggled by adding `data-theme="dark"` on <html>. */
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-primary: #6366f1;
   --color-primary-hover: #818cf8;
   --color-primary-soft: #1e1b4b;
@@ -14,6 +15,8 @@
   --color-border: #1f2937;
   --color-border-strong: #334155;
   --color-divider: #1e293b;
+  --color-input: #1f2937;
+  --color-input-hover: #374151;
   --color-success-soft: rgba(16, 185, 129, 0.15);
   --color-warning-soft: rgba(245, 158, 11, 0.15);
   --color-danger-soft: rgba(239, 68, 68, 0.15);
@@ -21,4 +24,65 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --page-header-bg-gradient: linear-gradient(135deg, rgba(30, 27, 75, 0.9) 0%, rgba(99, 102, 241, 0.3) 50%, rgba(30, 27, 75, 0.9) 100%);
+  --sales-target-bg: linear-gradient(135deg, var(--color-primary-soft), var(--color-surface-alt));
+}
+
+/* Autofill fixes for dark theme */
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover, 
+[data-theme="dark"] input:-webkit-autofill:focus, 
+[data-theme="dark"] input:-webkit-autofill:active,
+[data-theme="dark"] .form-control:-webkit-autofill,
+[data-theme="dark"] .form-control:-webkit-autofill:hover, 
+[data-theme="dark"] .form-control:-webkit-autofill:focus, 
+[data-theme="dark"] .form-control:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--color-input) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Placeholder fixes for dark theme */
+[data-theme="dark"] ::placeholder {
+  color: var(--color-text-subtle) !important;
+  opacity: 1 !important;
+}
+
+/* Disabled and Read-only Input fixes for dark theme */
+[data-theme="dark"] .form-control:disabled,
+[data-theme="dark"] .form-control[readonly] {
+  background-color: var(--color-surface-alt) !important;
+  color: var(--color-text-muted) !important;
+  border-color: var(--color-border) !important;
+  opacity: 1;
+}
+
+/* Fix btn-light for dark theme globally */
+[data-theme="dark"] .btn-light {
+  background-color: var(--color-surface-alt) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .btn-light:hover,
+[data-theme="dark"] .btn-light:focus,
+[data-theme="dark"] .btn-light:active {
+  background-color: var(--color-input-hover) !important;
+  color: var(--color-text) !important;
+}
+/* Fix text-muted for dark theme globally */
+[data-theme="dark"] .text-muted {
+  color: var(--color-text-muted) !important;
+}
+
+/* Fix primary and gradient button text colors in dark mode to be dark (black-ish) */
+[data-theme="dark"] .aio-btn--primary,
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .aio-btn--gradient {
+  color: var(--color-primary-soft) !important;
+}
+
+/* Fix select options for dark theme */
+[data-theme="dark"] select option {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
 }

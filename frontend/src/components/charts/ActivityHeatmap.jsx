@@ -62,7 +62,7 @@ export default function ActivityHeatmap({ data }) {
                       key={hour}
                       className="aio-heatmap__cell"
                       style={{
-                        backgroundColor: count > 0 ? "var(--color-primary)" : "#e2e8f0",
+                        backgroundColor: count > 0 ? "var(--color-primary)" : "var(--color-input-hover, #e2e8f0)",
                         opacity: count > 0 ? opacity : 1,
                       }}
                       title={`${dayName}, ${hour}:00 - ${count} activities`}
@@ -77,7 +77,7 @@ export default function ActivityHeatmap({ data }) {
         {/* Legend */}
         <div className="aio-heatmap__legend">
           <span className="aio-heatmap__legend-text">Less</span>
-          <div className="aio-heatmap__legend-box" style={{ backgroundColor: "#e2e8f0" }}></div>
+          <div className="aio-heatmap__legend-box" style={{ backgroundColor: "var(--color-input-hover, #e2e8f0)" }}></div>
           <div className="aio-heatmap__legend-box" style={{ backgroundColor: "var(--color-primary)", opacity: 0.25 }}></div>
           <div className="aio-heatmap__legend-box" style={{ backgroundColor: "var(--color-primary)", opacity: 0.5 }}></div>
           <div className="aio-heatmap__legend-box" style={{ backgroundColor: "var(--color-primary)", opacity: 0.75 }}></div>

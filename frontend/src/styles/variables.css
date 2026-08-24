@@ -34,6 +34,7 @@
   --color-text-subtle: #94a3b8;
   --color-text-inverse: #ffffff;
   --color-input: #f1f5fa;
+  --color-input-hover: #e2e8f0;
   --search-icon : rgb(129, 140, 248);
   /* Borders */
   --color-border: #c3c6d6;
@@ -86,6 +87,7 @@
   --page-header-bg-gradient:linear-gradient(to right, rgb(15, 23, 42), rgb(30, 27, 75), rgb(15, 23, 42));
   --page-header-button-bg: rgba(49, 46, 129, 0.4);
   --page-header-button-border: 1px solid rgba(99, 102, 241, 0.3);
+  --sales-target-bg: linear-gradient(135deg, var(--color-primary-soft), #fff);
 }
 
 

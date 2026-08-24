@@ -92,9 +92,9 @@
 }
 
 .aio-sidebar__collapse:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-hover-bg);
   border-color: var(--color-primary);
-  color: var(--color-text);
+  color: var(--color-primary);
 }
 
 .aio-sidebar.is-collapsed .aio-sidebar__collapse {

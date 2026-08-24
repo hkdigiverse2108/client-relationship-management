@@ -13,7 +13,7 @@
   font-size: var(--font-size-2xl);
   font-weight: 600;
   margin-bottom: 0.25rem;
-  color: var(--color-primary-soft);
+  color: #ffffff;
 }
 .aio-page-header__desc {
   /* color: var(--color-text-muted); */

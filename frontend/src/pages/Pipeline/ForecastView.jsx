@@ -15,9 +15,9 @@ import dayjs from "dayjs";
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const StatCard = ({ label, value, type = "default" }) => (
-  <div className="card p-3 shadow-sm border-0 h-100" style={{ backgroundColor: type === "primary" ? "#f0fdf4" : "#fff" }}>
+  <div className="card p-3 shadow-sm border-0 h-100" style={{ backgroundColor: type === "primary" ? "var(--color-success-soft)" : "var(--color-surface)" }}>
     <div className="text-muted" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>{label}</div>
-    <div className={`mt-2 fw-bold fs-4 ${type === "primary" ? "text-success" : ""}`}>{value}</div>
+    <div className={`mt-2 fw-bold fs-4 ${type === "primary" ? "text-success" : ""}`} style={type !== "primary" ? { color: "var(--color-text)" } : {}}>{value}</div>
   </div>
 );
 
@@ -110,8 +110,14 @@ export default function ForecastView({ deals, usersMap }) {
       }
     },
     scales: {
+      x: {
+        ticks: { color: "#94a3b8" },
+        grid: { display: false }
+      },
       y: {
+        grid: { color: "rgba(148,163,184,0.1)" },
         ticks: {
+          color: "#94a3b8",
           callback: (val) => "₹" + (val / 1000) + "k"
         },
         beginAtZero: true,
@@ -154,9 +160,9 @@ export default function ForecastView({ deals, usersMap }) {
                 <div className="text-muted text-center py-4">No hot deals closing in next 30 days.</div>
               ) : (
                 hotDeals.map(d => (
-                  <div key={d.id || d._id} className="d-flex justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#f8fafc" }}>
+                  <div key={d.id || d._id} className="d-flex justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "var(--color-surface-alt)" }}>
                     <div>
-                      <div className="fw-bold" style={{ fontSize: "14px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "150px" }}>{d.title}</div>
+                      <div className="fw-bold" style={{ fontSize: "14px", color: "var(--color-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "150px" }}>{d.title}</div>
                       <div className="text-muted" style={{ fontSize: "12px" }}>{formatDate(d.expected_close_date)}</div>
                     </div>
                     <div className="text-end">

@@ -165,7 +165,7 @@ export default function RemindersList() {
         title="Reminders"
         description="Set and manage scheduled follow-up reminders."
         actions={
-          <Button icon={FiPlus} onClick={openNewModal}>
+          <Button variant="gradient" icon={FiPlus} onClick={openNewModal}>
             Create Reminder
           </Button>
         }
@@ -275,7 +275,7 @@ export default function RemindersList() {
                   </tr>
                 ) : (
                   filteredReminders.map(reminder => (
-                    <tr key={reminder.id || reminder._id} className={reminder.status === 'completed' ? 'opacity-75 bg-light' : ''}>
+                    <tr key={reminder.id || reminder._id} className={reminder.status === 'completed' ? 'opacity-50' : ''}>
                       <td className="ps-4">
                         <div className="fw-medium" style={{ textDecoration: reminder.status === 'completed' ? 'line-through' : 'none' }}>
                           {reminder.description}

@@ -172,8 +172,8 @@ export default function TeamDashboard() {
                         )}
                       </div>
                       <div className="flex-grow-1 pb-2">
-                        <div className="fw-medium mb-1" style={{ fontSize: "14px" }}>{log.message}</div>
-                        <div className="text-muted" style={{ fontSize: "12px" }}>
+                        <div className="fw-medium mb-1" style={{ fontSize: "14px", color: "var(--color-text)" }}>{log.message}</div>
+                        <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
                           {formatDateTime(log.timestamp)}
                         </div>
                       </div>

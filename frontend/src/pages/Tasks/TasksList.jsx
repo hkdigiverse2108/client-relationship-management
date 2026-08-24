@@ -162,14 +162,14 @@ export default function TasksList() {
                   <FiCalendar className="me-1" /> Calendar
                 </button>
               </div>
-              <Button icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
+              <Button variant="gradient" icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
                 New Task
               </Button>
             </div>
 
             {/* Mobile Actions */}
             <div className="d-flex d-md-none">
-              <Button icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
+              <Button variant="gradient" icon={FiPlus} onClick={() => { setEditingTask(null); setModalOpen(true); }}>
                 New Task
               </Button>
             </div>

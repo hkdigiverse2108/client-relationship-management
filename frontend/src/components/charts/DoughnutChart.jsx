@@ -15,7 +15,7 @@ export default function DoughnutChart({ labels, values, height = 240, colors }) 
     responsive: true,
     maintainAspectRatio: false,
     cutout: "68%",
-    plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } } },
+    plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, color: "#94a3b8" } } },
   };
   return <div style={{ height }}><Doughnut data={data} options={options} /></div>;
 }

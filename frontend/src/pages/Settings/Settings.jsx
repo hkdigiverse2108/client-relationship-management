@@ -185,8 +185,8 @@ export default function Settings() {
                     />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600 }}>{user?.name}</div>
-                    <div className="text-subtle" style={{ fontSize: 13 }}>{user?.email}</div>
+                    <div style={{ fontWeight: 600, color: "var(--color-text)" }}>{user?.name}</div>
+                    <div style={{ fontSize: 13, color: "var(--color-text-muted)" }}>{user?.email}</div>
                     {uploadingPhoto && <small className="text-primary">Uploading...</small>}
                   </div>
                 </div>
@@ -273,7 +273,7 @@ export default function Settings() {
                 ].map(([label, def]) => (
                   <div key={label} className="d-flex justify-content-between align-items-center py-2"
                        style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <span style={{ fontSize: 14 }}>{label}</span>
+                    <span style={{ fontSize: 14, color: "var(--color-text)" }}>{label}</span>
                     <div className="form-check form-switch">
                       <input className="form-check-input" type="checkbox" defaultChecked={def} />
                     </div>

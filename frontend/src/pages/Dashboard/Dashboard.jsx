@@ -156,7 +156,7 @@ export default function Dashboard() {
                       background: "var(--color-primary)", marginTop: 8, flexShrink: 0,
                     }}/>
                     <div className="flex-grow-1">
-                      <div style={{ fontSize: 14 }}>{a.text}</div>
+                      <div style={{ fontSize: 14, color: "var(--color-text)" }}>{a.text}</div>
                       <div className="text-subtle" style={{ fontSize: 12 }}>{timeAgo(a.time)}</div>
                     </div>
                   </li>

@@ -186,14 +186,14 @@ export default function GanttChart() {
                   <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
                 ))}
               </select>
-              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+              <Button variant="gradient" icon={FiPlus} onClick={() => setModalOpen(true)}>
                 New Project
               </Button>
             </div>
 
             {/* Mobile Actions */}
             <div className="d-flex d-lg-none">
-              <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+              <Button variant="gradient" icon={FiPlus} onClick={() => setModalOpen(true)}>
                 New Project
               </Button>
             </div>

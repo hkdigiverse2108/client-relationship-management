@@ -201,7 +201,7 @@ export default function UserManagement() {
 
           <Avatar name={user.name} size={40} src={getProfilePhotoUrl(user.profile_photo)} />
           <div className="flex-grow-1">
-            <div style={{ fontWeight: 600 }}>{user.name}</div>
+            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{user.name}</div>
             <div className="text-subtle" style={{ fontSize: 12 }}>{user.email}</div>
           </div>
           
