@@ -266,9 +266,9 @@ export default function RolesPermissionsPage() {
               <div className="text-center py-5">Loading...</div>
             ) : (
               <>
-                <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                   <h5 className="m-0" style={{ textTransform: 'capitalize' }}>{selectedRole} Default Permissions</h5>
-                  <div className="d-flex align-items-center gap-3">
+                  <div className="d-flex flex-wrap align-items-center gap-3">
                     <div className="form-check m-0">
                       <input 
                         className="form-check-input border-primary" 

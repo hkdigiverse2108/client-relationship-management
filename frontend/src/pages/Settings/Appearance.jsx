@@ -68,19 +68,19 @@ export default function Appearance() {
   };
   
   return (
-    <div className="ux4g-p-l" style={{ maxWidth: 1400, margin: "0 auto" }}>
+    <div className="p-2 p-md-4" style={{ maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
-            <FiLayout className="text-primary" size={24} />
+            <FiLayout className="text-primary" size={24} style={{ flexShrink: 0 }} />
             <h2 className="m-0" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Appearance & Theme Settings</h2>
           </div>
           <p className="text-muted m-0" style={{ fontSize: "0.9rem" }}>
             Customize global UI style presets, color builders, border radius, layout density, and shadow attributes.
           </p>
         </div>
-        <button className="ux4g-btn-outline-neutral ux4g-btn-md" onClick={resetAppearance}>
+        <button className="ux4g-btn-outline-neutral ux4g-btn-md" style={{ whiteSpace: "nowrap" }} onClick={resetAppearance}>
           <FiRefreshCw className="me-2" /> One-Click Reset
         </button>
       </div>
@@ -90,7 +90,7 @@ export default function Appearance() {
         <div className="col-lg-8">
           
           {/* Section 1: Presets */}
-          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-4 mb-4" style={{ borderRadius: "16px" }}>
+          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-3 p-md-4 mb-4" style={{ borderRadius: "16px" }}>
             <h6 className="mb-4 d-flex align-items-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
               <FiGrid className="me-2 text-primary" /> PROFESSIONAL DESIGN THEME PRESETS
             </h6>
@@ -119,22 +119,23 @@ export default function Appearance() {
           </div>
 
           {/* Section 2: Custom Palette Editor */}
-          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-4 mb-4" style={{ borderRadius: "16px" }}>
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h6 className="m-0 d-flex align-items-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
-                <FiSliders className="me-2 text-primary" /> CUSTOM UX4G COLOR PALETTE EDITOR
+          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-3 p-md-4 mb-4" style={{ borderRadius: "16px" }}>
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-4">
+              <h6 className="m-0 d-flex align-items-start align-items-sm-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
+                <FiSliders className="me-2 mt-1 mt-sm-0 text-primary" style={{ flexShrink: 0 }} /> 
+                <span>CUSTOM UX4G COLOR PALETTE EDITOR</span>
               </h6>
               <span className="text-muted" style={{ fontStyle: "italic", fontSize: "0.8rem" }}>Adjust picker to build custom colors</span>
             </div>
             
             <div className="row g-4">
               {COLOR_CONFIGS.map((col) => (
-                <div className="col-md-6 d-flex align-items-center justify-content-between" key={col.id}>
-                  <div className="pe-3">
+                <div className="col-md-6 d-flex flex-column flex-xl-row align-items-start align-items-xl-center justify-content-between gap-2 mb-3 mb-xl-0" key={col.id}>
+                  <div className="pe-xl-3">
                     <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{col.label}</div>
                     <div className="text-muted" style={{ fontSize: "0.75rem", lineHeight: "1.2" }}>{col.sub}</div>
                   </div>
-                  <div className="d-flex align-items-center gap-2">
+                  <div className="d-flex align-items-center gap-2 mt-1 mt-xl-0">
                     <input 
                       type="text" 
                       className="ux4g-bg-neutral-soft px-2 py-1 rounded form-control border-0" 
@@ -155,7 +156,7 @@ export default function Appearance() {
           </div>
 
           {/* Section 3: Layout, Density & Borders */}
-          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-4 mb-4" style={{ borderRadius: "16px" }}>
+          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-3 p-md-4 mb-4" style={{ borderRadius: "16px" }}>
             <h6 className="mb-4 d-flex align-items-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
               <FiLayout className="me-2 text-primary" /> CUSTOM LAYOUT, DENSITY & BORDERS
             </h6>
@@ -249,7 +250,7 @@ export default function Appearance() {
           </div>
 
           {/* Section 4: Org Policy */}
-          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-4 mb-4" style={{ borderRadius: "16px" }}>
+          <div className="ux4g-card ux4g-card-solid ux4g-card-vertical p-3 p-md-4 mb-4" style={{ borderRadius: "16px" }}>
             <h6 className="mb-4 d-flex align-items-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
               <FiCheckCircle className="me-2 text-primary" /> ORGANIZATION THEME POLICY (ROLE-BASED)
             </h6>
@@ -278,16 +279,16 @@ export default function Appearance() {
           </div>
 
           {/* Footer */}
-          <div className="d-flex justify-content-between align-items-center border-top pt-4 mb-5">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 border-top pt-4 mb-5">
             <div>
               <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Export & Share UI Configurations</div>
               <div className="text-muted" style={{ fontSize: "0.8rem" }}>Export custom setup as JSON files or import themes created by other organization members.</div>
             </div>
-            <div className="d-flex gap-2">
-              <button className="ux4g-btn-outline-neutral ux4g-btn-md">
+            <div className="d-flex flex-wrap gap-2">
+              <button className="ux4g-btn-outline-neutral ux4g-btn-md" style={{ whiteSpace: "nowrap" }}>
                 <FiDownload className="me-2" /> Export Theme
               </button>
-              <button className="ux4g-btn-outline-neutral ux4g-btn-md">
+              <button className="ux4g-btn-outline-neutral ux4g-btn-md" style={{ whiteSpace: "nowrap" }}>
                 <FiUpload className="me-2" /> Import JSON
               </button>
             </div>
@@ -297,19 +298,19 @@ export default function Appearance() {
 
         {/* Right Column (Live Preview Panel) */}
         <div className="col-lg-4">
-          <div className="ux4g-card ux4g-card-outline p-4" style={{ borderRadius: "16px", position: "sticky", top: "20px" }}>
+          <div className="ux4g-card ux4g-card-outline p-3 p-md-4" style={{ borderRadius: "16px", position: "sticky", top: "20px" }}>
             <h6 className="mb-4 d-flex align-items-center text-uppercase text-muted" style={{ fontSize: "0.8rem", letterSpacing: "0.5px", fontWeight: 600 }}>
               <FiLayout className="me-2 text-primary" /> CENTRALIZED LIVE PREVIEW PANEL
             </h6>
             
             <div className="rounded overflow-hidden mb-4" style={{ border: "1px solid var(--color-border)", background: "var(--color-surface-alt)" }}>
               {/* Mock Header */}
-              <div className="d-flex justify-content-between align-items-center px-3 py-2" style={{ background: "#0F172A", color: "white" }}>
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-2" style={{ background: "#0F172A", color: "white" }}>
                 <div className="d-flex align-items-center gap-2">
-                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#3B82F6" }}></div>
-                  <span style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.5px" }}>AIO CRM</span>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#3B82F6", flexShrink: 0 }}></div>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>AIO CRM</span>
                 </div>
-                <div className="rounded px-3 py-1" style={{ background: "rgba(255,255,255,0.1)", fontSize: "0.7rem", color: "rgba(255,255,255,0.7)" }}>Search Palette...</div>
+                <div className="rounded px-3 py-1 text-truncate" style={{ background: "rgba(255,255,255,0.1)", fontSize: "0.7rem", color: "rgba(255,255,255,0.7)" }}>Search Palette...</div>
               </div>
               
               <div className="p-3">
@@ -318,19 +319,19 @@ export default function Appearance() {
                   <div className="d-flex justify-content-between mb-2">
                     <span className="ux4g-badge-dot-primary" style={{ fontSize: "0.7rem" }}>Active</span>
                   </div>
-                  <div className="d-flex gap-3 mt-3">
-                    <div className="rounded" style={{ width: 80, height: 60, background: "#E5EEFF" }}></div>
+                  <div className="d-flex flex-column flex-xl-row gap-2 gap-xl-3 mt-3">
+                    <div className="rounded" style={{ width: 60, height: 60, background: "#E5EEFF", flexShrink: 0 }}></div>
                     <div className="flex-grow-1">
-                      <div className="text-muted mb-1" style={{ fontSize: "0.65rem", textTransform: "uppercase" }}>Mock Analytics Card</div>
-                      <div className="d-flex justify-content-between align-items-end">
-                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#0052CC" }}>₹45,900</div>
-                        <span className="ux4g-badge-dot-success" style={{ fontSize: "0.65rem", padding: "2px 6px" }}>+12%</span>
+                      <div className="text-muted mb-1" style={{ fontSize: "0.65rem", textTransform: "uppercase", lineHeight: 1.2 }}>Mock Analytics Card</div>
+                      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-1">
+                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#0052CC", lineHeight: 1 }}>₹45,900</div>
+                        <span className="ux4g-badge-dot-success" style={{ fontSize: "0.65rem", padding: "2px 6px", whiteSpace: "nowrap" }}>+12%</span>
                       </div>
                     </div>
                   </div>
-                  <div className="d-flex gap-2 mt-3">
-                    <div className="rounded flex-grow-1 text-center text-white py-1" style={{ background: "#0052CC", fontSize: "0.7rem" }}>Primary Button</div>
-                    <div className="rounded flex-grow-1 text-center py-1" style={{ border: "1px solid #0052CC", color: "#0052CC", fontSize: "0.7rem" }}>Secondary</div>
+                  <div className="d-flex flex-wrap gap-2 mt-3">
+                    <div className="rounded flex-grow-1 text-center text-white py-1 px-2" style={{ background: "#0052CC", fontSize: "0.7rem", whiteSpace: "nowrap" }}>Primary Button</div>
+                    <div className="rounded flex-grow-1 text-center py-1 px-2" style={{ border: "1px solid #0052CC", color: "#0052CC", fontSize: "0.7rem", whiteSpace: "nowrap" }}>Secondary</div>
                   </div>
                 </div>
 
@@ -343,11 +344,11 @@ export default function Appearance() {
                 </div>
 
                 {/* Badges Preview */}
-                <div className="d-flex justify-content-between px-2 pt-2 border-top">
-                  <span className="rounded px-2 text-white text-center" style={{ background: "#10B981", fontSize: "0.65rem", width: "23%" }}>Success</span>
-                  <span className="rounded px-2 text-white text-center" style={{ background: "#F59E0B", fontSize: "0.65rem", width: "23%" }}>Warning</span>
-                  <span className="rounded px-2 text-white text-center" style={{ background: "#EF4444", fontSize: "0.65rem", width: "23%" }}>Danger</span>
-                  <span className="rounded px-2 text-white text-center" style={{ background: "#0EA5E9", fontSize: "0.65rem", width: "23%" }}>Info</span>
+                <div className="d-flex flex-wrap justify-content-between gap-1 px-1 pt-2 border-top">
+                  <span className="rounded px-2 py-1 text-white text-center flex-grow-1" style={{ background: "#10B981", fontSize: "0.65rem" }}>Success</span>
+                  <span className="rounded px-2 py-1 text-white text-center flex-grow-1" style={{ background: "#F59E0B", fontSize: "0.65rem" }}>Warning</span>
+                  <span className="rounded px-2 py-1 text-white text-center flex-grow-1" style={{ background: "#EF4444", fontSize: "0.65rem" }}>Danger</span>
+                  <span className="rounded px-2 py-1 text-white text-center flex-grow-1" style={{ background: "#0EA5E9", fontSize: "0.65rem" }}>Info</span>
                 </div>
               </div>
             </div>

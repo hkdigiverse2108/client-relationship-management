@@ -257,15 +257,21 @@ export default function ContactsList() {
             </select>
           </div>
 
-          <div className="col-12 col-xl-3">
-            <div className="d-flex align-items-center gap-1">
-               <input type="date" className="form-control form-control-sm" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} />
-               <span style={{fontSize: 11, color: 'var(--color-text-subtle)'}}>to</span>
-               <input type="date" className="form-control form-control-sm" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} />
+          <div className="col-12 col-md-6 col-xl-2 mt-2 mt-xl-0">
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: '0.85rem' }}>From</span>
+              <input type="date" className="form-control form-control-sm" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} />
             </div>
           </div>
 
-          <div className="col-12 col-xl-2 text-xl-end">
+          <div className="col-12 col-md-6 col-xl-2 mt-2 mt-xl-0">
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: '0.85rem' }}>To</span>
+              <input type="date" className="form-control form-control-sm" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} />
+            </div>
+          </div>
+
+          <div className="col-12 col-xl-1 text-xl-end mt-2 mt-xl-0">
             <span className="text-muted-2" style={{ fontSize: 12, fontWeight: 600 }}>
               {filtered.length} / {contacts.length}
             </span>
