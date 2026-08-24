@@ -245,7 +245,7 @@ export default function ClientProfile() {
       </div>
 
       <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+        <div className="card-header border-bottom-0 pt-4 pb-0" style={{ backgroundColor: "transparent" }}>
           <ul className="nav nav-tabs border-bottom">
             <li className="nav-item">
               <button className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
@@ -264,12 +264,12 @@ export default function ClientProfile() {
         <div className="card-body p-4">
           {activeTab === 'overview' && (
             <div>
-              <h5>Client Information</h5>
-              <div className="row mt-3">
-                <div className="col-md-6 mb-3"><strong>Contact Person:</strong> {client.contact_person || 'N/A'}</div>
-                <div className="col-md-6 mb-3"><strong>Customer Type:</strong> {client.customer_type || 'N/A'}</div>
-                <div className="col-md-6 mb-3"><strong>Address:</strong> {client.address || 'N/A'}</div>
-                <div className="col-md-6 mb-3"><strong>City:</strong> {client.city || 'N/A'}</div>
+              <h5 style={{ color: "var(--color-text)" }}>Client Information</h5>
+              <div className="row mt-3" style={{ color: "var(--color-text-subtle)" }}>
+                <div className="col-md-6 mb-3"><strong style={{ color: "var(--color-text)" }}>Contact Person:</strong> {client.contact_person || 'N/A'}</div>
+                <div className="col-md-6 mb-3"><strong style={{ color: "var(--color-text)" }}>Customer Type:</strong> {client.customer_type || 'N/A'}</div>
+                <div className="col-md-6 mb-3"><strong style={{ color: "var(--color-text)" }}>Address:</strong> {client.address || 'N/A'}</div>
+                <div className="col-md-6 mb-3"><strong style={{ color: "var(--color-text)" }}>City:</strong> {client.city || 'N/A'}</div>
               </div>
             </div>
           )}
@@ -279,14 +279,14 @@ export default function ClientProfile() {
               <div className="col-lg-7">
                 <div className="d-flex justify-content-between mb-3 align-items-center">
                   <h5 className="mb-0">Invoices</h5>
-                  <Button variant="primary" size="sm" onClick={() => setInvoiceModalOpen(true)}>+ New Invoice</Button>
+                  <Button variant="gradient" size="sm" onClick={() => setInvoiceModalOpen(true)}>+ New Invoice</Button>
                 </div>
                 <Table columns={invoiceCols} data={invoices} />
               </div>
               <div className="col-lg-5">
                 <div className="d-flex justify-content-between mb-3 align-items-center">
                   <h5 className="mb-0">Payments</h5>
-                  <Button variant="success" size="sm" onClick={() => setPaymentModalOpen(true)}>+ Add Payment</Button>
+                  <Button variant="gradient" size="sm" onClick={() => setPaymentModalOpen(true)}>+ Add Payment</Button>
                 </div>
                 <Table columns={paymentCols} data={payments} />
               </div>
@@ -297,7 +297,7 @@ export default function ClientProfile() {
             <div>
               <div className="d-flex justify-content-between mb-3 align-items-center">
                 <h5 className="mb-0">Deals Pipeline</h5>
-                <Button variant="primary" size="sm" onClick={() => setDealModalOpen(true)}>+ New Deal</Button>
+                <Button variant="gradient" size="sm" onClick={() => setDealModalOpen(true)}>+ New Deal</Button>
               </div>
               <Table columns={dealCols} data={deals} />
             </div>
@@ -307,7 +307,7 @@ export default function ClientProfile() {
             <div>
               <div className="d-flex justify-content-between mb-3 align-items-center">
                 <h5 className="mb-0">Ongoing Projects</h5>
-                <Button variant="primary" size="sm" onClick={() => setProjectModalOpen(true)}>+ New Project</Button>
+                <Button variant="gradient" size="sm" onClick={() => setProjectModalOpen(true)}>+ New Project</Button>
               </div>
               <Table columns={projectCols} data={projects} />
             </div>

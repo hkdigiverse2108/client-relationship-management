@@ -74,7 +74,7 @@ export default function ClientDetailsPage() {
       </div>
 
       <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+        <div className="card-header border-bottom-0 pt-4 pb-0" style={{ backgroundColor: "transparent" }}>
           <ul className="nav nav-tabs border-bottom">
             <li className="nav-item">
               <button 
@@ -96,7 +96,7 @@ export default function ClientDetailsPage() {
             </li>
           </ul>
         </div>
-        <div className="card-body p-4 bg-white" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px' }}>
+        <div className="card-body p-4" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px' }}>
           
           {activeTab === 'profile' && (
             <div>
@@ -141,7 +141,7 @@ export default function ClientDetailsPage() {
               <div className="row mt-2">
                 <div className="col-12">
                   <div className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 500 }}>Notes</div>
-                  <div style={{ fontWeight: 400, color: 'var(--color-text)', marginTop: '4px', whiteSpace: 'pre-wrap', background: 'var(--color-bg-secondary)', padding: '15px', borderRadius: '8px' }}>
+                  <div style={{ fontWeight: 400, color: 'var(--color-text)', marginTop: '4px', whiteSpace: 'pre-wrap', background: 'var(--color-surface-alt)', padding: '15px', borderRadius: '8px' }}>
                     {client.notes || "No notes available."}
                   </div>
                 </div>
