@@ -18,99 +18,130 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     last_30_days = now - timedelta(days=30)
     prev_30_days = now - timedelta(days=60)
 
-    # 1. Total Revenue (Won Leads)
-    # 2. Active Leads (Not Won, Not Lost)
-    # 3. Conversion Rate (Won Leads / Total Leads * 100)
-    
-    # We will compute these for the entire time or last 30 days? 
-    # Usually KPI cards show all-time value but the delta is for the period.
-    # We will do all-time for the KPI values, or last 30 days for everything?
-    # Let's do all-time for values, and 30-day delta.
-    
-    # Actually, typically "Total Revenue" is all-time or YTD, but delta is vs last period.
-    # Let's query all leads.
-    pipeline = [
+    # 1. Lead Metrics Aggregation
+    lead_pipeline = [
         {
             "$facet": {
+                "all_time": [
+                    {"$group": {
+                        "_id": None,
+                        "total": {"$sum": 1},
+                        "active": {"$sum": {"$cond": [{"$in": ["$status", ["new", "contacted", "qualified", "negotiation"]]}, 1, 0]}},
+                        "won": {"$sum": {"$cond": [{"$eq": ["$status", "won"]}, 1, 0]}},
+                        "qualified": {"$sum": {"$cond": [{"$in": ["$status", ["qualified", "negotiation", "won"]]}, 1, 0]}}
+                    }}
+                ],
                 "current_period": [
-                    {"$match": {"created_at": {"$gte": last_30_days}}}
+                    {"$match": {"created_at": {"$gte": last_30_days}}},
+                    {"$group": {
+                        "_id": None,
+                        "total": {"$sum": 1},
+                        "active": {"$sum": {"$cond": [{"$in": ["$status", ["new", "contacted", "qualified", "negotiation"]]}, 1, 0]}},
+                        "won": {"$sum": {"$cond": [{"$eq": ["$status", "won"]}, 1, 0]}},
+                    }}
                 ],
                 "previous_period": [
-                    {"$match": {"created_at": {"$gte": prev_30_days, "$lt": last_30_days}}}
+                    {"$match": {"created_at": {"$gte": prev_30_days, "$lt": last_30_days}}},
+                    {"$group": {
+                        "_id": None,
+                        "total": {"$sum": 1},
+                        "active": {"$sum": {"$cond": [{"$in": ["$status", ["new", "contacted", "qualified", "negotiation"]]}, 1, 0]}},
+                        "won": {"$sum": {"$cond": [{"$eq": ["$status", "won"]}, 1, 0]}},
+                    }}
                 ],
-                "all_time": [
-                    {"$match": {}}
+                "sources": [
+                    {"$group": {"_id": {"$ifNull": ["$source", "Other"]}, "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}}
                 ]
             }
         }
     ]
 
-    result = await leads_collection.aggregate(pipeline).to_list(1)
-    data = result[0] if result else {"current_period": [], "previous_period": [], "all_time": []}
+    leads_res = await leads_collection.aggregate(lead_pipeline).to_list(1)
+    lead_data = leads_res[0] if leads_res else {}
 
-    # Fetch Deals for Revenue calculation
-    deals_result = await deals_collection.aggregate(pipeline).to_list(1)
-    deals_data = deals_result[0] if deals_result else {"current_period": [], "previous_period": [], "all_time": []}
+    def extract_lead_metrics(key):
+        arr = lead_data.get(key, [])
+        if arr and len(arr) > 0:
+            return arr[0]
+        return {"total": 0, "active": 0, "won": 0, "qualified": 0}
 
-    def calc_metrics(leads_list, deals_list):
-        active_statuses = ["new", "contacted", "qualified", "negotiation"]
-        
-        total_leads = len(leads_list)
-        active_leads = sum(1 for l in leads_list if l.get("status") in active_statuses)
-        won_leads = sum(1 for l in leads_list if l.get("status") == "won")
-        
-        # Calculate revenue from deals
-        revenue = sum(float(d.get("amount", 0)) for d in deals_list if d.get("stage") == "won")
-        
-        conversion_rate = (won_leads / total_leads * 100) if total_leads > 0 else 0
-        
-        # Calculate Funnel
-        qualified_leads = sum(1 for l in leads_list if l.get("status") in ["qualified", "negotiation", "won"])
-        
-        funnel = [
-            {"label": "Visitors", "value": 0},
-            {"label": "Leads Captured", "value": total_leads},
-            {"label": "Qualified", "value": qualified_leads},
-            {"label": "Closed Won", "value": won_leads},
-        ]
-        
-        # Calculate Sources
-        source_counts = {}
-        for l in leads_list:
-            src = l.get("source") or "Other"
-            source_counts[src] = source_counts.get(src, 0) + 1
-            
-        sources = []
-        if total_leads > 0:
-            for src, count in source_counts.items():
-                pct = round((count / total_leads) * 100)
-                sources.append({
-                    "label": f"{src} ({pct}%)",
-                    "value": count
-                })
-        
-        return {
-            "revenue": revenue,
-            "active_leads": active_leads,
-            "conversion_rate": conversion_rate,
-            "won_leads": won_leads,
-            "sources": sorted(sources, key=lambda x: x["value"], reverse=True),
-            "funnel": funnel
+    all_time_leads = extract_lead_metrics("all_time")
+    curr_leads = extract_lead_metrics("current_period")
+    prev_leads = extract_lead_metrics("previous_period")
+
+    total_leads_count = all_time_leads.get("total", 0)
+
+    # Calculate Funnel
+    funnel = [
+        {"label": "Visitors", "value": 0},
+        {"label": "Leads Captured", "value": total_leads_count},
+        {"label": "Qualified", "value": all_time_leads.get("qualified", 0)},
+        {"label": "Closed Won", "value": all_time_leads.get("won", 0)},
+    ]
+
+    # Calculate Sources
+    sources = []
+    if total_leads_count > 0:
+        for src in lead_data.get("sources", []):
+            count = src.get("count", 0)
+            pct = round((count / total_leads_count) * 100)
+            sources.append({
+                "label": f"{src['_id']} ({pct}%)",
+                "value": count
+            })
+
+    # 2. Deals Revenue Aggregation
+    deal_pipeline = [
+        {
+            "$match": {"stage": "won"}
+        },
+        {
+            "$facet": {
+                "all_time": [
+                    {"$group": {"_id": None, "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}}}
+                ],
+                "current_period": [
+                    {"$match": {"created_at": {"$gte": last_30_days}}},
+                    {"$group": {"_id": None, "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}}}
+                ],
+                "previous_period": [
+                    {"$match": {"created_at": {"$gte": prev_30_days, "$lt": last_30_days}}},
+                    {"$group": {"_id": None, "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}}}
+                ]
+            }
         }
+    ]
 
-    all_metrics = calc_metrics(data["all_time"], deals_data["all_time"])
-    curr_metrics = calc_metrics(data["current_period"], deals_data["current_period"])
-    prev_metrics = calc_metrics(data["previous_period"], deals_data["previous_period"])
+    deals_res = await deals_collection.aggregate(deal_pipeline).to_list(1)
+    deal_data = deals_res[0] if deals_res else {}
 
-    revenue_delta = compute_delta(curr_metrics["revenue"], prev_metrics["revenue"])
-    active_delta = compute_delta(curr_metrics["active_leads"], prev_metrics["active_leads"])
-    conv_delta = compute_delta(curr_metrics["conversion_rate"], prev_metrics["conversion_rate"])
+    def extract_revenue(key):
+        arr = deal_data.get(key, [])
+        if arr and len(arr) > 0:
+            return arr[0].get("revenue", 0)
+        return 0
+
+    all_time_rev = extract_revenue("all_time")
+    curr_rev = extract_revenue("current_period")
+    prev_rev = extract_revenue("previous_period")
+
+    def calc_conv(won, total):
+        return (won / total * 100) if total > 0 else 0
+
+    all_time_conv = calc_conv(all_time_leads.get("won", 0), total_leads_count)
+    curr_conv = calc_conv(curr_leads.get("won", 0), curr_leads.get("total", 0))
+    prev_conv = calc_conv(prev_leads.get("won", 0), prev_leads.get("total", 0))
+
+    revenue_delta = compute_delta(curr_rev, prev_rev)
+    active_delta = compute_delta(curr_leads.get("active", 0), prev_leads.get("active", 0))
+    conv_delta = compute_delta(curr_conv, prev_conv)
 
     stats = [
         {
             "key": "revenue",
             "label": "Total Revenue",
-            "value": all_metrics["revenue"],
+            "value": all_time_rev,
             "delta": revenue_delta,
             "trend": "up" if revenue_delta >= 0 else "down",
             "format": "currency"
@@ -118,7 +149,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         {
             "key": "deals",
             "label": "Active Leads",
-            "value": all_metrics["active_leads"],
+            "value": all_time_leads.get("active", 0),
             "delta": active_delta,
             "trend": "up" if active_delta >= 0 else "down",
             "format": "number"
@@ -126,7 +157,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         {
             "key": "leads",
             "label": "Conversion Rate",
-            "value": round(all_metrics["conversion_rate"], 1),
+            "value": round(all_time_conv, 1),
             "delta": conv_delta,
             "trend": "up" if conv_delta >= 0 else "down",
             "format": "percent"
@@ -141,8 +172,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         }
     ]
 
-    # Fetch Recent Activity (Audit Logs)
-    # Exclude "Login" actions as requested by the user
+    # 3. Fetch Recent Activity (Audit Logs)
     activity_cursor = audit_logs_collection.find(
         {"action": {"$ne": "Login"}}
     ).sort("timestamp", -1).limit(5)
@@ -151,7 +181,6 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     activity = []
     
     for doc in activity_docs:
-        # Determine a type for styling based on the action/module
         action = doc.get("action", "")
         module = doc.get("module", "")
         
@@ -172,6 +201,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
             "time": doc.get("timestamp", "").isoformat() if hasattr(doc.get("timestamp"), 'isoformat') else str(doc.get("timestamp"))
         })
 
+    # 4. Heatmap Aggregation
     heatmap_cursor = audit_logs_collection.aggregate([
         {
             "$match": {
@@ -201,8 +231,8 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
 
     return {
         "stats": stats,
-        "sources": all_metrics["sources"],
-        "funnel": all_metrics["funnel"],
+        "sources": sources,
+        "funnel": funnel,
         "activity": activity,
         "heatmap": heatmap
     }
@@ -227,58 +257,52 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
         start_date = now - timedelta(days=30)
         group_format = "%Y-%m-%d"
 
-    pipeline = [
-        {"$match": {"created_at": {"$gte": start_date}}}
-    ]
-    
-    deals = await deals_collection.aggregate(pipeline).to_list(10000)
-
-    # Dictionary to hold groupings: { "date_label": {"actual": 0, "projected": 0} }
-    grouped_data = {}
-    
     projected_stages = ["qualified", "proposal_sent", "negotiation"]
 
-    for d in deals:
-        created_at_val = d.get("created_at")
-        if not created_at_val:
-            continue
-            
-        if isinstance(created_at_val, str):
-            try:
-                dt = datetime.fromisoformat(created_at_val.replace("Z", "+00:00"))
-            except ValueError:
-                continue
-        else:
-            dt = created_at_val
-            
-        # Format key based on grouping
-        key = dt.strftime(group_format)
-        
-        if key not in grouped_data:
-            grouped_data[key] = {"actual": 0, "projected": 0}
-            
-        stage = d.get("stage")
-        value = float(d.get("amount", 0))
-        
-        if stage == "won":
-            grouped_data[key]["actual"] += value
-        elif stage in projected_stages:
-            grouped_data[key]["projected"] += value
-
-    # Sort keys
-    sorted_keys = sorted(grouped_data.keys())
+    pipeline = [
+        {"$match": {"created_at": {"$gte": start_date}}},
+        {
+            "$addFields": {
+                "parsed_date": {
+                    "$convert": {
+                        "input": "$created_at",
+                        "to": "date",
+                        "onError": None,
+                        "onNull": None
+                    }
+                }
+            }
+        },
+        {"$match": {"parsed_date": {"$ne": None}}},
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": group_format, "date": "$parsed_date"}},
+                "actual": {
+                    "$sum": {
+                        "$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
+                    }
+                },
+                "projected": {
+                    "$sum": {
+                        "$cond": [{"$in": ["$stage", projected_stages]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
+                    }
+                }
+            }
+        },
+        {"$sort": {"_id": 1}}
+    ]
     
-    # Optional: We could fill in empty dates to make the graph contiguous, 
-    # but Chart.js usually handles skipping if labels are correct. Let's just return what we have.
+    grouped_deals = await deals_collection.aggregate(pipeline).to_list(10000)
     
     labels = []
     actual = []
     projected = []
     
-    for k in sorted_keys:
-        labels.append(k)
-        actual.append(grouped_data[k]["actual"])
-        projected.append(grouped_data[k]["projected"])
+    for doc in grouped_deals:
+        if doc["_id"] is not None:
+            labels.append(doc["_id"])
+            actual.append(doc["actual"])
+            projected.append(doc["projected"])
 
     return {
         "labels": labels,
@@ -288,62 +312,124 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
 
 @router.get("/sales-metrics")
 async def get_sales_metrics(current_user: UserResponse = Depends(get_current_user)):
-    deals = await deals_collection.find().to_list(10000)
-    
-    total_pipeline = 0
-    total_won_revenue = 0
-    total_deals_count = len(deals)
-    won_deals_count = 0
-    monthly_revenue = 0
-    
     current_month_str = datetime.utcnow().strftime("%Y-%m")
     
-    rep_stats = {}
-    stage_breakdown = {}
+    # 1. Global KPIs & Stage Breakdown
+    kpi_pipeline = [
+        {
+            "$facet": {
+                "totals": [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total_deals_count": {"$sum": 1},
+                            "won_deals_count": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, 1, 0]}},
+                            "total_won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                            "total_pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["won", "lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                        }
+                    }
+                ],
+                "stage_breakdown": [
+                    {
+                        "$group": {
+                            "_id": "$stage",
+                            "value": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
+                        }
+                    }
+                ]
+            }
+        }
+    ]
     
-    for d in deals:
-        stage = d.get("stage", "")
-        amt = float(d.get("amount", 0))
-        
-        stage_breakdown[stage] = stage_breakdown.get(stage, 0) + amt
-        
-        if stage == "won":
-            total_won_revenue += amt
-            won_deals_count += 1
-            dt_val = d.get("updated_at") or d.get("created_at")
-            if dt_val:
-                dt_str = dt_val.isoformat() if hasattr(dt_val, "isoformat") else str(dt_val)
-                if dt_str.startswith(current_month_str):
-                    monthly_revenue += amt
-        elif stage != "lost":
-            total_pipeline += amt
-            
-        rep_id = d.get("assigned_to")
-        if rep_id:
-            if rep_id not in rep_stats:
-                rep_stats[rep_id] = {"won_revenue": 0, "pipeline": 0, "won_deals": 0, "total_deals": 0}
-            
-            rep_stats[rep_id]["total_deals"] += 1
-            if stage == "won":
-                rep_stats[rep_id]["won_revenue"] += amt
-                rep_stats[rep_id]["won_deals"] += 1
-            elif stage != "lost":
-                rep_stats[rep_id]["pipeline"] += amt
-                
-    stage_data = [{"id": k, "value": v} for k, v in stage_breakdown.items() if v > 0]
+    kpi_res = await deals_collection.aggregate(kpi_pipeline).to_list(1)
+    kpi_data = kpi_res[0] if kpi_res else {"totals": [], "stage_breakdown": []}
+    
+    totals = kpi_data["totals"][0] if kpi_data["totals"] else {"total_deals_count": 0, "won_deals_count": 0, "total_won_revenue": 0, "total_pipeline": 0}
+    
+    total_pipeline = totals.get("total_pipeline", 0)
+    total_won_revenue = totals.get("total_won_revenue", 0)
+    total_deals_count = totals.get("total_deals_count", 0)
+    won_deals_count = totals.get("won_deals_count", 0)
+    
+    stage_breakdown = [{"id": doc["_id"], "value": doc["value"]} for doc in kpi_data["stage_breakdown"] if doc["value"] > 0]
+    stage_breakdown.sort(key=lambda x: x["value"], reverse=True)
+    
+    # 2. Monthly Revenue (Needs a separate date string matching)
+    monthly_rev_pipeline = [
+        {"$match": {"stage": "won"}},
+        {
+            "$addFields": {
+                "date_str": {
+                    "$cond": {
+                        "if": {"$eq": [{"$type": "$updated_at"}, "string"]},
+                        "then": "$updated_at",
+                        "else": {
+                            "$cond": {
+                                "if": {"$eq": [{"$type": "$created_at"}, "string"]},
+                                "then": "$created_at",
+                                "else": {"$dateToString": {"format": "%Y-%m", "date": {"$ifNull": ["$updated_at", "$created_at"]}}}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {"$match": {"date_str": {"$regex": f"^{current_month_str}"}}},
+        {
+            "$group": {
+                "_id": None,
+                "monthly_revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
+            }
+        }
+    ]
+    
+    monthly_rev_res = await deals_collection.aggregate(monthly_rev_pipeline).to_list(1)
+    monthly_revenue = monthly_rev_res[0]["monthly_revenue"] if monthly_rev_res else 0
+    
+    # 3. Rep Performance
+    rep_pipeline = [
+        {"$match": {"assigned_to": {"$ne": None, "$ne": ""}}},
+        {
+            "$group": {
+                "_id": "$assigned_to",
+                "total_deals": {"$sum": 1},
+                "won_deals": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, 1, 0]}},
+                "won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                "pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["won", "lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+            }
+        }
+    ]
+    
+    rep_stats_docs = await deals_collection.aggregate(rep_pipeline).to_list(100)
     
     rep_results = []
-    if rep_stats:
-        user_ids = list(rep_stats.keys())
+    if rep_stats_docs:
+        from bson import ObjectId
+        user_ids = []
+        for doc in rep_stats_docs:
+            uid = doc["_id"]
+            if isinstance(uid, str) and len(uid) == 24:
+                try:
+                    user_ids.append(ObjectId(uid))
+                except:
+                    user_ids.append(uid)
+            else:
+                user_ids.append(uid)
+                
         users = await users_collection.find({"_id": {"$in": user_ids}}).to_list(100)
-        user_map = {str(u["_id"]): u.get("name", "Unknown") for u in users}
+        string_user_ids = [str(uid) for uid in user_ids]
+        users_str = await users_collection.find({"_id": {"$in": string_user_ids}}).to_list(100)
         
-        for uid, stats in rep_stats.items():
-            uid_str = str(uid)
+        user_map = {}
+        for u in users + users_str:
+            user_map[str(u["_id"])] = u.get("name", "Unknown")
+            
+        for stats in rep_stats_docs:
+            uid_str = str(stats["_id"])
             win_r = (stats["won_deals"] / stats["total_deals"] * 100) if stats["total_deals"] > 0 else 0
             rep_results.append({
                 "id": uid_str,
-                "name": user_map.get(uid_str, "Unassigned"),
+                "name": user_map.get(uid_str, "Unknown"),
                 "won_revenue": stats["won_revenue"],
                 "pipeline": stats["pipeline"],
                 "won_deals": stats["won_deals"],
@@ -351,17 +437,20 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
                 "win_rate": round(win_r, 1)
             })
             
-    won_deals_sorted = [d for d in deals if d.get("stage") == "won"]
-    def get_sort_key(doc):
-        dt = doc.get("updated_at") or doc.get("created_at")
-        if hasattr(dt, "timestamp"):
-            return dt.timestamp()
-        if isinstance(dt, str):
-            return dt
-        return ""
-        
-    won_deals_sorted.sort(key=get_sort_key, reverse=True)
-    recent_wins = won_deals_sorted[:5]
+    # 4. Recent Wins
+    recent_wins_pipeline = [
+        {"$match": {"stage": "won"}},
+        {
+            "$addFields": {
+                "sort_date": {
+                    "$ifNull": ["$updated_at", "$created_at"]
+                }
+            }
+        },
+        {"$sort": {"sort_date": -1}},
+        {"$limit": 5}
+    ]
+    recent_wins = await deals_collection.aggregate(recent_wins_pipeline).to_list(5)
     
     formatted_recent_wins = []
     for d in recent_wins:
@@ -398,7 +487,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
             "monthly_achieved": monthly_revenue
         },
         "rep_performance": sorted(rep_results, key=lambda x: x["won_revenue"], reverse=True),
-        "stage_breakdown": sorted(stage_data, key=lambda x: x["value"], reverse=True),
+        "stage_breakdown": stage_breakdown,
         "recent_wins": formatted_recent_wins
     }
 
@@ -460,28 +549,37 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
         }
         
     # Aggregate Deals
-    open_deals_cursor = deals_collection.find({"stage": {"$nin": ["won", "lost"]}})
-    async for d in open_deals_cursor:
-        rep_id = str(d.get("assigned_to", ""))
+    deals_workload = await deals_collection.aggregate([
+        {"$match": {"stage": {"$nin": ["won", "lost"]}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    for d in deals_workload:
+        rep_id = str(d["_id"])
         if rep_id in workload:
-            workload[rep_id]["deals"] += 1
-            workload[rep_id]["total_items"] += 1
+            workload[rep_id]["deals"] += d["count"]
+            workload[rep_id]["total_items"] += d["count"]
             
     # Aggregate Projects
-    active_projects_cursor = projects_collection.find({"status": {"$ne": "completed"}})
-    async for p in active_projects_cursor:
-        rep_id = str(p.get("assigned_to", ""))
+    projects_workload = await projects_collection.aggregate([
+        {"$match": {"status": {"$ne": "completed"}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    for p in projects_workload:
+        rep_id = str(p["_id"])
         if rep_id in workload:
-            workload[rep_id]["projects"] += 1
-            workload[rep_id]["total_items"] += 1
+            workload[rep_id]["projects"] += p["count"]
+            workload[rep_id]["total_items"] += p["count"]
                 
     # Aggregate Tasks
-    open_tasks_cursor = tasks_collection.find({"status": {"$nin": ["completed", "done", "closed"]}})
-    async for t in open_tasks_cursor:
-        rep_id = str(t.get("assigned_to", ""))
+    tasks_workload = await tasks_collection.aggregate([
+        {"$match": {"status": {"$nin": ["completed", "done", "closed"]}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    for t in tasks_workload:
+        rep_id = str(t["_id"])
         if rep_id in workload:
-            workload[rep_id]["tasks"] += 1
-            workload[rep_id]["total_items"] += 1
+            workload[rep_id]["tasks"] += t["count"]
+            workload[rep_id]["total_items"] += t["count"]
             
     workload_list = list(workload.values())
     workload_list.sort(key=lambda x: x["total_items"], reverse=True)
@@ -558,28 +656,106 @@ async def get_analytics_metrics(
     exp_curr = {"date": {"$gte": start_dt, "$lte": end_dt}}
     exp_prev = {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}}
 
-    # 1. Total Revenue
-    won_curr = await deals_collection.find({**query_curr, "stage": "won"}).to_list(None)
-    won_prev = await deals_collection.find({**query_prev, "stage": "won"}).to_list(None)
+    # 1. Deals Aggregations (Revenue, MRR, Velocity, Channels, Services)
+    deals_pipeline = [
+        {
+            "$facet": {
+                "current": [
+                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$group": {
+                        "_id": None,
+                        "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}},
+                        "mrr": {"$sum": {"$cond": [{"$eq": ["$is_recurring", True]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                        "total_days": {"$sum": {
+                            "$divide": [
+                                {"$subtract": [
+                                    {"$convert": {"input": "$updated_at", "to": "date", "onError": None, "onNull": None}},
+                                    {"$convert": {"input": "$created_at", "to": "date", "onError": None, "onNull": None}}
+                                ]},
+                                1000 * 60 * 60 * 24
+                            ]
+                        }},
+                        "valid_deals": {"$sum": {"$cond": [
+                            {"$and": [
+                                {"$ne": [{"$convert": {"input": "$updated_at", "to": "date", "onError": None, "onNull": None}}, None]},
+                                {"$ne": [{"$convert": {"input": "$created_at", "to": "date", "onError": None, "onNull": None}}, None]}
+                            ]},
+                            1,
+                            0
+                        ]}}
+                    }}
+                ],
+                "previous": [
+                    {"$match": {**query_prev, "stage": "won"}},
+                    {"$group": {
+                        "_id": None,
+                        "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}},
+                        "mrr": {"$sum": {"$cond": [{"$eq": ["$is_recurring", True]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}}
+                    }}
+                ],
+                "channels": [
+                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$group": {
+                        "_id": "$source",
+                        "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
+                    }}
+                ],
+                "services": [
+                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$group": {
+                        "_id": "$service_category",
+                        "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
+                    }}
+                ]
+            }
+        }
+    ]
     
-    rev_curr = sum(d.get("amount", 0) for d in won_curr)
-    rev_prev = sum(d.get("amount", 0) for d in won_prev)
+    deals_res = await deals_collection.aggregate(deals_pipeline).to_list(1)
+    d_data = deals_res[0] if deals_res else {"current": [], "previous": [], "channels": [], "services": []}
+    
+    curr = d_data["current"][0] if d_data["current"] else {"revenue": 0, "mrr": 0, "total_days": 0, "valid_deals": 0}
+    prev = d_data["previous"][0] if d_data["previous"] else {"revenue": 0, "mrr": 0}
+    
+    rev_curr = curr.get("revenue", 0)
+    rev_prev = prev.get("revenue", 0)
     rev_growth = compute_delta(rev_curr, rev_prev)
     
-    # 2. Net Profit
-    exp_curr_list = await expenses_collection.find(exp_curr).to_list(None)
-    exp_prev_list = await expenses_collection.find(exp_prev).to_list(None)
-    
-    profit_curr = rev_curr - sum(e.get("amount", 0) for e in exp_curr_list)
-    profit_prev = rev_prev - sum(e.get("amount", 0) for e in exp_prev_list)
-    profit_growth = compute_delta(profit_curr, profit_prev)
-    
-    # 3. MRR
-    mrr_curr = sum(d.get("amount", 0) for d in won_curr if d.get("is_recurring", False))
-    mrr_prev = sum(d.get("amount", 0) for d in won_prev if d.get("is_recurring", False))
+    mrr_curr = curr.get("mrr", 0)
+    mrr_prev = prev.get("mrr", 0)
     mrr_growth = compute_delta(mrr_curr, mrr_prev)
     
-    # 4. Churn Rate
+    velocity_days = 0
+    if curr.get("valid_deals", 0) > 0:
+        velocity_days = max(curr.get("total_days", 0) / curr["valid_deals"], 0)
+        
+    # 2. Net Profit Aggregations
+    exp_pipeline = [
+        {
+            "$facet": {
+                "current": [
+                    {"$match": exp_curr},
+                    {"$group": {"_id": None, "amount": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}}}
+                ],
+                "previous": [
+                    {"$match": exp_prev},
+                    {"$group": {"_id": None, "amount": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}}}
+                ]
+            }
+        }
+    ]
+    
+    exp_res = await expenses_collection.aggregate(exp_pipeline).to_list(1)
+    e_data = exp_res[0] if exp_res else {"current": [], "previous": []}
+    
+    exp_curr_val = e_data["current"][0]["amount"] if e_data["current"] else 0
+    exp_prev_val = e_data["previous"][0]["amount"] if e_data["previous"] else 0
+    
+    profit_curr = rev_curr - exp_curr_val
+    profit_prev = rev_prev - exp_prev_val
+    profit_growth = compute_delta(profit_curr, profit_prev)
+    
+    # 3. Churn Rate
     def calc_churn(q):
         return deals_collection.count_documents({**q, "stage": "lost"})
     def calc_total(q):
@@ -593,47 +769,50 @@ async def get_analytics_metrics(
     lost_prev = await calc_churn(query_prev)
     churn_prev = (lost_prev / total_prev * 100) if total_prev > 0 else 0
     churn_growth = compute_delta(churn_curr, churn_prev)
-    
-    # 5. Deal Velocity (Average days to close)
-    velocity_days = 0
-    if len(won_curr) > 0:
-        total_days = 0
-        valid_deals = 0
-        for d in won_curr:
-            created = d.get("created_at")
-            updated = d.get("updated_at")
-            if isinstance(created, datetime) and isinstance(updated, datetime):
-                days = (updated - created).days
-                total_days += max(days, 0)
-                valid_deals += 1
-        if valid_deals > 0:
-            velocity_days = total_days / valid_deals
             
-    # 6. Growth Dynamics (Last 6 Months Trend)
+    # 4. Growth Dynamics (Last 6 Months Trend)
+    six_months_ago = (now.replace(day=1) - timedelta(days=30*5)).replace(day=1, hour=0, minute=0, second=0)
+    
+    growth_pipeline = [
+        {"$match": {"created_at": {"$gte": six_months_ago}, "stage": "won"}},
+        {
+            "$addFields": {
+                "parsed_date": {
+                    "$convert": {
+                        "input": "$created_at",
+                        "to": "date",
+                        "onError": None,
+                        "onNull": None
+                    }
+                }
+            }
+        },
+        {"$match": {"parsed_date": {"$ne": None}}},
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m", "date": "$parsed_date"}},
+                "arr": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}},
+                "mrr": {"$sum": {"$cond": [{"$eq": ["$is_recurring", True]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}}
+            }
+        }
+    ]
+    
+    growth_res = await deals_collection.aggregate(growth_pipeline).to_list(100)
+    
     months_labels = []
     mrr_data = []
     arr_data = []
     
+    growth_map = {doc["_id"]: doc for doc in growth_res}
+    
     for i in range(5, -1, -1):
         m_start = (now.replace(day=1) - timedelta(days=30*i)).replace(day=1, hour=0, minute=0, second=0)
-        # Next month's first day minus 1 second = last day of this month
-        if m_start.month == 12:
-            m_end = m_start.replace(year=m_start.year+1, month=1) - timedelta(seconds=1)
-        else:
-            m_end = m_start.replace(month=m_start.month+1) - timedelta(seconds=1)
-            
+        m_key = m_start.strftime("%Y-%m")
         months_labels.append(m_start.strftime("%b"))
         
-        m_deals = await deals_collection.find({
-            "created_at": {"$gte": m_start, "$lte": m_end},
-            "stage": "won"
-        }).to_list(None)
-        
-        m_arr = sum(d.get("amount", 0) for d in m_deals)
-        m_mrr = sum(d.get("amount", 0) for d in m_deals if d.get("is_recurring", False))
-        
-        arr_data.append(m_arr)
-        mrr_data.append(m_mrr)
+        doc = growth_map.get(m_key, {"arr": 0, "mrr": 0})
+        arr_data.append(doc["arr"])
+        mrr_data.append(doc["mrr"])
         
     growth_dynamics = {
         "labels": months_labels,
@@ -641,20 +820,18 @@ async def get_analytics_metrics(
         "arr": arr_data
     }
     
-    # 7. Channel Attribution
-    # Pre-populate with expected channels so they always show up
+    # 5. Channel Attribution
     channel_counts = {
         "WhatsApp CRM": 0,
         "Direct Sales": 0,
         "Marketing Ads": 0
     }
-    for d in won_curr:
-        src = d.get("source")
+    for doc in d_data.get("channels", []):
+        src = doc["_id"]
         if src:
-            channel_counts[src] = channel_counts.get(src, 0) + d.get("amount", 0)
+            channel_counts[src] = channel_counts.get(src, 0) + doc.get("revenue", 0)
         
     channels_list = []
-    # Always show them even if total revenue is 0
     sorted_ch = sorted(channel_counts.items(), key=lambda x: x[1], reverse=True)
     colors = ["#25D366", "#4f46e5", "#f59e0b", "#ec4899", "#14b8a6"]
     for i, (name, val) in enumerate(sorted_ch[:5]):
@@ -665,19 +842,14 @@ async def get_analytics_metrics(
             "color": colors[i % len(colors)]
         })
             
-    # 8. Revenue by Service
-    service_counts = {}
-    for d in won_curr:
-        srv = d.get("service_category")
-        if srv:
-            service_counts[srv] = service_counts.get(srv, 0) + d.get("amount", 0)
-        
+    # 6. Revenue by Service
     revenue_by_service = {"labels": [], "values": []}
-    for k, v in service_counts.items():
-        revenue_by_service["labels"].append(k)
-        revenue_by_service["values"].append(v)
+    for doc in d_data.get("services", []):
+        srv = doc["_id"]
+        if srv:
+            revenue_by_service["labels"].append(srv)
+            revenue_by_service["values"].append(doc.get("revenue", 0))
         
-    # If no data, provide an empty structure so charts don't break
     if not revenue_by_service["labels"]:
         revenue_by_service = {"labels": ["No Data"], "values": [0]}
 

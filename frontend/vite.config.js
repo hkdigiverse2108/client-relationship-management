@@ -28,6 +28,7 @@
 
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import viteCompression from "vite-plugin-compression";
 import { fileURLToPath, URL } from "node:url";
 import path from "path";
 
@@ -38,7 +39,25 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, ""); // load ALL vars (no prefix filter)
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      viteCompression({ algorithm: "gzip" }) // Add compression plugin
+    ],
+
+    // Build optimizations for chunk splitting
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-charts": ["chart.js", "react-chartjs-2", "recharts"],
+            "vendor-calendar": ["react-big-calendar", "date-fns", "dayjs"],
+            "vendor-pdf": ["jspdf", "jspdf-autotable"],
+            "vendor-ui": ["react-icons", "sweetalert2", "react-hot-toast", "ux4g-web-components"],
+            "vendor-core": ["react", "react-dom", "react-router-dom", "axios"]
+          }
+        }
+      }
+    },
 
     // Tell Vite where to look for .env files → project root
     envDir: rootDir,

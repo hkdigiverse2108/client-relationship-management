@@ -1,8 +1,44 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "@/layouts/MainLayout/MainLayout";
 import AuthLayout from "@/layouts/AuthLayout/AuthLayout";
+
+// Component to hide the global preloader smoothly once React is fully loaded
+const HidePreloader = () => {
+  useEffect(() => {
+    const preloader = document.getElementById("global-preloader");
+    if (preloader) {
+      preloader.classList.add("fade-out");
+      setTimeout(() => {
+        if (preloader.parentNode) {
+          preloader.parentNode.removeChild(preloader);
+        }
+      }, 500); // Matches the CSS transition duration
+    }
+  }, []);
+  return null;
+};
+
+const FallbackPreloader = () => (
+  <div className="crm-preloader-container" style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#f8fafc" }}>
+    <svg width="260" height="260" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <line x1="30" y1="150" x2="170" y2="150" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
+      <rect x="52" y="100" width="24" height="50" rx="4" fill="#bae6fd">
+        <animate attributeName="y" values="100;70;100" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="height" values="50;80;50" dur="2s" repeatCount="indefinite" />
+      </rect>
+      <rect x="88" y="75" width="24" height="75" rx="4" fill="#38bdf8">
+        <animate attributeName="y" values="75;45;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
+        <animate attributeName="height" values="75;105;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
+      </rect>
+      <rect x="124" y="45" width="24" height="105" rx="4" fill="#0284c7">
+        <animate attributeName="y" values="45;20;45" dur="2s" repeatCount="indefinite" begin="0.6s" />
+        <animate attributeName="height" values="105;130;105" dur="2s" repeatCount="indefinite" begin="0.6s" />
+      </rect>
+    </svg>
+  </div>
+);
 
 // Lazy loaded pages
 const Login = lazy(() => import("@/pages/Auth/Login"));
@@ -38,12 +74,8 @@ const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermission
 
 export default function AppRouter() {
   return (
-    <Suspense fallback={
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
-        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}></div>
-        <div style={{ color: 'var(--color-text)' }}>Loading Application...</div>
-      </div>
-    }>
+    <Suspense fallback={<FallbackPreloader />}>
+      <HidePreloader />
       <Routes>
       {/* Public / auth routes */}
       <Route element={<AuthLayout />}>
