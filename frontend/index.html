@@ -34,18 +34,17 @@
       /* GPU Accelerated Loader */
       .crm-loader-chart {
         position: relative;
-        width: 140px;
-        height: 120px;
         display: flex;
         align-items: flex-end;
-        justify-content: space-between;
+        gap: 12px; /* Exact gap from SVG */
         padding-bottom: 4px; /* for base line */
+        transform: scale(1.3); /* Exact scale factor of original SVG (260/200) */
       }
       .crm-loader-base {
         position: absolute;
         bottom: 0;
-        left: -10px;
-        right: -10px;
+        left: -22px; /* Exact SVG padding */
+        right: -22px;
         height: 4px;
         background-color: #cbd5e1;
         border-radius: 2px;

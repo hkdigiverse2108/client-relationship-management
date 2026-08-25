@@ -20,25 +20,23 @@ const HidePreloader = () => {
   return null;
 };
 
-const FallbackPreloader = () => (
-  <div className="crm-preloader-container" style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#f8fafc" }}>
-    <svg width="260" height="260" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <line x1="30" y1="150" x2="170" y2="150" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
-      <rect x="52" y="100" width="24" height="50" rx="4" fill="#bae6fd">
-        <animate attributeName="y" values="100;70;100" dur="2s" repeatCount="indefinite" />
-        <animate attributeName="height" values="50;80;50" dur="2s" repeatCount="indefinite" />
-      </rect>
-      <rect x="88" y="75" width="24" height="75" rx="4" fill="#38bdf8">
-        <animate attributeName="y" values="75;45;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
-        <animate attributeName="height" values="75;105;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
-      </rect>
-      <rect x="124" y="45" width="24" height="105" rx="4" fill="#0284c7">
-        <animate attributeName="y" values="45;20;45" dur="2s" repeatCount="indefinite" begin="0.6s" />
-        <animate attributeName="height" values="105;130;105" dur="2s" repeatCount="indefinite" begin="0.6s" />
-      </rect>
-    </svg>
-  </div>
-);
+const FallbackPreloader = () => {
+  // If the global preloader from index.html is still active, don't show a second one to prevent animation blinking
+  if (document.getElementById("global-preloader")) {
+    return null;
+  }
+  
+  return (
+    <div className="crm-preloader-container" style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#f8fafc" }}>
+      <div className="crm-loader-chart">
+        <div className="crm-loader-bar crm-bar1"></div>
+        <div className="crm-loader-bar crm-bar2"></div>
+        <div className="crm-loader-bar crm-bar3"></div>
+        <div className="crm-loader-base"></div>
+      </div>
+    </div>
+  );
+};
 
 // Lazy loaded pages
 const Login = lazy(() => import("@/pages/Auth/Login"));
