@@ -48,12 +48,15 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            "vendor-charts": ["chart.js", "react-chartjs-2", "recharts"],
-            "vendor-calendar": ["react-big-calendar", "date-fns", "dayjs"],
-            "vendor-pdf": ["jspdf", "jspdf-autotable"],
-            "vendor-ui": ["react-icons", "sweetalert2", "react-hot-toast", "ux4g-web-components"],
-            "vendor-core": ["react", "react-dom", "react-router-dom", "axios"]
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("chart.js") || id.includes("react-chartjs-2") || id.includes("recharts")) return "vendor-charts";
+              if (id.includes("react-big-calendar") || id.includes("date-fns") || id.includes("dayjs")) return "vendor-calendar";
+              if (id.includes("jspdf") || id.includes("jspdf-autotable")) return "vendor-pdf";
+              if (id.includes("react-icons") || id.includes("sweetalert2") || id.includes("react-hot-toast") || id.includes("ux4g-web-components")) return "vendor-ui";
+              if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom") || id.includes("axios")) return "vendor-core";
+              return "vendor";
+            }
           }
         }
       }
