@@ -7,6 +7,11 @@
     <meta name="description" content="AIO CRM - Enterprise Customer Relationship Management platform" />
     <title>AIO CRM | Enterprise CRM Platform</title>
     <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f8fafc;
+      }
       .crm-preloader-container {
         display: flex;
         justify-content: center;
@@ -22,34 +27,62 @@
       .crm-preloader-container.fade-out {
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.5s ease, visibility 0.5s ease;
+        transition:
+          opacity 0.5s ease,
+          visibility 0.5s ease;
       }
+      /* GPU Accelerated Loader */
+      .crm-loader-chart {
+        position: relative;
+        width: 140px;
+        height: 120px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding-bottom: 4px; /* for base line */
+      }
+      .crm-loader-base {
+        position: absolute;
+        bottom: 0;
+        left: -10px;
+        right: -10px;
+        height: 4px;
+        background-color: #cbd5e1;
+        border-radius: 2px;
+      }
+      .crm-loader-bar {
+        width: 24px;
+        border-radius: 4px;
+        transform-origin: bottom;
+      }
+      .crm-bar1 { 
+        height: 50px; 
+        background-color: #bae6fd; 
+        animation: crmBounce1 2s infinite ease-in-out; 
+      }
+      .crm-bar2 { 
+        height: 75px; 
+        background-color: #38bdf8; 
+        animation: crmBounce2 2s infinite ease-in-out 0.3s; 
+      }
+      .crm-bar3 { 
+        height: 105px; 
+        background-color: #0284c7; 
+        animation: crmBounce3 2s infinite ease-in-out 0.6s; 
+      }
+      @keyframes crmBounce1 { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.6); } }
+      @keyframes crmBounce2 { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.4); } }
+      @keyframes crmBounce3 { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.23); } }
     </style>
   </head>
-  <body style="margin: 0; padding: 0">
+  <body>
     <div id="global-preloader" class="crm-preloader-container">
-      <svg width="260" height="260" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <!-- Bar Chart Base Line -->
-        <line x1="30" y1="150" x2="170" y2="150" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round" />
-        
-        <!-- Animated Bar 1 -->
-        <rect x="52" y="100" width="24" height="50" rx="4" fill="#bae6fd">
-          <animate attributeName="y" values="100;70;100" dur="2s" repeatCount="indefinite" />
-          <animate attributeName="height" values="50;80;50" dur="2s" repeatCount="indefinite" />
-        </rect>
-        
-        <!-- Animated Bar 2 -->
-        <rect x="88" y="75" width="24" height="75" rx="4" fill="#38bdf8">
-          <animate attributeName="y" values="75;45;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
-          <animate attributeName="height" values="75;105;75" dur="2s" repeatCount="indefinite" begin="0.3s" />
-        </rect>
-        
-        <!-- Animated Bar 3 -->
-        <rect x="124" y="45" width="24" height="105" rx="4" fill="#0284c7">
-          <animate attributeName="y" values="45;20;45" dur="2s" repeatCount="indefinite" begin="0.6s" />
-          <animate attributeName="height" values="105;130;105" dur="2s" repeatCount="indefinite" begin="0.6s" />
-        </rect>
-      </svg>
+      <div class="crm-loader-chart">
+        <div class="crm-loader-bar crm-bar1"></div>
+        <div class="crm-loader-bar crm-bar2"></div>
+        <div class="crm-loader-bar crm-bar3"></div>
+        <div class="crm-loader-base"></div>
+      </div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
