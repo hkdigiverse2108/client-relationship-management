@@ -10,7 +10,7 @@ from dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1/expenses", tags=["Expenses"])
 
-@router.get("/", response_model=List[ExpenseResponse])
+@router.get("", response_model=List[ExpenseResponse])
 async def list_expenses(
     category: str = None, 
     start_date: str = None, 
@@ -36,7 +36,7 @@ async def list_expenses(
         exp["_id"] = str(exp["_id"])
     return expenses
 
-@router.post("/", response_model=ExpenseResponse)
+@router.post("", response_model=ExpenseResponse)
 async def create_expense(expense: ExpenseCreate, current_user: dict = Depends(get_current_user)):
     data = expense.model_dump(exclude_unset=True)
     data["created_by"] = current_user["_id"]

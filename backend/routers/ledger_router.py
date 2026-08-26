@@ -7,7 +7,7 @@ from bson import ObjectId
 
 router = APIRouter(prefix="/api/v1/ledger", tags=["General Ledger"])
 
-@router.get("/", response_model=List[dict])
+@router.get("", response_model=List[dict])
 async def get_ledger(current_user: dict = Depends(get_current_user)):
     """Fetch all ledger entries, enriched with client details."""
     cursor = ledger_collection.find().sort("date", -1)

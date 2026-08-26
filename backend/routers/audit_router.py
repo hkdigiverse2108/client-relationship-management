@@ -7,7 +7,7 @@ from models import UserResponse, AuditLogResponse
 
 router = APIRouter(prefix="/audit", tags=["Audit Logs"])
 
-@router.get("/", response_model=List[AuditLogResponse])
+@router.get("", response_model=List[AuditLogResponse])
 async def get_audit_logs(
     current_user: UserResponse = Depends(get_current_user),
     skip: int = Query(0, ge=0),

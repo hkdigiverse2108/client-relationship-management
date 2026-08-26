@@ -18,7 +18,7 @@ def serialize_doc(doc):
     del doc["_id"]
     return doc
 
-@router.post("/", response_model=TaskResponse)
+@router.post("", response_model=TaskResponse)
 async def create_task(task: TaskCreate):
     task_dict = task.dict()
     task_dict["created_at"] = datetime.utcnow().isoformat()
@@ -52,7 +52,7 @@ async def create_task(task: TaskCreate):
 
     return serialize_doc(created_task)
 
-@router.get("/", response_model=List[TaskResponse])
+@router.get("", response_model=List[TaskResponse])
 async def get_tasks(project_id: str = None):
     query = {}
     if project_id:
