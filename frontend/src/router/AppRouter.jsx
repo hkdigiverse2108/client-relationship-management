@@ -66,7 +66,16 @@ const GanttChart = lazy(() => import("@/pages/Project/GanttChart"));
 const Orders = lazy(() => import("@/pages/Ecommerce/Orders"));
 const Products = lazy(() => import("@/pages/Ecommerce/Products"));
 const Customers = lazy(() => import("@/pages/Ecommerce/Customers"));
+const Inventory = lazy(() => import("@/pages/Ecommerce/Inventory"));
+const AbandonedCarts = lazy(() => import("@/pages/Ecommerce/AbandonedCarts"));
 const AuditLog = lazy(() => import("@/pages/Audit/AuditLog"));
+const BillingDashboard = lazy(() => import("@/pages/Finance/BillingDashboard"));
+const InvoiceList = lazy(() => import("@/pages/Finance/InvoiceList"));
+const QuotesList = lazy(() => import("@/pages/Finance/QuotesList"));
+const PaymentsList = lazy(() => import("@/pages/Finance/PaymentsList"));
+const Ledger = lazy(() => import("@/pages/Finance/Ledger"));
+const Expenses = lazy(() => import("@/pages/Finance/Expenses"));
+const GSTReports = lazy(() => import("@/pages/Finance/GSTReports"));
 const UserManagementPage = lazy(() => import("@/pages/Settings/UserManagementPage"));
 const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermissionsPage"));
 
@@ -115,7 +124,16 @@ export default function AppRouter() {
         <Route path="/gantt-chart" element={<GanttChart />} />
         <Route path="/orders" element={<Orders/>}/>
         <Route path="/products" element={<Products/>}/>
+        <Route path="/inventory" element={<Inventory/>}/>
         <Route path="/customers" element={<Customers/>}/>
+        <Route path="/abandoned-carts" element={<AbandonedCarts/>}/>
+        <Route path="/billing-dashboard" element={<BillingDashboard />} />
+        <Route path="/invoices" element={<InvoiceList />} />
+        <Route path="/quotes" element={<QuotesList />} />
+        <Route path="/payments" element={<PaymentsList />} />
+        <Route path="/ledger" element={<Ledger />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/gst-reports" element={<GSTReports />} />
       </Route>
       <Route path="*" element={<NotFound />} />
       </Routes>

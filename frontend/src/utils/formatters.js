@@ -9,7 +9,8 @@ export const formatCurrency = (value, currency = APP_CONFIG.currency) => {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(value));
 };
 export const formatNumber = (value) => {

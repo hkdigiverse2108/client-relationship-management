@@ -115,12 +115,10 @@
 
 .aio-btn--gradient{
   background: linear-gradient(135deg, var(--color-accent, #805ad5), var(--color-primary, #0052cc));
-  color: var(--color-primary-soft);
+  color: #ffffff;
   border: var(--btn-border);
   height: 33px;
   font-size: var(--font-size-xs);
-  
-
 }
 
 

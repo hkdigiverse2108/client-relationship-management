@@ -440,26 +440,90 @@ class TaskResponse(TaskCreate):
     updated_at: str
     created_by: str
 
+class InvoiceLineItem(BaseModel):
+    description: str
+    sac: Optional[str] = None
+    qty: float
+    rate: float
+    discount: float = 0.0
+    amount: float
+
 # --- Invoice Models (Accounting Source of Truth) ---
 class InvoiceCreate(BaseModel):
     invoice_number: str
-    client_id: str
+    client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_gstin: str
+    state: Optional[str] = None
+    brand: Optional[str] = None
+    invoice_type: str = "Tax Invoice"
+    mode_of_payment: str = "Current Account"
+    
     deal_id: Optional[str] = None
-    total_amount: float
+    source_type: str = "Project"  # Project, E-commerce, Retainer, Ad-hoc
+    source_id: Optional[str] = None
+    
+    line_items: List[InvoiceLineItem] = []
+    
+    total_amount: float # Total Before Tax
+    tax_type: str = "CGST + SGST"
+    cgst_percent: float = 0.0
+    sgst_percent: float = 0.0
+    igst_percent: float = 0.0
+    total_tax_amount: float = 0.0
+    additional_discount: float = 0.0
+    rounded_total: float = 0.0
+    calculated_round_off: float = 0.0
+    total_due: float = 0.0
+    
     status: str = "draft"  # draft, sent, paid, partial, overdue
     issue_date: str
     due_date: str
     notes: Optional[str] = None
+    is_recurring: bool = False
+    recurring_frequency: Optional[str] = None
+    next_issue_date: Optional[str] = None
+    recurring_end_date: Optional[str] = None
 
 class InvoiceUpdate(BaseModel):
     invoice_number: Optional[str] = None
     client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_gstin: Optional[str] = None
+    state: Optional[str] = None
+    brand: Optional[str] = None
+    invoice_type: Optional[str] = None
+    mode_of_payment: Optional[str] = None
+    
     deal_id: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[str] = None
+    
+    line_items: Optional[List[InvoiceLineItem]] = None
+    
     total_amount: Optional[float] = None
+    tax_type: Optional[str] = None
+    cgst_percent: Optional[float] = None
+    sgst_percent: Optional[float] = None
+    igst_percent: Optional[float] = None
+    total_tax_amount: Optional[float] = None
+    additional_discount: Optional[float] = None
+    rounded_total: Optional[float] = None
+    calculated_round_off: Optional[float] = None
+    total_due: Optional[float] = None
+    
     status: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     notes: Optional[str] = None
+    is_recurring: Optional[bool] = None
+    recurring_frequency: Optional[str] = None
+    next_issue_date: Optional[str] = None
+    recurring_end_date: Optional[str] = None
 
 class InvoiceResponse(InvoiceCreate):
     id: str = Field(alias="_id")
@@ -469,24 +533,65 @@ class InvoiceResponse(InvoiceCreate):
 
 # --- Payment Models ---
 class PaymentCreate(BaseModel):
-    client_id: str
+    payment_id: str
+    client_id: Optional[str] = None
     invoice_id: Optional[str] = None
+    source_type: str = "Project"
     amount_received: float
     payment_date: str
-    payment_method: str = "bank_transfer"
+    payment_method: str = "Bank NEFT/RTGS" # Razorpay, UPI Transfer, Bank NEFT/RTGS, Cheque, Cash
+    status: str = "completed" # pending, partial, completed, failed
     transaction_reference: Optional[str] = None
     notes: Optional[str] = None
 
 class PaymentUpdate(BaseModel):
+    payment_id: Optional[str] = None
     client_id: Optional[str] = None
     invoice_id: Optional[str] = None
+    source_type: Optional[str] = None
     amount_received: Optional[float] = None
     payment_date: Optional[str] = None
     payment_method: Optional[str] = None
+    status: Optional[str] = None
     transaction_reference: Optional[str] = None
     notes: Optional[str] = None
 
 class PaymentResponse(PaymentCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Expense Models ---
+class ExpenseCreate(BaseModel):
+    expense_id: str
+    date: str
+    category: str
+    amount: float
+    merchant: str
+    merchant_gstin: Optional[str] = None
+    tax_amount: float = 0.0
+    payment_method: str
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    status: str = "Cleared" # Pending, Cleared
+
+class ExpenseUpdate(BaseModel):
+    expense_id: Optional[str] = None
+    date: Optional[str] = None
+    category: Optional[str] = None
+    amount: Optional[float] = None
+    merchant: Optional[str] = None
+    merchant_gstin: Optional[str] = None
+    tax_amount: Optional[float] = None
+    payment_method: Optional[str] = None
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    status: Optional[str] = None
+
+class ExpenseResponse(ExpenseCreate):
     id: str = Field(alias="_id")
     created_by: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -516,3 +621,272 @@ class ReminderResponse(ReminderCreate):
     created_by: str
 
 
+# --- Order Models ---
+class OrderCreate(BaseModel):
+    order_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    product_name: str
+    platform: str
+    quantity: int
+    unit_price: float
+    discount: float
+    tax: float
+    payment_status: str
+    order_status: str
+    customer_name: str
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: str
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+class OrderResponse(OrderCreate):
+    id: str = Field(alias="_id")
+    order_id: Optional[str] = "N/A"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class OrderUpdate(BaseModel):
+    customer_id: Optional[str] = None
+    product_name: Optional[str] = None
+    platform: Optional[str] = None
+    quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    discount: Optional[float] = None
+    tax: Optional[float] = None
+    payment_status: Optional[str] = None
+    order_status: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: Optional[str] = None
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+# --- E-Commerce Customer Models ---
+class CustomerCreate(BaseModel):
+    customer_id: Optional[str] = None
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    tags: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+
+class ProjectResponse(BaseModel):
+    id: str = Field(alias="_id")
+    title: str
+    client_id: str
+    deal_id: Optional[str] = None
+    status: str = "active"
+    stage: str = "new"
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    department: Optional[str] = None
+    budget: Optional[float] = None
+    project_value: Optional[float] = None
+    tags: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    description: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+
+
+# --- Order Models ---
+class OrderCreate(BaseModel):
+    order_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    product_name: str
+    platform: str
+    quantity: int
+    unit_price: float
+    discount: float
+    tax: float
+    payment_status: str
+    order_status: str
+    customer_name: str
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: str
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+class OrderResponse(OrderCreate):
+    id: str = Field(alias="_id")
+    order_id: Optional[str] = "N/A"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class OrderUpdate(BaseModel):
+    customer_id: Optional[str] = None
+    product_name: Optional[str] = None
+    platform: Optional[str] = None
+    quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    discount: Optional[float] = None
+    tax: Optional[float] = None
+    payment_status: Optional[str] = None
+    order_status: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_email: Optional[EmailStr] = None
+    customer_phone: Optional[str] = None
+    destination_city: Optional[str] = None
+    destination_state: Optional[str] = None
+    destination_country: Optional[str] = None
+    description: Optional[str] = None
+
+# --- E-Commerce Customer Models ---
+class CustomerCreate(BaseModel):
+    customer_id: Optional[str] = None
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    status: str = "Active"
+    tags: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[str] = None
+    notes: Optional[str] = None
+
+class CustomerResponse(CustomerCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- Product Models ---
+class ProductVariant(BaseModel):
+    name: str
+    values: List[str]
+
+class ProductCreate(BaseModel):
+    product_name: str
+    sku_code: str
+    category: str
+    brand_name: str
+    image: Optional[str] = None
+    status: str = "active"
+    initial_stock_qty: int = 0
+    safety_stock_limit: int = 0
+    cost_price: float = 0.0
+    retail_price: float
+    tax: float
+    discount: float = 0.0
+    fulfillment_warehouse: str
+    platforms: List[str] = []
+    variants: List[ProductVariant] = []
+    description: Optional[str] = None
+    warehouse_stocks: Optional[Dict[str, int]] = None
+
+class ProductUpdate(BaseModel):
+    product_name: Optional[str] = None
+    sku_code: Optional[str] = None
+    category: Optional[str] = None
+    brand_name: Optional[str] = None
+    image: Optional[str] = None
+    status: Optional[str] = None
+    initial_stock_qty: Optional[int] = None
+    safety_stock_limit: Optional[int] = None
+    cost_price: Optional[float] = None
+    retail_price: Optional[float] = None
+    tax: Optional[float] = None
+    discount: Optional[float] = None
+    fulfillment_warehouse: Optional[str] = None
+    platforms: Optional[List[str]] = None
+    variants: Optional[List[ProductVariant]] = None
+    description: Optional[str] = None
+    warehouse_stocks: Optional[Dict[str, int]] = None
+
+class ProductResponse(ProductCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class TransferStockRequest(BaseModel):
+    from_location: str
+    to_location: str
+    quantity: int
+
+# --- Quote Models (Quotation Engine) ---
+class QuoteCreate(BaseModel):
+    quote_number: str
+    client_id: Optional[str] = None
+    product_name: str
+    unit_price: float
+    quantity: int
+    discount: float = 0.0
+    tax_percentage: float = 0.0
+    validity_days: int = 30
+    status: str = "Draft" # Draft, Sent, Accepted, Expired, Rejected
+    notes: Optional[str] = None
+    sub_total: float
+    tax_amount: float
+    total_amount: float
+    date_sent: Optional[str] = None
+    valid_until: Optional[str] = None
+
+class QuoteUpdate(BaseModel):
+    quote_number: Optional[str] = None
+    client_id: Optional[str] = None
+    product_name: Optional[str] = None
+    unit_price: Optional[float] = None
+    quantity: Optional[int] = None
+    discount: Optional[float] = None
+    tax_percentage: Optional[float] = None
+    validity_days: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    sub_total: Optional[float] = None
+    tax_amount: Optional[float] = None
+    total_amount: Optional[float] = None
+    date_sent: Optional[str] = None
+    valid_until: Optional[str] = None
+
+class QuoteResponse(QuoteCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- General Ledger Models ---
+class LedgerEntryCreate(BaseModel):
+    entry_id: str
+    date: str
+    description: str
+    reference_id: Optional[str] = None # e.g. Payment ID or Expense ID
+    client_id: Optional[str] = None
+    type: str # "Credit" (Inflow) or "Debit" (Outflow)
+    amount: float
+    status: str = "settled"
+
+class LedgerEntryResponse(LedgerEntryCreate):
+    id: str = Field(alias="_id")
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

@@ -1,0 +1,49 @@
+.order-form-scrollable {
+  max-height: 65vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+}
+
+/* Custom scrollbar for webkit */
+.order-form-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.order-form-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.order-form-scrollable::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+.order-form-scrollable {
+  max-height: 65vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+}
+
+/* Custom scrollbar for webkit */
+.order-form-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.order-form-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.order-form-scrollable::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+.order-form-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+.form-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

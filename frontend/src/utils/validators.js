@@ -126,3 +126,39 @@ export const projectSchema = yup.object({
   end_date: yup.string().nullable(),
   description: yup.string().nullable(),
 });
+
+export const orderSchema = yup.object({
+  product_name: yup.string().required("Product Name is required"),
+  platform: yup.string().required("Platform is required"),
+  quantity: yup.number().typeError("Quantity must be a number").integer("Quantity must be a whole number").min(1, "Quantity must be at least 1").required("Quantity is required"),
+  unit_price: yup.number().typeError("Unit Price must be a number").min(0, "Unit Price cannot be negative").required("Unit Price is required"),
+  discount: yup.number().typeError("Discount must be a number").min(0, "Discount cannot be negative").required("Discount is required"),
+  tax: yup.number().typeError("Tax must be a number").min(0, "Tax cannot be negative").required("Tax is required"),
+  payment_status: yup.string().required("Payment Status is required"),
+  order_status: yup.string().required("Order Status is required"),
+  customer_name: yup.string().required("Customer Name is required"),
+  customer_email: yup.string().email("Invalid email").nullable(),
+  customer_phone: yup.string().nullable(),
+  destination_city: yup.string().required("Destination City is required"),
+  destination_state: yup.string().nullable(),
+  destination_country: yup.string().nullable(),
+  description: yup.string().nullable(),
+});
+
+export const productSchema = yup.object({
+  product_name: yup.string().required("Product Name is required"),
+  sku_code: yup.string().required("SKU Code is required"),
+  category: yup.string().required("Category is required"),
+  brand_name: yup.string().required("Brand Name is required"),
+  image: yup.string().required("Image is required"),
+  status: yup.string().required("Status is required"),
+  initial_stock_qty: yup.number().typeError("Must be a number").integer().min(0).nullable(),
+  safety_stock_limit: yup.number().typeError("Must be a number").integer().min(0).nullable(),
+  cost_price: yup.number().typeError("Must be a number").min(0).nullable(),
+  retail_price: yup.number().typeError("Must be a number").min(0).required("Retail Price is required"),
+  tax: yup.number().typeError("Must be a number").min(0).required("Tax is required"),
+  discount: yup.number().typeError("Must be a number").min(0).required("Discount is required"),
+  fulfillment_warehouse: yup.string().required("Fulfillment Warehouse is required"),
+  platforms: yup.array().of(yup.string()).min(1, "Select at least one platform").required("Select at least one platform"),
+  description: yup.string().nullable(),
+});

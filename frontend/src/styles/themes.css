@@ -74,11 +74,11 @@
   color: var(--color-text-muted) !important;
 }
 
-/* Fix primary and gradient button text colors in dark mode to be dark (black-ish) */
+/* Fix primary and gradient button text colors in dark mode to be white */
 [data-theme="dark"] .aio-btn--primary,
 [data-theme="dark"] .btn-primary,
 [data-theme="dark"] .aio-btn--gradient {
-  color: var(--color-primary-soft) !important;
+  color: #ffffff !important;
 }
 
 /* Fix select options for dark theme */
