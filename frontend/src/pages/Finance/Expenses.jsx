@@ -221,10 +221,10 @@ const Expenses = () => {
 
       <div className="card shadow-sm border-0">
         <div className="card-header bg-transparent border-bottom pt-4 pb-3">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <h5 className="mb-0 text-nowrap">All Expenses</h5>
+          <div className="d-flex flex-wrap align-items-center gap-3">
+            <h5 className="mb-0 text-nowrap me-2">All Expenses</h5>
             
-            <div className="flex-grow-1" style={{ maxWidth: '400px' }}>
+            <div className="flex-grow-1 flex-xl-grow-0" style={{ minWidth: '250px', maxWidth: '400px' }}>
               <SearchBar 
                 value={searchTerm} 
                 onChange={setSearchTerm} 

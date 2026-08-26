@@ -147,7 +147,7 @@ const Ledger = () => {
   ];
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-2 p-md-4">
       <PageHeader
         title="General Ledger"
         description="Complete financial ledger & accounting records"
@@ -203,14 +203,14 @@ const Ledger = () => {
 
       <div className="card shadow-sm border-0">
         <div className="card-header bg-transparent border-bottom pt-4 pb-3">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-4">
-            <h5 className="mb-0">Ledger Entries</h5>
-            <div className="btn-group shadow-sm" style={{ borderRadius: '6px' }}>
+          <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+            <h5 className="mb-0 text-nowrap">Ledger Entries</h5>
+            <div className="btn-group shadow-sm w-100 w-sm-auto" style={{ borderRadius: '6px' }}>
               <button 
-                className="btn btn-sm"
+                className="btn btn-sm text-nowrap"
                 onClick={() => setActiveTab('grouped')}
                 style={{ 
-                  width: '130px',
+                  flex: '1',
                   backgroundColor: activeTab === 'grouped' ? 'var(--color-primary)' : 'transparent',
                   color: activeTab === 'grouped' ? '#fff' : 'var(--color-primary)',
                   border: '1px solid var(--color-primary)'
@@ -219,10 +219,10 @@ const Ledger = () => {
                 Group by Client
               </button>
               <button 
-                className="btn btn-sm"
+                className="btn btn-sm text-nowrap"
                 onClick={() => setActiveTab('chronological')}
                 style={{ 
-                  width: '130px',
+                  flex: '1',
                   backgroundColor: activeTab === 'chronological' ? 'var(--color-primary)' : 'transparent',
                   color: activeTab === 'chronological' ? '#fff' : 'var(--color-primary)',
                   border: '1px solid var(--color-primary)'

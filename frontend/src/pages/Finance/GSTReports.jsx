@@ -116,7 +116,7 @@ const GSTReports = () => {
   };
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-2 p-md-4">
       <PageHeader
         title="GST Reports"
         description="Generate statutory GST compliance reports"

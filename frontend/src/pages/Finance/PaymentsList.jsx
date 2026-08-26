@@ -230,9 +230,9 @@ const PaymentsList = () => {
               />
             </div>
             
-            <div className="d-flex flex-wrap gap-2">
+            <div className="d-flex flex-column flex-md-row gap-2">
               <select 
-                className="form-select form-select-md flex-grow-1"
+                className="form-select form-select-md w-100 w-md-auto"
                 style={{ minWidth: '150px' }}
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}
@@ -246,7 +246,7 @@ const PaymentsList = () => {
               </select>
 
               <select 
-                className="form-select form-select-md flex-grow-1"
+                className="form-select form-select-md w-100 w-md-auto"
                 style={{ minWidth: '150px' }}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
