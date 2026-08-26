@@ -33,11 +33,12 @@
   color: var(--color-primary);
 }
 .aio-stat__value {
-  font-size: var(--font-size-3xl);
+  font-size: clamp(1.25rem, 1.5vw + 0.75rem, var(--font-size-3xl));
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
+  word-break: break-word;
 }
 .aio-stat__delta {
   display: inline-flex;

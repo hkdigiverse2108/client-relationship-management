@@ -153,7 +153,7 @@ const QuotesList = () => {
 
       {/* Metrics Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -161,14 +161,14 @@ const QuotesList = () => {
                   <FiFileText size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Total Quotes</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Total Quotes</h6>
                   <h3 className="mb-0 fw-bold">{totalQuotes}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -176,14 +176,14 @@ const QuotesList = () => {
                   <FiDollarSign size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Total Value Proposed</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Total Value Proposed</h6>
                   <h3 className="mb-0 fw-bold">{formatCurrency(totalValue)}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -191,14 +191,14 @@ const QuotesList = () => {
                   <FiCheckCircle size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Accepted Quotes</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Accepted Quotes</h6>
                   <h3 className="mb-0 fw-bold">{acceptedQuotes}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -206,7 +206,7 @@ const QuotesList = () => {
                   <FiClock size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Pending Approvals</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Pending Approvals</h6>
                   <h3 className="mb-0 fw-bold">{pendingQuotes}</h3>
                 </div>
               </div>
@@ -216,32 +216,36 @@ const QuotesList = () => {
       </div>
 
       <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
-          <div className="p-4 border-bottom d-flex flex-column flex-md-row gap-3 align-items-center bg-light">
-            <div className="w-100" style={{ maxWidth: '400px' }}>
+        <div className="card-header bg-transparent border-bottom py-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div className="flex-grow-1" style={{ minWidth: '250px', maxWidth: '500px' }}>
               <SearchBar 
                 onSearch={setSearchQuery} 
                 placeholder="Search quotes by ID, client or product..." 
               />
             </div>
-            <select 
-              className="form-select form-select-md"
-              style={{ width: 'auto', minWidth: '160px' }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Sent">Sent</option>
-              <option value="Accepted">Accepted</option>
-              <option value="Expired">Expired</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+            <div className="flex-shrink-0">
+              <select 
+                className="form-select form-select-md"
+                style={{ minWidth: '160px' }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Sent">Sent</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Expired">Expired</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
           </div>
+        </div>
 
+        <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+              <thead>
                 <tr>
                   <th className="ps-4">Quote ID</th>
                   <th>Client</th>
@@ -275,13 +279,13 @@ const QuotesList = () => {
                       </td>
                       <td>
                         <div className="d-flex flex-column">
-                          <span className="fw-medium">{clientsMap[quote.client_id] || 'Unknown Client'}</span>
-                          <span className="text-muted small">{quote.product_name}</span>
+                          <span className="fw-medium" style={{ color: 'var(--color-text)' }}>{clientsMap[quote.client_id] || 'Unknown Client'}</span>
+                          <span className="small" style={{ color: 'var(--color-text-muted)' }}>{quote.product_name}</span>
                         </div>
                       </td>
-                      <td>{quote.date_sent ? new Date(quote.date_sent).toLocaleDateString() : 'N/A'}</td>
-                      <td>{quote.valid_until ? new Date(quote.valid_until).toLocaleDateString() : 'N/A'}</td>
-                      <td className="fw-semibold">{formatCurrency(quote.total_amount)}</td>
+                      <td style={{ color: 'var(--color-text)' }}>{quote.date_sent ? new Date(quote.date_sent).toLocaleDateString() : 'N/A'}</td>
+                      <td style={{ color: 'var(--color-text)' }}>{quote.valid_until ? new Date(quote.valid_until).toLocaleDateString() : 'N/A'}</td>
+                      <td className="fw-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(quote.total_amount)}</td>
                       <td>
                         <span className={`badge ${
                           quote.status.toLowerCase() === 'accepted' ? 'bg-success-soft text-success border border-success' : 
@@ -297,7 +301,7 @@ const QuotesList = () => {
                         <div className="d-flex gap-2 justify-content-end align-items-center">
                           {quote.status.toLowerCase() === 'accepted' && (
                             <button 
-                              className="btn btn-sm btn-light text-warning me-1"
+                              className="btn btn-sm bg-surface-alt border text-warning me-1"
                               title="Convert to Invoice"
                               onClick={() => handleConvertToInvoice(quote)}
                             >
@@ -305,21 +309,21 @@ const QuotesList = () => {
                             </button>
                           )}
                           <button 
-                            className="btn btn-sm btn-light text-success"
+                            className="btn btn-sm bg-surface-alt border text-success"
                             title="Download PDF"
                             onClick={() => generateQuotePDF(quote, clientsMap)}
                           >
                             <FiDownload />
                           </button>
                           <button 
-                            className="btn btn-sm btn-light text-primary"
+                            className="btn btn-sm bg-surface-alt border text-primary"
                             title="Edit Quote"
                             onClick={() => handleEdit(quote)}
                           >
                             <FiEdit2 />
                           </button>
                           <button 
-                            className="btn btn-sm btn-light text-danger"
+                            className="btn btn-sm bg-surface-alt border text-danger"
                             title="Delete Quote"
                             onClick={() => handleDelete(quote.id || quote._id)}
                           >

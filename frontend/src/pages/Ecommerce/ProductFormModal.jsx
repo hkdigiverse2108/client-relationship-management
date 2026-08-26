@@ -339,9 +339,14 @@ export default function ProductFormModal({ open, onClose, onSubmit, initialValue
                     error={errors.variants?.[index]?.value?.message}
                   />
                 </div>
-                <div className="col-md-1">
-                  <button type="button" className="btn btn-danger w-100" onClick={() => remove(index)}>
-                    <FiTrash2 />
+                <div className="col-md-1 mb-3 d-flex justify-content-center">
+                  <button 
+                    type="button" 
+                    className="btn btn-link text-danger p-2 border-0" 
+                    onClick={() => remove(index)}
+                    title="Remove Variant"
+                  >
+                    <FiTrash2 size={20} />
                   </button>
                 </div>
               </div>

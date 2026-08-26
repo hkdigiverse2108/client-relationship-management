@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/common/PageHeader/PageHeader';
 import Button from '@/components/common/Button/Button';
 import InvoiceModal from './InvoiceModal';
+import InvoicePreviewModal from './InvoicePreviewModal';
+import { useNavigate } from 'react-router-dom';
 import { FiDollarSign, FiAlertCircle, FiClock, FiTrendingDown, FiPlus } from 'react-icons/fi';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '@/utils/formatters';
@@ -19,6 +21,10 @@ const BillingDashboard = () => {
     sourceBreakdown: [],
     recentTransactions: []
   });
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewInvoiceData, setPreviewInvoiceData] = useState(null);
+  
+  const navigate = useNavigate();
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -77,8 +83,8 @@ const BillingDashboard = () => {
         title="Billing Dashboard" 
         description="Financial overview, invoices, and payment tracking" 
         actions={
-          <div className="d-flex justify-content-end align-items-center gap-3">
-            <div className="form-check form-switch d-flex align-items-center gap-2 m-0 p-0">
+          <div className="d-flex flex-column flex-sm-row justify-content-sm-end align-items-start align-items-sm-center gap-3 mt-2 mt-sm-0">
+            <div className="form-check form-switch d-flex align-items-center gap-2 m-0 p-0" style={{ whiteSpace: 'nowrap' }}>
               <label className={`form-check-label ${!isGstInclusive ? 'fw-bold text-white' : 'text-white-50'} mb-0`} htmlFor="gstToggle" style={{ cursor: 'pointer', fontSize: '14px' }}>
                 GST Excl
               </label>
@@ -96,13 +102,13 @@ const BillingDashboard = () => {
               </label>
             </div>
             
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-3 w-100">
               {dashboardData.recentTransactions.length === 0 && (
-                <Button variant="outline-warning" onClick={handleSeedData} disabled={isLoading}>
+                <Button variant="outline-warning" className="w-100 w-sm-auto" onClick={handleSeedData} disabled={isLoading}>
                   Generate Demo Data
                 </Button>
               )}
-              <Button variant="primary" onClick={() => setIsInvoiceModalOpen(true)}>
+              <Button variant="primary" className="w-100 w-sm-auto" onClick={() => setIsInvoiceModalOpen(true)}>
                 <FiPlus className="me-2" /> Create Invoice
               </Button>
             </div>
@@ -112,12 +118,12 @@ const BillingDashboard = () => {
 
       <div className="row g-4 mb-4">
         {/* Total Revenue */}
-        <div className="col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h6 className="text-muted mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px' }}>Total Revenue (YTD)</h6>
+                  <h6 className="mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>Total Revenue (YTD)</h6>
                   <h3 className="mb-0 fw-bold">{formatCurrency(calculateAmount(dashboardData.metrics.revenue))}</h3>
                 </div>
                 <div className="p-2 bg-primary-soft text-primary rounded">
@@ -132,19 +138,19 @@ const BillingDashboard = () => {
         </div>
 
         {/* Pending Receivables */}
-        <div className="col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h6 className="text-muted mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px' }}>Pending Receivables</h6>
+                  <h6 className="mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>Pending Receivables</h6>
                   <h3 className="mb-0 fw-bold text-warning">{formatCurrency(calculateAmount(dashboardData.metrics.pending))}</h3>
                 </div>
                 <div className="p-2 bg-warning-soft text-warning rounded">
                   <FiClock size={20} />
                 </div>
               </div>
-              <div className="text-muted small">
+              <div className="small" style={{ color: 'var(--color-text-muted)' }}>
                 12 Unpaid Invoices
               </div>
             </div>
@@ -152,12 +158,12 @@ const BillingDashboard = () => {
         </div>
 
         {/* Overdue */}
-        <div className="col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h6 className="text-muted mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px' }}>Overdue Collections</h6>
+                  <h6 className="mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>Overdue Collections</h6>
                   <h3 className="mb-0 fw-bold text-danger">{formatCurrency(calculateAmount(dashboardData.metrics.overdue))}</h3>
                 </div>
                 <div className="p-2 bg-danger-soft text-danger rounded">
@@ -172,19 +178,19 @@ const BillingDashboard = () => {
         </div>
 
         {/* Total Expenses */}
-        <div className="col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h6 className="text-muted mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px' }}>Total Expenses</h6>
+                  <h6 className="mb-1 text-uppercase" style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>Total Expenses</h6>
                   <h3 className="mb-0 fw-bold text-secondary">{formatCurrency(calculateAmount(dashboardData.metrics.expenses))}</h3>
                 </div>
                 <div className="p-2 bg-secondary-soft text-secondary rounded">
                   <FiTrendingDown size={20} />
                 </div>
               </div>
-              <div className="text-muted small">
+              <div className="small" style={{ color: 'var(--color-text-muted)' }}>
                 Operating Cost & Payouts
               </div>
             </div>
@@ -194,9 +200,9 @@ const BillingDashboard = () => {
 
       <div className="row g-4 mb-4">
         {/* Cash Flow Chart */}
-        <div className="col-md-8">
+        <div className="col-12 col-xl-8">
           <div className="card border-0 shadow-sm h-100">
-            <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+            <div className="card-header bg-transparent border-bottom-0 pt-4 pb-0">
               <h6 className="fw-bold mb-0">CASH FLOW TREND</h6>
             </div>
             <div className="card-body" style={{ height: '350px' }}>
@@ -216,9 +222,9 @@ const BillingDashboard = () => {
         </div>
 
         {/* Source Breakdown Chart */}
-        <div className="col-md-4">
+        <div className="col-12 col-xl-4">
           <div className="card border-0 shadow-sm h-100">
-            <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+            <div className="card-header bg-transparent border-bottom-0 pt-4 pb-0">
               <h6 className="fw-bold mb-0">REVENUE BY SOURCE</h6>
             </div>
             <div className="card-body d-flex flex-column align-items-center justify-content-center" style={{ height: '350px' }}>
@@ -248,13 +254,13 @@ const BillingDashboard = () => {
 
       {/* Recent Transactions Table */}
       <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white pt-4 pb-3 border-bottom d-flex justify-content-between align-items-center">
+        <div className="card-header bg-transparent pt-4 pb-3 border-bottom d-flex justify-content-between align-items-center">
           <h6 className="fw-bold mb-0">RECENT TRANSACTIONS</h6>
-          <Button variant="outline-primary" size="sm">View All Ledger</Button>
+          <Button variant="outline-primary" size="sm" onClick={() => navigate('/ledger')}>View All Ledger</Button>
         </div>
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
-            <thead className="table-light text-muted" style={{ fontSize: '13px' }}>
+            <thead style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
               <tr>
                 <th className="ps-4">INVOICE / ID</th>
                 <th>DATE</th>
@@ -269,13 +275,23 @@ const BillingDashboard = () => {
               {dashboardData.recentTransactions.map((trx, idx) => (
                 <tr key={idx}>
                   <td className="ps-4 fw-medium text-primary">{trx.id}</td>
-                  <td style={{ fontSize: '14px' }}>{new Date(trx.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                  <td className="fw-medium">{trx.client}</td>
+                  <td style={{ fontSize: '14px', color: 'var(--color-text)' }}>{new Date(trx.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="fw-medium" style={{ color: 'var(--color-text)' }}>{trx.client}</td>
                   <td>{getSourceBadge(trx.source)}</td>
-                  <td className="text-end fw-bold">{formatCurrency(calculateAmount(trx.amount))}</td>
+                  <td className="text-end fw-bold" style={{ color: 'var(--color-text)' }}>{formatCurrency(calculateAmount(trx.amount))}</td>
                   <td className="text-center">{getStatusBadge(trx.status)}</td>
                   <td className="text-end pe-4">
-                    <Button variant="primary" size="sm" className="me-2">View</Button>
+                    <Button 
+                      variant="primary" 
+                      size="sm" 
+                      className="me-2" 
+                      onClick={() => {
+                        setPreviewInvoiceData(trx);
+                        setIsPreviewOpen(true);
+                      }}
+                    >
+                      View
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -292,6 +308,12 @@ const BillingDashboard = () => {
           fetchDashboardData();
         }}
         invoice={null}
+      />
+      
+      <InvoicePreviewModal 
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        invoice={previewInvoiceData}
       />
     </div>
   );

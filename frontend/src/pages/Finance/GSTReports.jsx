@@ -130,13 +130,14 @@ const GSTReports = () => {
             <div className="card-body p-4">
               <h5 className="mb-3">Verify GSTIN</h5>
               <form onSubmit={handleVerify} className="d-flex flex-column flex-md-row gap-3">
-                <div className="input-group" style={{ flex: 1 }}>
-                  <span className="input-group-text bg-light border-end-0">
-                    <FiSearch className="text-muted" />
-                  </span>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <div className="position-absolute d-flex align-items-center h-100" style={{ left: '16px', top: -3, pointerEvents: 'none' }}>
+                    <FiSearch style={{ color: 'var(--color-text-muted)', fontSize: '1.1rem' }} />
+                  </div>
                   <input
                     type="text"
-                    className="form-control form-control-lg bg-light border-start-0 text-uppercase"
+                    className="form-control form-control-lg text-uppercase"
+                    style={{ paddingLeft: '48px' }}
                     placeholder="Enter 15-digit Company GST Number"
                     value={gstin}
                     onChange={(e) => setGstin(e.target.value.toUpperCase())}
@@ -153,7 +154,7 @@ const GSTReports = () => {
                   Verify
                 </Button>
               </form>
-              <div className="form-text mt-2 text-muted">
+              <div className="form-text mt-2" style={{ color: 'var(--color-text-muted)' }}>
                 Standard format: 2 numbers, 5 letters, 4 numbers, 1 letter, 1 number/letter, Z, 1 number/letter. Example: 09AAACC1206D1Z5
               </div>
             </div>
@@ -162,7 +163,7 @@ const GSTReports = () => {
           {/* Result Card */}
           {reportData && (
             <div className="card shadow-sm border-0 animate__animated animate__fadeIn">
-              <div className="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+              <div className="card-header bg-transparent border-bottom p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2">
                   <FiFileText className="text-primary" />
                   Company Report
@@ -184,7 +185,7 @@ const GSTReports = () => {
                     )}
                     <div className="d-flex flex-wrap gap-3 mt-3">
                       {getStatusBadge(reportData.gstin_status || reportData.status)}
-                      <span className="badge bg-light text-dark border">
+                      <span className="badge bg-surface-alt border" style={{ color: 'var(--color-text)' }}>
                         <FiBriefcase className="me-1" /> {reportData.taxpayer_type || 'Regular'}
                       </span>
                     </div>
@@ -236,50 +237,50 @@ const GSTReports = () => {
                   </>
                 )}
 
-                <h6 className="text-uppercase text-muted fw-bold mb-3" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
+                <h6 className="text-uppercase text-muted-2 fw-bold mb-3" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
                   Business Details
                 </h6>
                 <div className="row g-4">
                   <div className="col-md-6 col-lg-4">
-                    <div className="p-3 bg-light rounded-3 h-100">
-                      <div className="text-muted small mb-1">GSTIN Number</div>
-                      <div className="fw-bold">{reportData.gstin || reportData.GSTIN || gstin}</div>
+                    <div className="p-3 bg-surface-alt border rounded-3 h-100">
+                      <div className="small mb-1" style={{ color: 'var(--color-text-muted)' }}>GSTIN Number</div>
+                      <div className="fw-bold" style={{ color: 'var(--color-text)' }}>{reportData.gstin || reportData.GSTIN || gstin}</div>
                     </div>
                   </div>
                   <div className="col-md-6 col-lg-4">
-                    <div className="p-3 bg-light rounded-3 h-100">
-                      <div className="text-muted small mb-1">Registration Date</div>
-                      <div className="fw-bold">{reportData.date_of_registration || 'N/A'}</div>
+                    <div className="p-3 bg-surface-alt border rounded-3 h-100">
+                      <div className="small mb-1" style={{ color: 'var(--color-text-muted)' }}>Registration Date</div>
+                      <div className="fw-bold" style={{ color: 'var(--color-text)' }}>{reportData.date_of_registration || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="col-md-6 col-lg-4">
-                    <div className="p-3 bg-light rounded-3 h-100">
-                      <div className="text-muted small mb-1">Constitution of Business</div>
-                      <div className="fw-bold">{reportData.constitution_of_business || 'N/A'}</div>
+                    <div className="p-3 bg-surface-alt border rounded-3 h-100">
+                      <div className="small mb-1" style={{ color: 'var(--color-text-muted)' }}>Constitution of Business</div>
+                      <div className="fw-bold" style={{ color: 'var(--color-text)' }}>{reportData.constitution_of_business || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="col-md-6 col-lg-4">
-                    <div className="p-3 bg-light rounded-3 h-100">
-                      <div className="text-muted small mb-1">State Jurisdiction</div>
-                      <div className="fw-bold">{reportData.state_jurisdiction || 'N/A'}</div>
+                    <div className="p-3 bg-surface-alt border rounded-3 h-100">
+                      <div className="small mb-1" style={{ color: 'var(--color-text-muted)' }}>State Jurisdiction</div>
+                      <div className="fw-bold" style={{ color: 'var(--color-text)' }}>{reportData.state_jurisdiction || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="col-md-6 col-lg-4">
-                    <div className="p-3 bg-light rounded-3 h-100">
-                      <div className="text-muted small mb-1">Center Jurisdiction</div>
-                      <div className="fw-bold">{reportData.center_jurisdiction || 'N/A'}</div>
+                    <div className="p-3 bg-surface-alt border rounded-3 h-100">
+                      <div className="small mb-1" style={{ color: 'var(--color-text-muted)' }}>Center Jurisdiction</div>
+                      <div className="fw-bold" style={{ color: 'var(--color-text)' }}>{reportData.center_jurisdiction || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Additional Details (Raw Dump for Unmapped Fields) */}
                 <div className="mt-5">
-                  <h6 className="text-uppercase text-muted fw-bold mb-3" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
+                  <h6 className="text-uppercase text-muted-2 fw-bold mb-3" style={{ letterSpacing: '1px', fontSize: '0.85rem' }}>
                     Extended Information
                   </h6>
                   <div className="table-responsive border rounded-3">
                     <table className="table table-hover table-borderless mb-0">
-                      <thead className="table-light border-bottom">
+                      <thead>
                         <tr>
                           <th className="py-3 px-4">Attribute</th>
                           <th className="py-3 px-4">Value</th>
@@ -294,7 +295,7 @@ const GSTReports = () => {
                           }
                           return (
                             <tr key={key} className="border-bottom">
-                              <td className="py-3 px-4 fw-medium text-secondary" style={{ width: '30%' }}>
+                              <td className="py-3 px-4 fw-medium" style={{ width: '30%', color: 'var(--color-text-muted)' }}>
                                 {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                               </td>
                               <td className="py-3 px-4">{String(value)}</td>

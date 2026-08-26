@@ -158,7 +158,7 @@ const PaymentsList = () => {
 
       {/* Metrics Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -166,14 +166,14 @@ const PaymentsList = () => {
                   <FiDollarSign size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Total Revenue Collected</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Total Revenue Collected</h6>
                   <h3 className="mb-0 fw-bold">{formatCurrency(totalRevenue)}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -181,14 +181,14 @@ const PaymentsList = () => {
                   <FiClock size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Pending Receivables</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Pending Receivables</h6>
                   <h3 className="mb-0 fw-bold">{formatCurrency(pendingReceivables)}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -196,14 +196,14 @@ const PaymentsList = () => {
                   <FiCheckCircle size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Completed Transactions</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Completed Transactions</h6>
                   <h3 className="mb-0 fw-bold">{completedCount}</h3>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
@@ -211,7 +211,7 @@ const PaymentsList = () => {
                   <FiAlertCircle size={24} />
                 </div>
                 <div>
-                  <h6 className="card-title text-muted mb-0">Failed / Pending</h6>
+                  <h6 className="card-title mb-0" style={{ color: 'var(--color-text-muted)' }}>Failed / Pending</h6>
                   <h3 className="mb-0 fw-bold">{failedOrPendingCount}</h3>
                 </div>
               </div>
@@ -221,18 +221,18 @@ const PaymentsList = () => {
       </div>
 
       <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
-          <div className="p-4 border-bottom d-flex flex-column flex-md-row gap-3 align-items-center bg-light">
-            <div className="w-100" style={{ maxWidth: '400px' }}>
+        <div className="card-header bg-transparent border-bottom py-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div className="flex-grow-1" style={{ minWidth: '250px', maxWidth: '500px' }}>
               <SearchBar 
                 onSearch={setSearchQuery} 
                 placeholder="Search by Transaction ID, Client or Invoice..." 
               />
             </div>
             
-            <div className="d-flex gap-2">
+            <div className="d-flex flex-wrap gap-2">
               <select 
-                className="form-select form-select-md"
+                className="form-select form-select-md flex-grow-1"
                 style={{ minWidth: '150px' }}
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}
@@ -246,7 +246,7 @@ const PaymentsList = () => {
               </select>
 
               <select 
-                className="form-select form-select-md"
+                className="form-select form-select-md flex-grow-1"
                 style={{ minWidth: '150px' }}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -259,10 +259,13 @@ const PaymentsList = () => {
               </select>
             </div>
           </div>
+        </div>
+
+        <div className="card-body p-0">
 
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+              <thead>
                 <tr>
                   <th className="ps-4">Transaction ID</th>
                   <th>Client & Invoice</th>
@@ -294,22 +297,22 @@ const PaymentsList = () => {
                       <td className="ps-4 fw-medium text-primary">
                         {payment.payment_id}
                         {payment.transaction_reference && (
-                          <div className="text-muted small fw-normal">Ref: {payment.transaction_reference}</div>
+                          <div className="small fw-normal" style={{ color: 'var(--color-text-muted)' }}>Ref: {payment.transaction_reference}</div>
                         )}
                       </td>
                       <td>
                         <div className="d-flex flex-column">
-                          <span className="fw-medium">{clientsMap[payment.client_id] || 'Unknown Client'}</span>
-                          <span className="text-muted small">Inv: {invoicesMap[payment.invoice_id] || 'N/A'}</span>
+                          <span className="fw-medium" style={{ color: 'var(--color-text)' }}>{clientsMap[payment.client_id] || 'Unknown Client'}</span>
+                          <span className="small" style={{ color: 'var(--color-text-muted)' }}>Inv: {invoicesMap[payment.invoice_id] || 'N/A'}</span>
                         </div>
                       </td>
                       <td>
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-surface-alt border" style={{ color: 'var(--color-text)' }}>
                           {payment.payment_method}
                         </span>
                       </td>
-                      <td>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
-                      <td className="fw-semibold">{formatCurrency(payment.amount_received)}</td>
+                      <td style={{ color: 'var(--color-text)' }}>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
+                      <td className="fw-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(payment.amount_received)}</td>
                       <td>
                         <span className={`badge ${
                           payment.status.toLowerCase() === 'completed' ? 'bg-success-soft text-success border border-success' : 
@@ -324,14 +327,14 @@ const PaymentsList = () => {
                       <td className="text-end pe-4">
                         <div className="d-flex gap-2 justify-content-end align-items-center">
                           <button 
-                            className="btn btn-sm btn-light text-primary"
+                            className="btn btn-sm bg-surface-alt border text-primary"
                             title="Edit Payment"
                             onClick={() => handleEdit(payment)}
                           >
                             <FiEdit2 />
                           </button>
                           <button 
-                            className="btn btn-sm btn-light text-danger"
+                            className="btn btn-sm bg-surface-alt border text-danger"
                             title="Delete Payment"
                             onClick={() => handleDelete(payment.id || payment._id)}
                           >

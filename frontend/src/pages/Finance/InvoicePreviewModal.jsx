@@ -45,12 +45,65 @@ const InvoicePreviewModal = ({ isOpen, onClose, invoice }) => {
 
   return (
     <Modal open={isOpen} onClose={onClose} title="Invoice Preview" size="xl">
-      <div className="invoice-container border rounded p-4 bg-white shadow-sm" ref={printRef} style={{ maxWidth: '900px', margin: '0 auto', color: '#333' }}>
+      <style>{`
+        .invoice-container {
+          background-color: #ffffff !important;
+          color: #1a1a1a !important;
+        }
+        .invoice-container table, 
+        .invoice-container th, 
+        .invoice-container td, 
+        .invoice-container p, 
+        .invoice-container span:not(.badge), 
+        .invoice-container h4, 
+        .invoice-container h5, 
+        .invoice-container h6 {
+          color: #1a1a1a !important;
+        }
+        .invoice-container h1.brand-logo {
+          color: #718d52 !important;
+        }
+        .invoice-container .table {
+          --bs-table-color: #1a1a1a !important;
+          --bs-table-bg: transparent !important;
+          --bs-table-border-color: #dee2e6 !important;
+          --bs-table-accent-bg: transparent !important;
+          --bs-table-hover-bg: rgba(0, 0, 0, 0.02) !important;
+          --bs-table-hover-color: #1a1a1a !important;
+        }
+        .invoice-container tbody tr:hover {
+          background-color: transparent !important;
+        }
+        .invoice-container tbody tr:hover > td,
+        .invoice-container tbody tr:hover > th {
+          background-color: inherit !important;
+          color: #1a1a1a !important;
+          box-shadow: none !important;
+        }
+        .invoice-container .table-header th, 
+        .invoice-container .total-footer td {
+          background-color: #718d52 !important;
+          color: #ffffff !important;
+        }
+        .invoice-container .text-muted {
+          color: #6c757d !important;
+        }
+        .invoice-container .bg-light-gray {
+          background-color: #f8f9fa !important;
+        }
+        .invoice-container .badge {
+          color: #ffffff !important;
+        }
+        .invoice-container hr {
+          border-color: #ddd !important;
+        }
+      `}</style>
+      <div className="invoice-container border rounded p-4 shadow-sm" ref={printRef} style={{ maxWidth: '900px', margin: '0 auto' }}>
         
         {/* Header Section */}
         <div className="row mb-4 align-items-start">
           <div className="col-1">
-             <h1 style={{color: '#718d52', fontWeight: 900, letterSpacing: '-2px', fontSize: '3rem', margin: 0, lineHeight: 1}}>HK</h1>
+             <h1 className="brand-logo" style={{color: '#718d52', fontWeight: 900, letterSpacing: '-2px', fontSize: '3rem', margin: 0, lineHeight: 1}}>HK</h1>
           </div>
           <div className="col-8 ps-4">
              <h4 className="fw-bold mb-1" style={{color: '#1a1a1a'}}>Harikrushn DigiVerse LLP</h4>

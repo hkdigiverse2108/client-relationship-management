@@ -160,8 +160,9 @@ const Ledger = () => {
 
       {/* Metrics Row */}
       <div className="row g-4 mb-4">
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Net Balance"
             value={metrics.net_balance}
             format="currency"
@@ -169,8 +170,9 @@ const Ledger = () => {
             trend={metrics.net_balance >= 0 ? "up" : "down"}
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Total Inflow (Credits)"
             value={metrics.total_inflow}
             format="currency"
@@ -178,8 +180,9 @@ const Ledger = () => {
             trend="up"
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Total Outflow (Debits)"
             value={metrics.total_outflow}
             format="currency"
@@ -187,8 +190,9 @@ const Ledger = () => {
             trend="down"
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Total Ledger Entries"
             value={metrics.total_entries}
             format="number"
@@ -198,8 +202,8 @@ const Ledger = () => {
       </div>
 
       <div className="card shadow-sm border-0">
-        <div className="card-header bg-white border-bottom pt-4 pb-3">
-          <div className="d-flex align-items-center gap-4">
+        <div className="card-header bg-transparent border-bottom pt-4 pb-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-4">
             <h5 className="mb-0">Ledger Entries</h5>
             <div className="btn-group shadow-sm" style={{ borderRadius: '6px' }}>
               <button 
@@ -252,28 +256,30 @@ const Ledger = () => {
               ) : (
                 <div className="accordion" id="ledgerAccordion">
                   {Object.values(clientGroups).map((group, idx) => (
-                    <div className="accordion-item border-0 border-bottom" key={group.id}>
+                    <div className="accordion-item bg-transparent border-0 border-bottom" key={group.id}>
                       <h2 className="accordion-header">
                         <button 
-                          className="accordion-button collapsed bg-light text-dark fw-medium d-flex justify-content-between align-items-center"
+                          className="accordion-button collapsed fw-medium"
                           type="button"
                           onClick={() => toggleClientExpand(group.id)}
-                          style={{ boxShadow: 'none' }}
+                          style={{ boxShadow: 'none', backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text)' }}
                         >
-                          <div className="d-flex align-items-center gap-3 w-100">
-                            {expandedClients[group.id] ? <FiChevronDown /> : <FiChevronRight />}
-                            <span className="flex-grow-1">{group.name}</span>
-                            <span className="badge bg-white text-dark border me-3">{group.entries.length} Entries</span>
-                            <span className="text-success fw-bold">Inflow: ₹{group.total_credit.toLocaleString()}</span>
-                            {group.total_debit > 0 && <span className="text-danger fw-bold ms-3">Outflow: ₹{group.total_debit.toLocaleString()}</span>}
+                          <div className="d-flex flex-wrap align-items-center gap-2 gap-sm-3 w-100 me-3">
+                            <span className="flex-grow-1" style={{ minWidth: '150px' }}>{group.name}</span>
+                            <span className="badge bg-transparent border" style={{ color: 'var(--color-text)' }}>{group.entries.length} Entries</span>
+                            <div className="d-flex gap-3 flex-wrap">
+                              <span className="text-success fw-bold">Inflow: ₹{group.total_credit.toLocaleString()}</span>
+                              {group.total_debit > 0 && <span className="text-danger fw-bold">Outflow: ₹{group.total_debit.toLocaleString()}</span>}
+                            </div>
                           </div>
                         </button>
                       </h2>
                       {expandedClients[group.id] && (
                         <div className="accordion-collapse show">
                           <div className="accordion-body p-0">
-                            <table className="table table-hover mb-0" style={{ fontSize: '0.9rem' }}>
-                              <thead className="table-light">
+                            <div className="table-responsive">
+                              <table className="table table-hover text-nowrap mb-0" style={{ fontSize: '0.9rem' }}>
+                                <thead>
                                 <tr>
                                   <th className="ps-4">Date</th>
                                   <th>Entry ID</th>
@@ -286,10 +292,10 @@ const Ledger = () => {
                               <tbody>
                                 {group.entries.map(entry => (
                                   <tr key={entry.entry_id || entry.id || entry._id}>
-                                    <td className="ps-4">{new Date(entry.date).toLocaleDateString()}</td>
-                                    <td><small className="text-muted">{entry.entry_id}</small></td>
-                                    <td>{entry.description}</td>
-                                    <td><small className="text-muted">{entry.reference_id}</small></td>
+                                    <td className="ps-4" style={{ color: 'var(--color-text)' }}>{new Date(entry.date).toLocaleDateString()}</td>
+                                    <td><small style={{ color: 'var(--color-text-muted)' }}>{entry.entry_id}</small></td>
+                                    <td style={{ color: 'var(--color-text)' }}>{entry.description}</td>
+                                    <td><small style={{ color: 'var(--color-text-muted)' }}>{entry.reference_id}</small></td>
                                     <td>
                                       <Badge variant={entry.type.toLowerCase() === 'credit' ? 'success' : 'danger'}>
                                         {entry.type}
@@ -301,14 +307,15 @@ const Ledger = () => {
                                   </tr>
                                 ))}
                                 {/* Group Total Row */}
-                                <tr className="table-active">
-                                  <td colSpan="5" className="text-end fw-bold">Net Position for {group.name}:</td>
+                                <tr style={{ backgroundColor: 'var(--color-surface-alt)' }}>
+                                  <td colSpan="5" className="text-end fw-bold" style={{ color: 'var(--color-text)' }}>Net Position for {group.name}:</td>
                                   <td className={`text-end pe-4 fw-bold text-${(group.total_credit - group.total_debit) >= 0 ? 'success' : 'danger'}`}>
                                     ₹{(group.total_credit - group.total_debit).toLocaleString()}
                                   </td>
                                 </tr>
                               </tbody>
                             </table>
+                            </div>
                           </div>
                         </div>
                       )}

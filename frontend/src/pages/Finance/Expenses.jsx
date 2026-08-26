@@ -106,7 +106,7 @@ const Expenses = () => {
     { 
       key: 'expense_id', 
       label: 'Expense ID',
-      render: (row) => <span className="text-muted fw-medium">{row.expense_id}</span>
+      render: (row) => <span className="fw-medium" style={{ color: 'var(--color-text-muted)' }}>{row.expense_id}</span>
     },
     { 
       key: 'date', 
@@ -116,13 +116,13 @@ const Expenses = () => {
     { 
       key: 'merchant', 
       label: 'Merchant / Vendor',
-      render: (row) => <span className="fw-medium text-dark">{row.merchant}</span>
+      render: (row) => <span className="fw-medium" style={{ color: 'var(--color-text)' }}>{row.merchant}</span>
     },
     { 
       key: 'category', 
       label: 'Category',
       render: (row) => (
-        <span className="badge bg-light text-secondary border">
+        <span className="badge bg-surface-alt border" style={{ color: 'var(--color-text)' }}>
           {row.category}
         </span>
       )
@@ -147,14 +147,14 @@ const Expenses = () => {
       render: (row) => (
         <div className="d-flex gap-2">
           <button 
-            className="btn btn-sm btn-light text-primary"
+            className="btn btn-sm bg-surface-alt border text-primary"
             onClick={() => handleEdit(row)}
             title="Edit"
           >
             <FiEdit />
           </button>
           <button 
-            className="btn btn-sm btn-light text-danger"
+            className="btn btn-sm bg-surface-alt border text-danger"
             onClick={() => handleDelete(row._id || row.id)}
             title="Delete"
           >
@@ -166,7 +166,7 @@ const Expenses = () => {
   ];
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-2 p-md-4">
       <PageHeader
         title="Expense Tracker"
         description="Monitor and categorize business expenses"
@@ -179,8 +179,9 @@ const Expenses = () => {
 
       {/* Metrics Row */}
       <div className="row g-4 mb-4">
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="This Month's Expenses"
             value={metrics.this_month}
             format="currency"
@@ -188,8 +189,9 @@ const Expenses = () => {
             trend="up" // Since it's expenses, going up could be bad or expected, just a visual indicator
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Top Category"
             value={metrics.top_category}
             icon={FiPieChart}
@@ -197,16 +199,18 @@ const Expenses = () => {
             trend={`Rs. ${metrics.top_category_amount}`}
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Average Daily Expense"
             value={metrics.average_daily}
             format="currency"
             icon={FiDollarSign}
           />
         </div>
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xxl-3">
           <StatCard
+            className="h-100"
             label="Year-to-Date (YTD)"
             value={metrics.ytd}
             format="currency"
@@ -216,57 +220,62 @@ const Expenses = () => {
       </div>
 
       <div className="card shadow-sm border-0">
-        <div className="card-header bg-white border-bottom pt-4 pb-3">
-          <div className="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+        <div className="card-header bg-transparent border-bottom pt-4 pb-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <h5 className="mb-0 text-nowrap">All Expenses</h5>
             
+            <div className="flex-grow-1" style={{ maxWidth: '400px' }}>
+              <SearchBar 
+                value={searchTerm} 
+                onChange={setSearchTerm} 
+                placeholder="Search merchant or ID..." 
+              />
+            </div>
+            
             {/* Filters */}
-            <div className="d-flex flex-wrap flex-xl-nowrap gap-2 align-items-center justify-content-xl-end w-100">
-              <div style={{ minWidth: '220px', flex: 1 }}>
-                <SearchBar 
-                  value={searchTerm} 
-                  onChange={setSearchTerm} 
-                  placeholder="Search merchant or ID..." 
-                />
-              </div>
+            <div className="d-flex flex-wrap gap-2 align-items-center">
 
               <select 
-                className="form-select bg-light"
+                className="form-select"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{ width: '140px' }}
+                style={{ width: '140px', borderRadius: 'var(--radius-md)' }}
               >
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
               <select 
-                className="form-select bg-light"
+                className="form-select"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{ width: '140px' }}
+                style={{ width: '140px', borderRadius: 'var(--radius-md)' }}
               >
                 <option value="All">All Status</option>
                 <option value="Cleared">Cleared</option>
                 <option value="Pending">Pending</option>
               </select>
 
-              <div className="d-flex align-items-center gap-1 bg-light rounded p-1 border">
-                <span className="text-muted small ms-2">From:</span>
-                <input 
-                  type="date" 
-                  className="form-control form-control-sm border-0 bg-transparent px-1" 
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))}
-                  style={{ width: '110px' }}
-                />
-                <span className="text-muted small ms-1">To:</span>
-                <input 
-                  type="date" 
-                  className="form-control form-control-sm border-0 bg-transparent px-1" 
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))}
-                  style={{ width: '110px' }}
-                />
+              <div className="d-flex flex-wrap flex-sm-nowrap align-items-center gap-2">
+                <div className="d-flex align-items-center gap-2 px-2 py-0 border" style={{ borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)' }}>
+                  <span className="small" style={{ color: 'var(--color-text-muted)' }}>From:</span>
+                  <input 
+                    type="date" 
+                    className="form-control form-control-sm border-0 bg-transparent px-1 shadow-none" 
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))}
+                    style={{ minWidth: '110px' }}
+                  />
+                </div>
+                <div className="d-flex align-items-center gap-2 px-2 py-0 border" style={{ borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)' }}>
+                  <span className="small" style={{ color: 'var(--color-text-muted)' }}>To:</span>
+                  <input 
+                    type="date" 
+                    className="form-control form-control-sm border-0 bg-transparent px-1 shadow-none" 
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))}
+                    style={{ minWidth: '110px' }}
+                  />
+                </div>
               </div>
             </div>
           </div>

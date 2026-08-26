@@ -2,7 +2,7 @@ import { FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 import { formatCurrency, formatNumber } from "@/utils/formatters";
 import { classNames } from "@/utils/helpers";
 import "./StatCard.css";
-export default function StatCard({ label, value, delta, trend, format = "number", icon: Icon }) {
+export default function StatCard({ label, value, delta, trend, format = "number", icon: Icon, className = "" }) {
   const display =
     format === "currency" ? formatCurrency(value)
     : format === "percent"  ? `${value}%`
@@ -11,7 +11,7 @@ export default function StatCard({ label, value, delta, trend, format = "number"
   const positive = trend === "up";
   const TrendIcon = positive ? FiTrendingUp : FiTrendingDown;
   return (
-    <div className="aio-stat">
+    <div className={`aio-stat ${className}`.trim()}>
       <div className="aio-stat__head">
         <span className="aio-stat__label">{label}</span>
         {Icon && (

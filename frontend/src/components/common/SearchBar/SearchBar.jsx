@@ -6,7 +6,8 @@ export default function SearchBar({ value, onChange, placeholder = "Search…" }
       <FiSearch className="aio-search__icon" />
       <input
         type="search"
-        className="aio-search__input"
+        className="form-control aio-search__input"
+        style={{ paddingLeft: '38px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -460,7 +460,7 @@ export default function Inventory() {
 
       <div className="card mb-4">
         <div className="card-header bg-transparent border-bottom-0 pt-3 pb-0">
-          <ul className="nav nav-tabs card-header-tabs">
+          <ul className="nav nav-tabs card-header-tabs flex-nowrap overflow-x-auto" style={{ whiteSpace: 'nowrap', paddingBottom: '1px' }}>
             <li className="nav-item">
               <button 
                 className={`nav-link ${activeTab === "stock" ? "active" : ""}`} 
@@ -505,8 +505,8 @@ export default function Inventory() {
             <div className="stock-control-tab">
               {/* Top Summary Cards */}
               <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-primary-soft text-primary"><FiBox /></div>
                     <div className="summary-details">
                       <div className="summary-label">Total Stocked Units</div>
@@ -514,8 +514,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-warning-soft text-warning"><FiPieChart /></div>
                     <div className="summary-details">
                       <div className="summary-label">Inventory Cost Value</div>
@@ -523,8 +523,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-success-soft text-success"><FiActivity /></div>
                     <div className="summary-details">
                       <div className="summary-label">Inventory Retail Value</div>
@@ -532,8 +532,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-info-soft text-info"><FiAlertCircle /></div>
                     <div className="summary-details">
                       <div className="summary-label">Total Platforms</div>
@@ -548,7 +548,7 @@ export default function Inventory() {
                 {PLATFORMS.map(platform => {
                   const stat = platformStats[platform];
                   return (
-                    <div className="col-md-6 col-lg-3" key={platform}>
+                    <div className="col-12 col-md-6 col-xxl-3" key={platform}>
                       <div className="platform-inventory-card">
                         <div className="platform-card-header">
                           <div className="d-flex align-items-center gap-2">
@@ -648,33 +648,41 @@ export default function Inventory() {
               </div>
 
               {/* Table Filters */}
-              <div className="d-flex flex-wrap gap-3 mt-4 mb-3 align-items-center justify-content-between">
-                <div className="search-wrap" style={{ flex: "1", maxWidth: "400px" }}>
+              <div className="row g-3 mt-4 mb-3 align-items-center">
+                <div className="col-12 col-md-6 col-lg-5">
                   <input 
                     type="text" 
-                    className="form-control rounded-pill bg-white" 
+                    className="form-control rounded-pill bg-transparent w-100 inventory-filter-input" 
                     placeholder="Search stock allocations by name or SKU..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <div className="d-flex gap-2">
-                  <select 
-                    className="form-select rounded-pill bg-white w-auto"
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                  >
-                    <option value="All Categories">All Categories</option>
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <select 
-                    className="form-select rounded-pill bg-white w-auto"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <option value="All Statuses">All Statuses</option>
-                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                <div className="col-12 col-md-6 col-lg-7">
+                  <div className="row g-2 justify-content-md-end">
+                    <div className="col-12 col-sm-auto">
+                      <select 
+                        className="form-select rounded-pill bg-transparent w-100 inventory-filter-select"
+                        style={{ paddingRight: '2.5rem' }}
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                      >
+                        <option value="All Categories">All Categories</option>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-auto">
+                      <select 
+                        className="form-select rounded-pill bg-transparent w-100 inventory-filter-select"
+                        style={{ paddingRight: '2.5rem' }}
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                      >
+                        <option value="All Statuses">All Statuses</option>
+                        {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -857,7 +865,7 @@ export default function Inventory() {
           {activeTab === "logs" && (
             <div className="logs-control-tab">
               <div className="d-flex align-items-center flex-wrap gap-2 mb-4">
-                <span className="fw-semibold me-2" style={{ fontSize: 14 }}>Filter by Status:</span>
+                <span className="fw-semibold me-2" style={{ fontSize: 14, color: 'var(--color-text)' }}>Filter by Status:</span>
                 <button 
                   className={`badge rounded-pill px-3 py-2 border-0 ${logFilterAction === "All" ? "bg-primary text-white" : "bg-light text-dark"}`}
                   style={{ cursor: 'pointer' }}
@@ -940,8 +948,8 @@ export default function Inventory() {
           {activeTab === "analytics" && (
             <div className="analytics-insights-tab">
               <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-success-soft text-success"><FiActivity /></div>
                     <div className="summary-details">
                       <div className="summary-label">Total Revenue (Simulated)</div>
@@ -949,8 +957,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-primary-soft text-primary"><FiBox /></div>
                     <div className="summary-details">
                       <div className="summary-label">Total Units Sold</div>
@@ -958,8 +966,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-info-soft text-info"><FiPieChart /></div>
                     <div className="summary-details">
                       <div className="summary-label">Inventory Health Score</div>
@@ -967,8 +975,8 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
-                  <div className="inventory-summary-card">
+                <div className="col-12 col-md-6 col-xxl-3">
+                  <div className="inventory-summary-card h-100">
                     <div className="summary-icon bg-warning-soft text-warning"><FiRepeat /></div>
                     <div className="summary-details">
                       <div className="summary-label">Avg Daily Velocity</div>
@@ -979,7 +987,7 @@ export default function Inventory() {
               </div>
 
               <div className="row g-4 mb-4">
-                <div className="col-md-8">
+                <div className="col-12 col-xl-8">
                   <div className="card inventory-section-card h-100">
                     <div className="card-header bg-transparent pt-3 pb-0 border-0">
                       <h6 className="section-title-upper">SALES TREND (LAST 7 DAYS)</h6>
@@ -997,7 +1005,7 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-4">
+                <div className="col-12 col-xl-4">
                   <div className="card inventory-section-card h-100">
                     <div className="card-header bg-transparent pt-3 pb-0 border-0">
                       <h6 className="section-title-upper">SALES BY PLATFORM</h6>
@@ -1032,7 +1040,7 @@ export default function Inventory() {
               </div>
 
               <div className="row g-4">
-                <div className="col-md-6">
+                <div className="col-12 col-xl-6">
                   <div className="card inventory-section-card h-100">
                     <div className="card-header bg-transparent pt-3 pb-2 border-0">
                       <h6 className="section-title-upper mb-0">TOP 5 BEST-SELLING PRODUCTS</h6>
@@ -1054,7 +1062,7 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-6">
+                <div className="col-12 col-xl-6">
                   <div className="card inventory-section-card h-100">
                     <div className="card-header bg-transparent pt-3 pb-2 border-0">
                       <h6 className="section-title-upper mb-0">SMART INSIGHTS & WARNINGS</h6>
@@ -1063,7 +1071,7 @@ export default function Inventory() {
                       <ul className="list-group list-group-flush">
                         {analyticsData.smartInsights.length > 0 ? (
                           analyticsData.smartInsights.map((insight, idx) => (
-                            <li key={idx} className="list-group-item p-3 border-0 border-bottom">
+                            <li key={idx} className="list-group-item p-3 border-0 border-bottom bg-transparent">
                               <div className="d-flex gap-3 align-items-start">
                                 <div className={`mt-1 text-${insight.type === 'warning' ? 'danger' : 'info'}`}>
                                   <FiAlertCircle size={20} />
@@ -1076,7 +1084,7 @@ export default function Inventory() {
                             </li>
                           ))
                         ) : (
-                          <li className="list-group-item p-4 text-center text-muted border-0">
+                          <li className="list-group-item p-4 text-center border-0 bg-transparent" style={{ color: 'var(--color-text)' }}>
                             <div className="text-success mb-2"><FiActivity size={24} /></div>
                             No active warnings. Your inventory health is optimal!
                           </li>
