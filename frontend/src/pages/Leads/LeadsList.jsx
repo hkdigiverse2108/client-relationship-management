@@ -143,6 +143,12 @@ export default function LeadsList() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    const handleRefresh = () => refetch();
+    window.addEventListener('refreshData', handleRefresh);
+    return () => window.removeEventListener('refreshData', handleRefresh);
+  }, [refetch]);
+
+  useEffect(() => {
     api.get("/users").then((res) => {
       const map = {};
       const arr = res || [];

@@ -57,6 +57,9 @@ const InvoiceList = () => {
 
   useEffect(() => {
     fetchInvoicesAndClients();
+    const handleRefresh = () => fetchInvoicesAndClients();
+    window.addEventListener('refreshData', handleRefresh);
+    return () => window.removeEventListener('refreshData', handleRefresh);
   }, []);
 
   useEffect(() => {

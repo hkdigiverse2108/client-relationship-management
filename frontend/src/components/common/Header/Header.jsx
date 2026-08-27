@@ -27,6 +27,11 @@ import toast from "react-hot-toast";
 import "./Header.css";
 import { LuClipboardList, LuPalette} from "react-icons/lu";
 import { getProfilePhotoUrl } from "@/utils/helpers";
+import LeadFormModal from "@/pages/Leads/LeadFormModal";
+import InvoiceModal from "@/pages/Finance/InvoiceModal";
+import TaskFormModal from "@/pages/Tasks/TaskFormModal";
+import { leadService } from "@/api/services/leadService";
+import api from "@/api/axiosClient";
 
 export default function Header() {
   const { openMobile } = useSidebar();
@@ -38,6 +43,47 @@ export default function Header() {
 
   // WhatsApp API Connection status state (ON by default)
   const [waConnected, setWaConnected] = useState(true);
+
+  // Global Quick Action Modal States
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleLeadSubmit = async (data) => {
+    setSubmitting(true);
+    try {
+      await leadService.create(data);
+      toast.success("Lead created successfully");
+      setLeadModalOpen(false);
+      window.dispatchEvent(new Event('refreshData'));
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create lead");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTaskSubmit = async (data) => {
+    setSubmitting(true);
+    try {
+      await api.post("/tasks", data);
+      toast.success("Task created successfully");
+      setTaskModalOpen(false);
+      window.dispatchEvent(new Event('refreshData'));
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create task");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInvoiceSave = () => {
+    setInvoiceModalOpen(false);
+    window.dispatchEvent(new Event('refreshData'));
+  };
 
   const toggleWaApi = () => {
     if (waConnected) {
@@ -108,9 +154,9 @@ export default function Header() {
           )}
           items={[
             { type: "header", label: "CREATE NEW" },
-            { label: "New Lead", icon: FiTarget, onClick: () => navigate("/leads") },
-            { label: "New Invoice", icon: FiFileText, onClick: () => navigate("/invoices") },
-            { label: "New Task", icon: LuClipboardList, onClick: () => navigate("/tasks") },
+            { label: "New Lead", icon: FiTarget, onClick: () => setLeadModalOpen(true) },
+            { label: "New Invoice", icon: FiFileText, onClick: () => setInvoiceModalOpen(true) },
+            { label: "New Task", icon: LuClipboardList, onClick: () => setTaskModalOpen(true) },
           ]}
         />
 
@@ -156,6 +202,25 @@ export default function Header() {
           ]}
         />
       </div>
+
+      {/* Global Modals for Quick Actions */}
+      <LeadFormModal 
+        open={leadModalOpen} 
+        onClose={() => setLeadModalOpen(false)} 
+        onSubmit={handleLeadSubmit} 
+        submitting={submitting} 
+      />
+      <InvoiceModal 
+        isOpen={invoiceModalOpen} 
+        onClose={() => setInvoiceModalOpen(false)} 
+        onSave={handleInvoiceSave} 
+      />
+      <TaskFormModal 
+        open={taskModalOpen} 
+        onClose={() => setTaskModalOpen(false)} 
+        onSubmit={handleTaskSubmit} 
+        submitting={submitting} 
+      />
     </header>
   );
 }

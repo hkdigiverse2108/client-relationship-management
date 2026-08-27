@@ -41,6 +41,9 @@ export default function TasksList() {
 
   useEffect(() => {
     loadTasks();
+    const handleRefresh = () => loadTasks();
+    window.addEventListener('refreshData', handleRefresh);
+    return () => window.removeEventListener('refreshData', handleRefresh);
   }, []);
 
   const columns = useMemo(() => {

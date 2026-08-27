@@ -203,9 +203,9 @@ const Ledger = () => {
 
       <div className="card shadow-sm border-0">
         <div className="card-header bg-transparent border-bottom pt-4 pb-3">
-          <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+          <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-start gap-3">
             <h5 className="mb-0 text-nowrap">Ledger Entries</h5>
-            <div className="btn-group shadow-sm w-100 w-sm-auto" style={{ borderRadius: '6px' }}>
+            <div className="btn-group shadow-sm" style={{ borderRadius: '6px' }}>
               <button 
                 className="btn btn-sm text-nowrap"
                 onClick={() => setActiveTab('grouped')}
