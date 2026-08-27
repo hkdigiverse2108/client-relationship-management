@@ -92,7 +92,7 @@ def main():
         # Fallback to system python/uvicorn if venv is missing
         print("[WARNING] Virtual environment not found at backend/.venv/Scripts/python.exe")
         print("[WARNING] Falling back to global python")
-        backend_cmd = f"python -m uvicorn main:app --reload --host {backend_host} --port {backend_port}"
+        backend_cmd = f'python -m uvicorn main:app --reload --host {backend_host} --port {backend_port}'
 
     frontend_cmd = "npm run dev"
     

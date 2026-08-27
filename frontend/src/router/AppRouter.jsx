@@ -78,6 +78,8 @@ const Expenses = lazy(() => import("@/pages/Finance/Expenses"));
 const GSTReports = lazy(() => import("@/pages/Finance/GSTReports"));
 const UserManagementPage = lazy(() => import("@/pages/Settings/UserManagementPage"));
 const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermissionsPage"));
+const PermissionDenied = lazy(() => import("@/pages/PermissionDenied"));
+const HRMSDashboard = lazy(() => import("@/pages/HRMS/HRMSDashboard"));
 
 export default function AppRouter() {
   return (
@@ -134,6 +136,7 @@ export default function AppRouter() {
         <Route path="/ledger" element={<Ledger />} />
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/gst-reports" element={<GSTReports />} />
+        <Route path="/hrms-dashboard" element={<HRMSDashboard />} />
       </Route>
       <Route path="*" element={<NotFound />} />
       </Routes>

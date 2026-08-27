@@ -1,0 +1,394 @@
+.hrms-dashboard-container {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.hrms-header {
+  margin-bottom: 2rem;
+}
+.hrms-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.02em;
+}
+.hrms-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+/* Stats Row */
+.hrms-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.hrms-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+.hrms-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+}
+[data-theme="dark"] .hrms-stat-card {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+.hrms-stat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+.hrms-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* Punch System */
+.hrms-punch-widget {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+.hrms-punch-clock {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-family: 'Inter', monospace;
+  color: var(--color-text-primary);
+  margin-bottom: 0.5rem;
+  letter-spacing: -1px;
+}
+.hrms-punch-date {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2rem;
+}
+.hrms-punch-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+.hrms-punch-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+.hrms-punch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.hrms-punch-btn.btn-in {
+  background: var(--color-primary);
+  color: white;
+}
+.hrms-punch-btn.btn-in:not(:disabled):hover {
+  background: var(--color-primary-dark, #0d6efd);
+  transform: translateY(-2px);
+}
+.hrms-punch-btn.btn-break {
+  background: #f59e0b;
+  color: white;
+}
+.hrms-punch-btn.btn-break:not(:disabled):hover {
+  background: #d97706;
+  transform: translateY(-2px);
+}
+.hrms-punch-btn.btn-out {
+  background: #ef4444;
+  color: white;
+}
+.hrms-punch-btn.btn-out:not(:disabled):hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+.hrms-punch-log {
+  width: 100%;
+  max-width: 600px;
+  background: var(--color-background);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+.hrms-log-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+.hrms-log-item:last-child {
+  border-bottom: none;
+}
+.hrms-log-item span.action {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Tabs */
+.hrms-tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+.hrms-tab {
+  padding: 1rem 0.5rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+.hrms-tab:hover {
+  color: var(--color-text-primary);
+}
+.hrms-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Content Grid */
+.hrms-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 992px) {
+  .hrms-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Generic Panel */
+.hrms-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+.hrms-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+.hrms-panel-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 0.25rem 0;
+}
+.hrms-panel-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Department Allocations */
+.hrms-dept-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.hrms-dept-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.hrms-dept-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.hrms-dept-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+}
+.hrms-dept-stats {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+/* Calendar Widget */
+.hrms-calendar-widget {
+  margin-top: 1rem;
+}
+.hrms-cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.hrms-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  text-align: center;
+}
+.hrms-cal-day-name {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.hrms-cal-date {
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  border: 1px solid transparent;
+}
+.hrms-cal-date.active {
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.hrms-cal-events {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.hrms-event-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+.hrms-event-item.birthday {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.hrms-event-item.holiday {
+  background: rgba(139, 92, 246, 0.05);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+.hrms-event-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+.birthday .hrms-event-icon {
+  background: #f59e0b;
+  color: white;
+}
+.holiday .hrms-event-icon {
+  background: #8b5cf6;
+  color: white;
+}
+.hrms-event-details h6 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.hrms-event-details p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+/* Bulletin */
+.hrms-bulletin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+.hrms-bulletin-list::-webkit-scrollbar {
+  width: 4px;
+}
+.hrms-bulletin-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hrms-bulletin-list::-webkit-scrollbar-thumb {
+  background: var(--color-border); 
+  border-radius: 4px;
+}
+.hrms-bulletin-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+.hrms-bulletin-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.hrms-bulletin-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.hrms-bulletin-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+.hrms-bulletin-date {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.hrms-bulletin-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+.hrms-bulletin-author {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  text-align: right;
+  font-weight: 600;
+}

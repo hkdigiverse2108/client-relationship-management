@@ -10,6 +10,7 @@ load_dotenv(dotenv_path="../.env")
 # Ensure uploads directory exists
 os.makedirs("uploads/profile_photos", exist_ok=True)
 os.makedirs("uploads/products", exist_ok=True)
+os.makedirs("uploads/resumes", exist_ok=True)
 
 from db import init_db
 from scheduler import start_scheduler, stop_scheduler
@@ -37,7 +38,9 @@ from routers import (
     quotes_router,
     ledger_router,
     expenses_router,
-    gst_router
+    gst_router,
+    hrms_router,
+    ats_router
 )
 
 app = FastAPI(title="AIO CRM API")
@@ -86,6 +89,8 @@ app.include_router(quotes_router.router, prefix="/api/v1")
 app.include_router(ledger_router.router)
 app.include_router(expenses_router.router)
 app.include_router(gst_router.router, prefix="/api/v1")
+app.include_router(hrms_router.router, prefix="/api/v1/hrms", tags=["hrms"])
+app.include_router(ats_router.router, prefix="/api/v1/ats", tags=["ats"])
 
 app.include_router(reminders_router.router, prefix="/api/v1", tags=["reminders"])
 

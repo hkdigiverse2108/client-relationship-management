@@ -21,6 +21,7 @@ class UserCreate(BaseModel):
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
     designation: Optional[str] = None
+    department: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
@@ -55,6 +56,7 @@ class UserResponse(BaseModel):
     gender: Optional[str] = None
     profile_photo: Optional[str] = None
     designation: Optional[str] = None
+    department: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
@@ -888,5 +890,92 @@ class LedgerEntryCreate(BaseModel):
 class LedgerEntryResponse(LedgerEntryCreate):
     id: str = Field(alias="_id")
     created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# --- HRMS Models ---
+class HRNoticeCreate(BaseModel):
+    title: str
+    desc: str
+    date: str
+    author: str
+
+class HRNoticeResponse(HRNoticeCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+
+class HREventCreate(BaseModel):
+    title: str
+    desc: str
+    date: str
+    type: str
+    duration: Optional[str] = None
+
+class HREventResponse(HREventCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+
+class HRCustomTypeCreate(BaseModel):
+    type: str = "event"
+    name: str
+    value: str
+
+class HRCustomTypeResponse(HRCustomTypeCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+
+# --- ATS Recruitment Pipeline Models ---
+class ATSJobCreate(BaseModel):
+    title: str
+    department: str
+    location: str
+    employment_type: str
+    status: str
+    applications_count: Optional[int] = 0
+    posted_date: str
+    experience: str
+    salary_range: str
+    description: str
+
+class ATSJobResponse(ATSJobCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+
+class ATSCandidateCreate(BaseModel):
+    job_id: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    stage: str
+    department: Optional[str] = None
+    resume_url: Optional[str] = None
+
+class ATSCandidateResponse(ATSCandidateCreate):
+    id: str = Field(alias="_id")
+    applied_date: Optional[datetime] = None
+
+class HRAssetCreate(BaseModel):
+    asset_name: str
+    assigned_to: str
+    status: str = "Unassigned"
+    assigned_date: Optional[str] = None
+
+class HRAssetResponse(HRAssetCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+
+class HRAppraisalCreate(BaseModel):
+    employee_id: str
+    review_period: str
+    rating_technical: int = 0
+    rating_communication: int = 0
+    rating_punctuality: int = 0
+    rating_initiative: int = 0
+    overall_score: float = 0.0
+    note: str = ""
+    status: str = "Draft"
+
+class HRAppraisalResponse(HRAppraisalCreate):
+    id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
