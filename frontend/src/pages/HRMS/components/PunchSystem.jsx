@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiClock, FiCoffee, FiLogOut, FiLogIn } from 'react-icons/fi';
+import api from '@/api/axiosClient';
+import toast from 'react-hot-toast';
 
 export default function PunchSystem() {
   const [liveTime, setLiveTime] = useState(new Date());
@@ -10,6 +12,37 @@ export default function PunchSystem() {
   const [breakStartSeconds, setBreakStartSeconds] = useState(0); // to calculate duration of current break
   
   const [logs, setLogs] = useState([]);
+  const [stats, setStats] = useState({
+    allTimeHours: 0,
+    percentageChange: 0,
+    trend: 'up',
+    todayBreakSeconds: 0,
+    todayWorkSeconds: 0
+  });
+
+  // Fetch stats from DB
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/hrms/attendance/me/stats');
+      setStats({
+        allTimeHours: res.all_time_work_seconds || 0,
+        percentageChange: res.percentage_change || 0,
+        trend: res.trend || 'up',
+        todayBreakSeconds: res.today_break_seconds || 0,
+        todayWorkSeconds: res.today_work_seconds || 0
+      });
+      // Optionally sync workSeconds here if not currently punched in
+      if (punchState === 'out') {
+        setWorkSeconds(res.today_work_seconds || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch punch stats", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   // Live time ticker
   useEffect(() => {
@@ -54,31 +87,55 @@ export default function PunchSystem() {
     ].slice(0, 5));
   };
 
-  const handlePunchToggle = () => {
+  const performPunchAction = async (actionType) => {
+    try {
+      await api.post('/hrms/attendance/punch', { action: actionType });
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to record punch action");
+      return false;
+    }
+  };
+
+  const handlePunchToggle = async () => {
     if (punchState === 'out') {
-      setPunchState('in');
-      logAction('Punched In');
+      const success = await performPunchAction('punch_in');
+      if (success) {
+        setPunchState('in');
+        logAction('Punched In');
+      }
     } else {
       // If punching out from a break, log the break duration first
       if (punchState === 'break') {
         const breakDuration = Math.floor(Date.now() / 1000) - breakStartSeconds;
         logAction(`Break Over (${formatDuration(breakDuration)})`);
+        await performPunchAction('break_end'); // end break before punch out
       }
-      setPunchState('out');
-      setWorkSeconds(0); // Reset instantly on punch out
-      logAction('Punched Out');
+      const success = await performPunchAction('punch_out');
+      if (success) {
+        setPunchState('out');
+        logAction('Punched Out');
+        fetchStats(); // update stats immediately after punch out
+      }
     }
   };
 
-  const handleBreakToggle = () => {
+  const handleBreakToggle = async () => {
     if (punchState === 'in') {
-      setPunchState('break');
-      setBreakStartSeconds(Math.floor(Date.now() / 1000));
-      logAction('Took Break');
+      const success = await performPunchAction('break_start');
+      if (success) {
+        setPunchState('break');
+        setBreakStartSeconds(Math.floor(Date.now() / 1000));
+        logAction('Took Break');
+      }
     } else if (punchState === 'break') {
-      const breakDuration = Math.floor(Date.now() / 1000) - breakStartSeconds;
-      setPunchState('in');
-      logAction(`Break Over (${formatDuration(breakDuration)})`);
+      const success = await performPunchAction('break_end');
+      if (success) {
+        const breakDuration = Math.floor(Date.now() / 1000) - breakStartSeconds;
+        setPunchState('in');
+        logAction(`Break Over (${formatDuration(breakDuration)})`);
+        fetchStats(); // Update break stats
+      }
     }
   };
 
@@ -144,7 +201,9 @@ export default function PunchSystem() {
                 {Math.floor(workSeconds / 3600).toString().padStart(2, '0')}h {Math.floor((workSeconds % 3600) / 60).toString().padStart(2, '0')}m
               </div>
               <div style={{fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem'}}>
-                <span style={{color: '#10b981', fontWeight: 600}}>↗ 12%</span> vs yesterday
+                <span style={{color: stats.trend === 'up' ? '#10b981' : '#ef4444', fontWeight: 600}}>
+                  {stats.trend === 'up' ? '↗' : '↘'} {stats.percentageChange}%
+                </span> vs yesterday
               </div>
             </div>
             <div style={{width: 40, height: 40, borderRadius: 8, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem'}}>
@@ -158,7 +217,7 @@ export default function PunchSystem() {
             <div>
               <div style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '1rem'}}>All Time Hours</div>
               <div style={{fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)'}}>
-                0h 0m
+                {Math.floor((stats.allTimeHours + (punchState === 'in' ? workSeconds - stats.todayWorkSeconds : 0)) / 3600).toString().padStart(2, '0')}h {Math.floor(((stats.allTimeHours + (punchState === 'in' ? workSeconds - stats.todayWorkSeconds : 0)) % 3600) / 60).toString().padStart(2, '0')}m
               </div>
               <div style={{fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem'}}>
                 Since joining the company
@@ -175,7 +234,7 @@ export default function PunchSystem() {
             <div>
               <div style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '1rem'}}>Break Time (Today)</div>
               <div style={{fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)'}}>
-                0h {Math.floor(breakStartSeconds ? (Math.floor(Date.now() / 1000) - breakStartSeconds) / 60 : 0)}m
+                {Math.floor((stats.todayBreakSeconds + (punchState === 'break' ? Math.floor(Date.now() / 1000) - breakStartSeconds : 0)) / 3600).toString().padStart(2, '0')}h {Math.floor(((stats.todayBreakSeconds + (punchState === 'break' ? Math.floor(Date.now() / 1000) - breakStartSeconds : 0)) % 3600) / 60).toString().padStart(2, '0')}m
               </div>
               <div style={{fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem'}}>
                 60m daily limit

@@ -31,6 +31,13 @@ class UserCreate(BaseModel):
     ifsc_code: Optional[str] = None
     pan_number: Optional[str] = None
     aadhar_number: Optional[str] = None
+    employee_id: Optional[str] = None
+    joining_date: Optional[str] = None
+    attendance_status: Optional[str] = None
+    basic_salary: Optional[float] = None
+    hra_allowance: Optional[float] = None
+    special_allowances: Optional[float] = None
+    manager_id: Optional[str] = None
 
 class UserInDB(UserCreate):
     id: str = Field(alias="_id")
@@ -68,6 +75,13 @@ class UserResponse(BaseModel):
     aadhar_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    employee_id: Optional[str] = None
+    joining_date: Optional[str] = None
+    attendance_status: Optional[str] = None
+    basic_salary: Optional[float] = None
+    hra_allowance: Optional[float] = None
+    special_allowances: Optional[float] = None
+    manager_id: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -88,6 +102,14 @@ class UserUpdate(BaseModel):
     ifsc_code: Optional[str] = None
     pan_number: Optional[str] = None
     aadhar_number: Optional[str] = None
+    department: Optional[str] = None
+    employee_id: Optional[str] = None
+    joining_date: Optional[str] = None
+    attendance_status: Optional[str] = None
+    basic_salary: Optional[float] = None
+    hra_allowance: Optional[float] = None
+    special_allowances: Optional[float] = None
+    manager_id: Optional[str] = None
 
 class StatusUpdate(BaseModel):
     is_active: bool
@@ -208,6 +230,46 @@ class RolePresetCreate(BaseModel):
 class RolePresetResponse(RolePresetCreate):
     id: str
 
+# --- Leave Models ---
+class LeaveCreate(BaseModel):
+    leave_type: str
+    start_date: str
+    end_date: str
+    day_type: str
+    reason: str
+    proof_url: Optional[str] = None
+    status: str = "Pending"
+
+class LeaveResponse(LeaveCreate):
+    id: str = Field(alias="_id")
+    employee_id: str
+    employee_name: str
+    created_at: datetime
+    updated_at: datetime
+    reviewer_id: Optional[str] = None
+    reviewer_name: Optional[str] = None
+
+class LeaveStatusUpdate(BaseModel):
+    status: str
+
+# --- Attendance Models ---
+class PunchAction(BaseModel):
+    action: str # "punch_in", "punch_out", "break_start", "break_end"
+    method: str = "Web Portal"
+
+class AttendanceResponse(BaseModel):
+    id: str = Field(alias="_id")
+    employee_id: str
+    employee_name: str
+    date: str # YYYY-MM-DD
+    punch_in: Optional[datetime] = None
+    punch_out: Optional[datetime] = None
+    work_seconds: int = 0
+    break_seconds: int = 0
+    overtime_seconds: int = 0
+    status: str = "Present" # Present, Absent, Late, Half Day
+    method: str = "Web Portal"
+    photo: Optional[str] = None
 
 # --- Contacts Models ---
 

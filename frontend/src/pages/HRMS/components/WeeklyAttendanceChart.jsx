@@ -1,18 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from '@/context/ThemeContext';
+import api from '@/api/axiosClient';
 
 export default function WeeklyAttendanceChart() {
   const { isDark } = useTheme();
-  
-  const data = [
-    { name: 'Mon', present: 88 },
-    { name: 'Tue', present: 96 },
-    { name: 'Wed', present: 94 },
-    { name: 'Thu', present: 98 },
-    { name: 'Fri', present: 95 },
-    { name: 'Sat', present: 85 },
-  ];
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchWeeklyData = async () => {
+      try {
+        const res = await api.get('/hrms/attendance/weekly');
+        if (res) setData(res);
+      } catch (err) {
+        console.error("Failed to fetch weekly attendance", err);
+      }
+    };
+    fetchWeeklyData();
+  }, []);
 
   return (
     <div className="hrms-panel">

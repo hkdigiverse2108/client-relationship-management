@@ -80,6 +80,9 @@ const UserManagementPage = lazy(() => import("@/pages/Settings/UserManagementPag
 const RolesPermissionsPage = lazy(() => import("@/pages/Settings/RolesPermissionsPage"));
 const PermissionDenied = lazy(() => import("@/pages/PermissionDenied"));
 const HRMSDashboard = lazy(() => import("@/pages/HRMS/HRMSDashboard"));
+const Directory = lazy(() => import("@/pages/HRMS/Directory/Directory"));
+const Attendance = lazy(() => import("@/pages/HRMS/Attendance/Attendance"));
+const Leaves = lazy(() => import("@/pages/HRMS/Leaves/Leaves"));
 
 export default function AppRouter() {
   return (
@@ -137,6 +140,9 @@ export default function AppRouter() {
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/gst-reports" element={<GSTReports />} />
         <Route path="/hrms-dashboard" element={<HRMSDashboard />} />
+        <Route path="/directory" element={<Directory />} />
+        <Route path="/attendance" element={<Attendance />} />
+        <Route path="/leaves" element={<Leaves />} />
       </Route>
       <Route path="*" element={<NotFound />} />
       </Routes>

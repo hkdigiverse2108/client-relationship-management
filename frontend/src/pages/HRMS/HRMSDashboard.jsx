@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './HRMSDashboard.css';
 import PunchSystem from './components/PunchSystem';
 import DepartmentAllocations from './components/DepartmentAllocations';
@@ -10,9 +10,17 @@ import PerformanceAppraisals from './components/PerformanceAppraisals';
 import ATSPipeline from './ATS/ATSPipeline';
 import PageHeader from '@/components/common/PageHeader/PageHeader';
 import { FiUsers, FiCheckCircle, FiClock, FiCalendar, FiFileText } from 'react-icons/fi';
+import api from '@/api/axiosClient';
 
 export default function HRMSDashboard() {
   const [activeTab, setActiveTab] = useState('Stats & Feed');
+  const [stats, setStats] = useState({
+    totalStaff: 0,
+    presentToday: 0,
+    absentLate: 0,
+    leaveActive: 0,
+    pendingLeaves: 0
+  });
 
   const tabs = [
     'Stats & Feed',
@@ -20,6 +28,47 @@ export default function HRMSDashboard() {
     'Company Assets Cabinet',
     'Performance Appraisals'
   ];
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [deptStats, attendance, leaves, employees] = await Promise.all([
+          api.get('/hrms/dashboard/department-stats'),
+          api.get('/hrms/attendance'),
+          api.get('/hrms/leaves'),
+          api.get('/hrms/employees')
+        ]);
+        
+        const total = employees?.length || 0;
+        const present = attendance?.length || 0;
+        const late = attendance?.filter(a => a.status === 'Late').length || 0;
+        const absent = Math.max(0, total - present);
+        
+        let activeL = 0;
+        let pendingL = 0;
+        if (leaves) {
+          leaves.forEach(l => {
+            if (l.status === 'Pending') pendingL++;
+            if (l.status === 'Approved') {
+               // roughly check if today is within leave dates (simplified)
+               activeL++;
+            }
+          });
+        }
+
+        setStats({
+          totalStaff: total,
+          presentToday: present,
+          absentLate: absent + late,
+          leaveActive: activeL,
+          pendingLeaves: pendingL
+        });
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats", err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   return (
     <>
@@ -34,35 +83,35 @@ export default function HRMSDashboard() {
         <div className="hrms-stat-card d-flex flex-row justify-content-between align-items-center">
           <div>
             <div className="hrms-stat-label">Total Staff</div>
-            <div className="hrms-stat-value">42</div>
+            <div className="hrms-stat-value">{stats.totalStaff}</div>
           </div>
           <div style={{fontSize: '1.5rem', color: 'var(--color-primary)', opacity: 0.8}}><FiUsers /></div>
         </div>
         <div className="hrms-stat-card d-flex flex-row justify-content-between align-items-center">
           <div>
             <div className="hrms-stat-label">Present Today</div>
-            <div className="hrms-stat-value">38</div>
+            <div className="hrms-stat-value">{stats.presentToday}</div>
           </div>
           <div style={{fontSize: '1.5rem', color: '#10b981', opacity: 0.8}}><FiCheckCircle /></div>
         </div>
         <div className="hrms-stat-card d-flex flex-row justify-content-between align-items-center">
           <div>
             <div className="hrms-stat-label">Absent/Late</div>
-            <div className="hrms-stat-value">4</div>
+            <div className="hrms-stat-value">{stats.absentLate}</div>
           </div>
           <div style={{fontSize: '1.5rem', color: '#ef4444', opacity: 0.8}}><FiClock /></div>
         </div>
         <div className="hrms-stat-card d-flex flex-row justify-content-between align-items-center">
           <div>
             <div className="hrms-stat-label">Leave Active</div>
-            <div className="hrms-stat-value">2</div>
+            <div className="hrms-stat-value">{stats.leaveActive}</div>
           </div>
           <div style={{fontSize: '1.5rem', color: '#f59e0b', opacity: 0.8}}><FiCalendar /></div>
         </div>
         <div className="hrms-stat-card d-flex flex-row justify-content-between align-items-center">
           <div>
             <div className="hrms-stat-label">Pending Leaves</div>
-            <div className="hrms-stat-value">5</div>
+            <div className="hrms-stat-value">{stats.pendingLeaves}</div>
           </div>
           <div style={{fontSize: '1.5rem', color: '#8b5cf6', opacity: 0.8}}><FiFileText /></div>
         </div>

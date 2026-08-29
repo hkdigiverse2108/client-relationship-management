@@ -1,0 +1,72 @@
+.aio-leaves-page {
+  width: 100%;
+}
+
+.aio-leaves-page .aio-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.bg-light-subtle {
+  background-color: var(--color-background);
+}
+
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+.aio-leave-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1200px) {
+  .aio-leave-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .aio-leave-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .aio-leave-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aio-leave-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin-bottom: -1px; /* overlap the container's bottom border */
+}
+
+.aio-leave-tab:hover {
+  color: var(--color-primary);
+}
+
+.aio-leave-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}

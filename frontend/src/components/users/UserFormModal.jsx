@@ -130,8 +130,8 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
 
   const handleMasterAll = (checked) => {
     const updated = { ...currentPermissions };
-    Object.keys(updated).forEach(path => {
-      updated[path] = { view: checked, add: checked, edit: checked, delete: checked };
+    DYNAMIC_PAGES.forEach(page => {
+      updated[page.path] = { view: checked, add: checked, edit: checked, delete: checked };
     });
     setValue("permissions", updated, { shouldDirty: true });
   };
@@ -141,14 +141,10 @@ export default function UserFormModal({ open, onClose, onSubmit, submitting, ini
     section.items.forEach(item => {
       if (item.subItems) {
         item.subItems.forEach(sub => {
-          if (updated[sub.path]) {
-            updated[sub.path] = { view: checked, add: checked, edit: checked, delete: checked };
-          }
+          updated[sub.path] = { view: checked, add: checked, edit: checked, delete: checked };
         });
       } else {
-        if (updated[item.path]) {
-          updated[item.path] = { view: checked, add: checked, edit: checked, delete: checked };
-        }
+        updated[item.path] = { view: checked, add: checked, edit: checked, delete: checked };
       }
     });
     setValue("permissions", updated, { shouldDirty: true });
