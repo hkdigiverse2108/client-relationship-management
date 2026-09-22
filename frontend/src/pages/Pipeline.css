@@ -1,0 +1,93 @@
+:root {
+  --pipeline-bg-col: #f8f9fa;
+  --pipeline-border: #e9ecef;
+  --pipeline-card-bg: #ffffff;
+  --pipeline-hover-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  --pipeline-text: #212529;
+  --pipeline-text-subtle: #6c757d;
+  --pipeline-primary: #ff9b44;
+}
+
+.aio-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(320px, 1fr);
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+.aio-board__column {
+  background: var(--pipeline-bg-col);
+  border: 1px solid var(--pipeline-border);
+  border-radius: 8px;
+  padding: 1rem;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+.aio-board__col-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.aio-board__col-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--pipeline-text);
+  margin-bottom: 0;
+}
+.aio-board__col-meta {
+  font-size: 12px;
+  color: var(--pipeline-text-subtle);
+  margin-top: 4px;
+}
+.aio-board__col-badge {
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 12px;
+  background: var(--pipeline-card-bg);
+  border: 1px solid var(--pipeline-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pipeline-text-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.aio-board__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.aio-board__card {
+  background: var(--pipeline-card-bg);
+  border: 1px solid var(--pipeline-border);
+  border-radius: 6px;
+  padding: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  cursor: grab;
+}
+.aio-board__card:active {
+  cursor: grabbing;
+}
+.aio-board__card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pipeline-hover-shadow);
+  border-color: var(--pipeline-primary);
+}
+.aio-board__amount {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: #198754; /* success */
+}
+.aio-board__empty {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--pipeline-text-subtle);
+  font-size: 13px;
+}
