@@ -49,6 +49,17 @@ class UserInDB(UserCreate):
     created_at: datetime
     updated_at: datetime
 
+class NotificationPreferences(BaseModel):
+    new_lead_assigned: bool = True
+    deal_stage_changes: bool = True
+    new_task_assigned: bool = True
+    task_deadline_reminder: bool = True
+    new_project_assigned: bool = True
+    invoice_status_update: bool = True
+    hr_leave_updates: bool = True
+    new_chat_message: bool = True
+    system_alerts: bool = True
+
 class UserResponse(BaseModel):
     id: str
     name: str
@@ -84,6 +95,7 @@ class UserResponse(BaseModel):
     hra_allowance: Optional[float] = None
     special_allowances: Optional[float] = None
     manager_id: Optional[str] = None
+    notification_preferences: Optional[NotificationPreferences] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -112,6 +124,7 @@ class UserUpdate(BaseModel):
     hra_allowance: Optional[float] = None
     special_allowances: Optional[float] = None
     manager_id: Optional[str] = None
+    notification_preferences: Optional[NotificationPreferences] = None
 
 class StatusUpdate(BaseModel):
     is_active: bool

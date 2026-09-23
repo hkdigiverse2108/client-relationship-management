@@ -1,15 +1,101 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import GlobalSearch from './common/GlobalSearch';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import ConfirmationModal from './ConfirmationModal';
+import axiosClient from '../api/axiosClient';
 
 const Header = ({ toggleMobileMenu }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // WhatsApp API Connection status state (ON by default)
   const [waConnected, setWaConnected] = useState(true);
+
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axiosClient.get('/notifications');
+      setNotifications(response);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const markAsRead = async (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await axiosClient.patch(`/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => (n.id === id || n._id === id) ? { ...n, is_read: true } : n));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async (e) => {
+    e.preventDefault();
+    try {
+      await axiosClient.patch('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  const handleNotificationClick = (e, notif) => {
+    e.preventDefault();
+    const notifId = notif._id || notif.id;
+    if (!notif.is_read) {
+        markAsRead(e, notifId);
+    }
+    if (notif.link) {
+        // Fallback for legacy notifications saved with /tasks
+        navigate(notif.link === '/tasks' ? '/task-board' : notif.link);
+    }
+  };
+
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter(n => !n.is_read).length;
+
+
+  const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+  const profilePhotoUrl = user?.profile_photo ? (user.profile_photo.startsWith('http') ? user.profile_photo : `${backendUrl}${user.profile_photo}`) : null;
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    let d = dateString;
+    if (!d.endsWith('Z') && !d.includes('+')) {
+        d += 'Z';
+    }
+    const date = new Date(d);
+    const diff = Math.floor((new Date() - date) / 1000);
+    
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    if (diff < 2592000) return `${Math.floor(diff / 86400)} days ago`;
+    return date.toLocaleDateString();
+  };
 
   const toggleWaApi = () => {
     if (waConnected) {
@@ -183,124 +269,65 @@ const Header = ({ toggleMobileMenu }) => {
 									<i className="ti ti-mail"></i>
 								</a>
 							</div> */}
-							<div className="me-2 notification_item">
+							<div className="notification_item me-2">
 								<a href="#" className="btn btn-menubar position-relative me-1" id="notification_popup"
 									data-bs-toggle="dropdown">
 									<i className="ti ti-bell"></i>
-									<span className="notification-status-dot"></span>
+									<span className={`notification-status-dot ${unreadCount > 0 ? '' : 'd-none'}`}></span>
 								</a>
-								<div className="dropdown-menu dropdown-menu-end notification-dropdown p-4">
+								<div className="dropdown-menu dropdown-menu-end notification-dropdown p-4" style={{maxHeight: '500px', overflowY: 'auto'}}>
 									<div
 										className="d-flex align-items-center justify-content-between border-bottom p-0 pb-3 mb-3">
-										<h4 className="notification-title">Notifications (2)</h4>
+										<h4 className="notification-title">Notifications ({unreadCount})</h4>
 										<div className="d-flex align-items-center">
-											<a href="#" className="text-primary fs-15 me-3 lh-1">Mark all as read</a>
-											<div className="dropdown">
-												<a href="#" className="bg-white dropdown-toggle"
-													data-bs-toggle="dropdown">
-													<i className="ti ti-calendar-due me-1"></i>Today
-												</a>
-												<ul className="dropdown-menu mt-2 p-3">
-													<li>
-														<a href="#" className="dropdown-item rounded-1">
-															This Week
-														</a>
-													</li>
-													<li>
-														<a href="#" className="dropdown-item rounded-1">
-															Last Week
-														</a>
-													</li>
-													<li>
-														<a href="#" className="dropdown-item rounded-1">
-															Last Month
-														</a>
-													</li>
-												</ul>
-											</div>
+											<a href="#" className="text-primary fs-15 lh-1" onClick={markAllAsRead}>Mark all as read</a>
 										</div>
 									</div>
 									<div className="noti-content">
 										<div className="d-flex flex-column">
-											<div className="border-bottom mb-3 pb-3">
-												<a href="/activity">
-													<div className="d-flex">
-														<span className="avatar avatar-lg me-2 flex-shrink-0">
-															<img src="/assets/img/profiles/avatar-27.jpg" alt="Profile" />
-														</span>
-														<div className="flex-grow-1">
-															<p className="mb-1"><span
-																	className="text-dark fw-semibold">Shawn</span>
-																performance in Math is below the threshold.</p>
-															<span>Just Now</span>
-														</div>
-													</div>
-												</a>
-											</div>
-											<div className="border-bottom mb-3 pb-3">
-												<a href="/activity" className="pb-0">
-													<div className="d-flex">
-														<span className="avatar avatar-lg me-2 flex-shrink-0">
-															<img src="/assets/img/profiles/avatar-23.jpg" alt="Profile" />
-														</span>
-														<div className="flex-grow-1">
-															<p className="mb-1"><span
-																	className="text-dark fw-semibold">Sylvia</span> added
-																appointment on 02:00 PM</p>
-															<span>10 mins ago</span>
-															<div
-																className="d-flex justify-content-start align-items-center mt-1">
-																<span className="btn btn-light btn-sm me-2">Deny</span>
-																<span className="btn btn-primary btn-sm">Approve</span>
+											{safeNotifications.length === 0 ? (
+												<div className="text-center p-3 text-muted">No notifications</div>
+											) : (
+												safeNotifications.map(notif => (
+													<div key={notif._id || notif.id} className={`border-bottom mb-3 pb-3 ${notif.is_read ? 'opacity-75' : ''}`}>
+														<a href="#" onClick={(e) => handleNotificationClick(e, notif)}>
+															<div className="d-flex justify-content-between align-items-start">
+																<div className="d-flex">
+																	<span className="avatar avatar-md me-2 flex-shrink-0 bg-primary-transparent text-primary rounded-circle d-flex align-items-center justify-content-center">
+																		<i className="ti ti-bell fs-16"></i>
+																	</span>
+																	<div className="flex-grow-1">
+																		<p className="mb-1 fw-medium text-dark">{notif.title}</p>
+																		<p className="mb-1 text-muted fs-13">{notif.message}</p>
+																		<span className="text-muted fs-12">{formatRelativeTime(notif.created_at)}</span>
+																	</div>
+																</div>
+																{!notif.is_read && (
+																	<button className="btn btn-sm btn-icon btn-light rounded-circle flex-shrink-0 ms-2" onClick={(e) => markAsRead(e, notif._id || notif.id)} title="Mark as read">
+																		<i className="ti ti-check text-success"></i>
+																	</button>
+																)}
 															</div>
-														</div>
+														</a>
 													</div>
-												</a>
-											</div>
-											<div className="border-bottom mb-3 pb-3">
-												<a href="/activity">
-													<div className="d-flex">
-														<span className="avatar avatar-lg me-2 flex-shrink-0">
-															<img src="/assets/img/profiles/avatar-25.jpg" alt="Profile" />
-														</span>
-														<div className="flex-grow-1">
-															<p className="mb-1">New student record <span
-																	className="text-dark fw-semibold"> George</span> is
-																created by <span
-																	className="text-dark fw-semibold">Teressa</span></p>
-															<span>2 hrs ago</span>
-														</div>
-													</div>
-												</a>
-											</div>
-											<div className="border-0 mb-3 pb-0">
-												<a href="/activity">
-													<div className="d-flex">
-														<span className="avatar avatar-lg me-2 flex-shrink-0">
-															<img src="/assets/img/profiles/avatar-01.jpg" alt="Profile" />
-														</span>
-														<div className="flex-grow-1">
-															<p className="mb-1">A new teacher record for <span
-																	className="text-dark fw-semibold">Elisa</span> </p>
-															<span>09:45 AM</span>
-														</div>
-													</div>
-												</a>
-											</div>
+												))
+											)}
 										</div>
 									</div>
-									<div className="d-flex p-0">
-										<a href="#" className="btn btn-light w-100 me-2">Cancel</a>
-										<a href="/activity" className="btn btn-primary w-100">View All</a>
-									</div>
+									
 								</div>
 							</div>
 							<div className="dropdown profile-dropdown">
 								<a href="#" className="dropdown-toggle d-flex align-items-center"
 									data-bs-toggle="dropdown">
 									<span className="avatar avatar-md online">
-										<img src={user?.profile_photo || "/assets/img/profiles/avatar-14.jpg"} alt="Img"
-											className="img-fluid rounded-circle" />
+										{profilePhotoUrl ? (
+											<img src={profilePhotoUrl} alt="Img" className="img-fluid rounded-circle" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+										) : (
+											<div className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold w-100 h-100 fs-16">
+												{getInitials(user?.name)}
+											</div>
+										)}
 									</span>
 								</a>
 								<div className="dropdown-menu shadow-none">

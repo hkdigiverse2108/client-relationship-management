@@ -129,12 +129,9 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState([
-    { value: 'Super Admin', label: 'Super Admin' },
     { value: 'admin', label: 'Admin' },
     { value: 'manager', label: 'Manager' },
-    { value: 'HR', label: 'HR' },
-    { value: 'sales', label: 'Sales' },
-    { value: 'support', label: 'Support' }
+    { value: 'HR', label: 'HR' }
   ]);
 
   const [rolePresets, setRolePresets] = useState([]);
@@ -151,7 +148,6 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
           
           // Merge avoiding duplicates
           const baseRoles = [
-            { value: 'Super Admin', label: 'Super Admin' },
             { value: 'admin', label: 'Admin' },
           ];
           

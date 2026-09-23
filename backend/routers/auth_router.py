@@ -14,22 +14,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login")
 async def login(request: LoginRequest):
     user = await users_collection.find_one({"email": request.email})
-    if not user or not verify_password(request.password, user["password_hash"]):
+    if not user or user.get("is_deleted", False) or not verify_password(request.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
-        )
-        
-    if user.get("is_deleted", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account has been deleted."
         )
 
     if not user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account has been deactivate by admin.please contact admin."
+            detail="Your account has been deactivated by admin. Please contact admin."
         )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

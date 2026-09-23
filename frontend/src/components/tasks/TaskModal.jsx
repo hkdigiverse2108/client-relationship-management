@@ -36,7 +36,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
       // Fetch users
       axiosClient.get('/users').then(res => {
         if (res && Array.isArray(res)) {
-          setAssigneeOptions(res.map(u => ({ value: u.name, label: `${u.name} (${u.role})` })));
+          setAssigneeOptions(res.map(u => ({ value: u.id, label: `${u.name} (${u.role})` })));
         }
       }).catch(err => console.error("Failed to load users", err));
     }

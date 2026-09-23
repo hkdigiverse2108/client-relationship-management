@@ -251,6 +251,14 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
     
     return {"message": "User deleted successfully"}
 
+@router.get("/me/profile", response_model=UserResponse)
+async def get_my_profile(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"_id": current_user["_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["id"] = user.pop("_id")
+    return UserResponse(**user)
+
 @router.patch("/me/profile", response_model=UserResponse)
 async def update_my_profile(user_update: UserUpdate, current_user: dict = Depends(get_current_user)):
     update_data = user_update.model_dump(exclude_unset=True)

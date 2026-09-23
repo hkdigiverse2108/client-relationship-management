@@ -10,7 +10,7 @@ scheduler = AsyncIOScheduler()
 
 async def check_overdue_deadlines():
     now_iso = datetime.utcnow().isoformat()
-    
+    start_of_today_iso = datetime.utcnow().date().isoformat()
     # 1. Check Overdue Reminders
     # We look for reminders where due_date < now and status != 'completed' and not notified yet
     overdue_reminders = await db.reminders.find({
@@ -42,7 +42,7 @@ async def check_overdue_deadlines():
     # 2. Check Overdue Tasks
     # Task has end_date
     overdue_tasks = await db.tasks.find({
-        "end_date": {"$lt": now_iso},
+        "end_date": {"$lt": start_of_today_iso},
         "status": {"$ne": "Completed"}, # Tasks have 'Completed' (capital C usually based on UI)
         "overdue_notified": {"$ne": True}
     }).to_list(length=100)
@@ -57,7 +57,8 @@ async def check_overdue_deadlines():
             title=title,
             message=message,
             type="error",
-            link="/tasks"
+            link="/task-board",
+            pref_key="task_deadline_reminder"
         )
         # Mark as notified
         await db.tasks.update_one(

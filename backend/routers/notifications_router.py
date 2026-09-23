@@ -4,12 +4,23 @@ from datetime import datetime
 from bson import ObjectId
 from dependencies import get_current_user
 from models import UserResponse, NotificationResponse
-from db import notifications_collection
+from db import notifications_collection, users_collection
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 # Utility function for internal usage to create notifications
-async def create_notification(user_id: str, title: str, message: str, type: str = "info", link: str = None):
+async def create_notification(user_id: str, title: str, message: str, type: str = "info", link: str = None, pref_key: str = None):
+    # Check preferences if pref_key is provided
+    if pref_key:
+        try:
+            user = await users_collection.find_one({"_id": user_id})
+            if user:
+                prefs = user.get("notification_preferences", {})
+                if prefs.get(pref_key) is False:
+                    return # User has disabled this notification
+        except Exception:
+            pass # Ignore errors and proceed to notify
+
     new_notif = {
         "user_id": user_id,
         "title": title,
@@ -31,6 +42,7 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
         notif["_id"] = str(notif["_id"])
         result.append(notif)
         
+    print(f"DEBUG: get_notifications for {current_user['name']} returning {len(result)} items")
     return result
 
 @router.patch("/{notif_id}/read")

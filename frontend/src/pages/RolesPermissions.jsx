@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 import { menuConfig as NAV_SECTIONS } from '../config/menuConfig';
 
-const DEFAULT_ROLES = ["Super Admin", "admin", "manager", "HR", "sales", "support"];
+const DEFAULT_ROLES = ["admin", "manager", "HR"];
 
 const getEmptyPermissions = () => {
   const perms = {};
@@ -34,6 +34,14 @@ const RolesPermissions = () => {
   // Custom role modal
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
+  
+  // Rename role modal
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [roleToRename, setRoleToRename] = useState('');
+  const [renameInputValue, setRenameInputValue] = useState('');
+  
+  // Confirm delete modal
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, roleName: null });
 
   // Add custom styles for theme-colored checkboxes and hidden scrollbar
   useEffect(() => {
@@ -68,17 +76,10 @@ const RolesPermissions = () => {
       try {
         const res = await axiosClient.get('/roles/presets');
         const mockPresets = {
-          "Super Admin": { ...getEmptyPermissions() },
           "admin": { ...getEmptyPermissions() },
           "manager": { ...getEmptyPermissions() },
-          "HR": { ...getEmptyPermissions() },
-          "sales": { ...getEmptyPermissions() },
-          "support": { ...getEmptyPermissions() }
+          "HR": { ...getEmptyPermissions() }
         };
-        // Super Admin has all true by default
-        Object.keys(mockPresets["Super Admin"]).forEach(path => {
-          mockPresets["Super Admin"][path] = { view: true, add: true, edit: true, delete: true };
-        });
         
         let fetchedRolesList = [];
         if (res && res.length > 0) {
@@ -209,6 +210,74 @@ const RolesPermissions = () => {
     }
   };
 
+  const handleDeleteRoleClick = (roleName, e) => {
+    e.stopPropagation();
+    setConfirmDeleteModal({ isOpen: true, roleName });
+  };
+
+  const confirmDeleteRole = async () => {
+    const roleName = confirmDeleteModal.roleName;
+    if (!roleName) return;
+    
+    try {
+      await axiosClient.delete(`/roles/presets/${roleName}`);
+      setRoles(roles.filter(r => r !== roleName));
+      const newPresets = { ...presets };
+      delete newPresets[roleName];
+      setPresets(newPresets);
+      if (selectedRole === roleName) {
+        setSelectedRole(DEFAULT_ROLES[0]);
+      }
+      toast.success(`Role ${roleName} deleted successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to delete role");
+    } finally {
+      setConfirmDeleteModal({ isOpen: false, roleName: null });
+    }
+  };
+
+  const handleOpenRenameModal = (roleName, e) => {
+    e.stopPropagation();
+    setRoleToRename(roleName);
+    setRenameInputValue(roleName);
+    setShowRenameModal(true);
+  };
+
+  const handleRenameRole = async (e) => {
+    e.preventDefault();
+    if (!renameInputValue.trim() || renameInputValue.trim() === roleToRename) {
+      setShowRenameModal(false);
+      return;
+    }
+    
+    const newName = renameInputValue.trim();
+    if (roles.includes(newName)) {
+      alert("A role with this name already exists!");
+      return;
+    }
+    
+    try {
+      await axiosClient.put(`/roles/presets/${roleToRename}/rename`, {
+        new_role_name: newName
+      });
+      
+      setRoles(roles.map(r => r === roleToRename ? newName : r));
+      const newPresets = { ...presets };
+      newPresets[newName] = newPresets[roleToRename];
+      delete newPresets[roleToRename];
+      setPresets(newPresets);
+      
+      if (selectedRole === roleToRename) {
+        setSelectedRole(newName);
+      }
+      
+      setShowRenameModal(false);
+      toast.success(`Role renamed to ${newName}`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to rename role");
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div className="content">
@@ -240,14 +309,30 @@ const RolesPermissions = () => {
               <div className="card-body d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="d-flex flex-column gap-2 hide-scrollbar" style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
                   {roles.map(role => (
-                    <button
+                    <div
                       key={role}
-                      className={`btn text-start text-capitalize ${selectedRole === role ? 'btn-primary' : 'btn-light text-dark'}`}
+                      className={`btn d-flex justify-content-between align-items-center w-100 ${selectedRole === role ? 'btn-primary' : 'btn-light text-dark'}`}
                       onClick={() => setSelectedRole(role)}
-                      style={{ padding: '10px 15px', borderRadius: '6px' }}
+                      style={{ padding: '10px 15px', borderRadius: '6px', cursor: 'pointer' }}
                     >
-                      {role}
-                    </button>
+                      <span className="text-capitalize text-start">{role}</span>
+                      {!DEFAULT_ROLES.includes(role) && (
+                        <div className="d-flex gap-2">
+                          <i 
+                            className="ti ti-edit fs-16 text-muted hover-text-white" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => handleOpenRenameModal(role, e)}
+                            title="Edit Role Name"
+                          ></i>
+                          <i 
+                            className="ti ti-trash fs-16 text-danger hover-text-white" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => handleDeleteRoleClick(role, e)}
+                            title="Delete Role"
+                          ></i>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
                 
@@ -411,6 +496,63 @@ const RolesPermissions = () => {
                       <button type="submit" className="btn btn-primary px-4">Create Role</button>
                     </div>
                   </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rename Role Modal */}
+        {showRenameModal && (
+          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Rename Role</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowRenameModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleRenameRole}>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Role Name <span className="text-danger">*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="Enter new role name" 
+                        value={renameInputValue}
+                        onChange={(e) => setRenameInputValue(e.target.value)}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="d-flex justify-content-end gap-2 mt-4">
+                      <button type="button" className="btn btn-light" onClick={() => setShowRenameModal(false)}>Cancel</button>
+                      <button type="submit" className="btn btn-primary px-4">Rename Role</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {confirmDeleteModal.isOpen && (
+          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Delete Role</h5>
+                  <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, roleName: null })} aria-label="Close"></button>
+                </div>
+                <div className="modal-body text-center py-4">
+                  <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+                  <h5 className="mb-2">Are you sure?</h5>
+                  <p className="text-muted mb-0">Do you really want to delete the role <strong>{confirmDeleteModal.roleName}</strong>? This process cannot be undone.</p>
+                </div>
+                <div className="modal-footer justify-content-center border-0 pt-0">
+                  <button type="button" className="btn btn-light me-2" onClick={() => setConfirmDeleteModal({ isOpen: false, roleName: null })}>Cancel</button>
+                  <button type="button" className="btn btn-danger" onClick={confirmDeleteRole}>Delete Role</button>
                 </div>
               </div>
             </div>

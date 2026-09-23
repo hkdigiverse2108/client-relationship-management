@@ -288,3 +288,14 @@
     height: calc(100vh - 120px) !important;
   }
 }
+
+/* Hide scrollbar for notifications dropdown */
+.noti-content {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;  /* Firefox */
+}
+.noti-content::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}

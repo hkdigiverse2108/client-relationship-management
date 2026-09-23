@@ -31,15 +31,19 @@ async def create_task(task: TaskCreate, current_user: dict = Depends(get_current
     
     # Send notification if assigned to a specific user
     if task_dict.get("assigned_to"):
-        assignee_name = task_dict["assigned_to"]
-        user_doc = await db.users.find_one({"$or": [{"name": assignee_name}, {"email": assignee_name}]})
+        assignee_id = task_dict["assigned_to"]
+        print(f"DEBUG: Attempting to assign task to assignee_id: {assignee_id}")
+        user_doc = await db.users.find_one({"_id": assignee_id})
+        print(f"DEBUG: Result of db.users.find_one for assignee_id: {user_doc}")
+        
         if user_doc:
             await create_notification(
                 user_id=str(user_doc["_id"]),
-                title="New Task Assigned",
-                message=f"You have been assigned a new task: {task_dict.get('title', 'Untitled')}",
+                title="📌 New Task Assigned to You",
+                message=f"{current_user.get('name', 'Admin')} assigned you a new task: '{task_dict.get('title', 'Untitled')}'",
                 type="info",
-                link="/tasks"
+                link="/task-board",
+                pref_key="new_task_assigned"
             )
         
         
@@ -102,14 +106,16 @@ async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict 
     # Check if assigned_to changed or was just updated
     new_assignee = update_data.get("assigned_to")
     if new_assignee and (not old_task or old_task.get("assigned_to") != new_assignee):
-        user_doc = await db.users.find_one({"$or": [{"name": new_assignee}, {"email": new_assignee}]})
+        user_doc = await db.users.find_one({"_id": new_assignee})
+        
         if user_doc:
             await create_notification(
                 user_id=str(user_doc["_id"]),
-                title="Task Assigned to You",
-                message=f"You have been assigned a task: {updated_task.get('title', 'Untitled')}",
+                title="📌 Task Re-assigned to You",
+                message=f"{current_user.get('name', 'Admin')} assigned you an existing task: '{updated_task.get('title', 'Untitled')}'",
                 type="info",
-                link="/tasks"
+                link="/task-board",
+                pref_key="new_task_assigned"
             )
         
         

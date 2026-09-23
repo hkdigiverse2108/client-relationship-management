@@ -1,8 +1,75 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';import PageHeader from '../components/common/PageHeader';
-
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import PageHeader from '../components/common/PageHeader';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const NotificationSettings = () => {
+	const [preferences, setPreferences] = useState({
+		new_lead_assigned: true,
+		deal_stage_changes: true,
+		new_task_assigned: true,
+		task_deadline_reminder: true,
+		new_project_assigned: true,
+		invoice_status_update: true,
+		hr_leave_updates: true,
+		new_chat_message: true,
+		system_alerts: true
+	});
+
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchPreferences = async () => {
+			try {
+				const response = await axiosClient.get('/users/me/profile');
+				if (response.data && response.data.notification_preferences) {
+					setPreferences(response.data.notification_preferences);
+				}
+			} catch (error) {
+				console.error("Error fetching notification preferences:", error);
+				toast.error("Failed to load notification settings.");
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchPreferences();
+	}, []);
+
+	const handleToggle = async (key) => {
+		const updatedPreferences = {
+			...preferences,
+			[key]: !preferences[key]
+		};
+
+		// Optimistic UI update
+		setPreferences(updatedPreferences);
+
+		try {
+			await axiosClient.patch('/users/me/profile', {
+				notification_preferences: updatedPreferences
+			});
+			toast.success("Notification settings updated");
+		} catch (error) {
+			console.error("Error updating notification preferences:", error);
+			toast.error("Failed to update settings. Reverting changes.");
+			// Revert on failure
+			setPreferences(preferences);
+		}
+	};
+
+	const notificationOptions = [
+		{ key: "new_lead_assigned", label: "New lead assigned to me" },
+		{ key: "deal_stage_changes", label: "Deal stage changes" },
+		{ key: "new_task_assigned", label: "New task assigned" },
+		{ key: "task_deadline_reminder", label: "Task deadline reminder" },
+		{ key: "new_project_assigned", label: "New project assigned" },
+		{ key: "invoice_status_update", label: "Invoice status update" },
+		{ key: "hr_leave_updates", label: "HR Leave updates" },
+		{ key: "new_chat_message", label: "New chat message" },
+		{ key: "system_alerts", label: "System alerts" }
+	];
 
   return (
     <>
@@ -57,24 +124,32 @@ const NotificationSettings = () => {
 								</div>
 								
 								<div>
-									{[
-										{ label: "New lead assigned to me", def: true },
-										{ label: "Deal stage changes", def: true },
-										{ label: "Daily activity summary", def: false },
-										{ label: "Weekly performance report", def: true },
-										{ label: "Product announcements", def: false },
-									].map((item, index) => (
-										<div key={index} className="d-flex justify-content-between align-items-center flex-wrap border-bottom py-3">
-											<div>
-												<h6 className="fw-medium mb-0">{item.label}</h6>
-											</div>
-											<div>
-												<div className="form-check form-switch me-2">
-													<input className="form-check-input" type="checkbox" role="switch" defaultChecked={item.def} />
-												</div>
+									{loading ? (
+										<div className="d-flex justify-content-center p-5">
+											<div className="spinner-border text-primary" role="status">
+												<span className="visually-hidden">Loading...</span>
 											</div>
 										</div>
-									))}
+									) : (
+										notificationOptions.map((item, index) => (
+											<div key={index} className="d-flex justify-content-between align-items-center flex-wrap border-bottom py-3">
+												<div>
+													<h6 className="fw-medium mb-0">{item.label}</h6>
+												</div>
+												<div>
+													<div className="form-check form-switch me-2">
+														<input 
+															className="form-check-input" 
+															type="checkbox" 
+															role="switch" 
+															checked={preferences[item.key]} 
+															onChange={() => handleToggle(item.key)}
+														/>
+													</div>
+												</div>
+											</div>
+										))
+									)}
 								</div>
 							</div>
 						</div>
