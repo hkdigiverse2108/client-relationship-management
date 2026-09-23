@@ -1,124 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/common/PageHeader';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
-const NAV_SECTIONS = [
-  {
-    id: "dashboard",
-    title: "Dashboard",
-    icon: "ti ti-smart-home",
-    items: [
-      { path: "/dashboard", label: "Main KPI" },
-      { path: "/sales", label: "Sales" },
-      { path: "/team", label: "Team" },
-      { path: "/analytics", label: "Analytics" }
-    ]
-  },
-  {
-    id: "crm",
-    title: "CRM & Sales",
-    icon: "ti ti-target",
-    items: [
-      { path: "/leads", label: "Leads" },
-      { path: "/contacts", label: "Contacts" },
-      { path: "/clients", label: "Clients" },
-      { path: "/pipeline", label: "Pipeline" }
-    ]
-  },
-  {
-    id: "projects",
-    title: "Projects",
-    icon: "ti ti-briefcase",
-    items: [
-      { path: "/projects-dashboard", label: "Dashboard" },
-      { path: "/all-projects", label: "All Projects" },
-      { path: "/project-pipeline", label: "Pipeline Board" },
-      { path: "/gantt-chart", label: "Gantt Chart" },
-      { path: "/project-report", label: "Reports" }
-    ]
-  },
-  {
-    id: "omnichannel",
-    title: "Omnichannel Hub",
-    icon: "ti ti-message-circle",
-    items: [
-      { path: "/whatsapp-inbox", label: "WhatsApp > Inbox" },
-      { path: "/whatsapp-automation-dashboard", label: "WhatsApp > Automation" },
-      { path: "/call-dialer", label: "Call Dialer" },
-      { path: "/email-inbox", label: "Email Inbox" },
-      { path: "/sms-inbox", label: "SMS Inbox" }
-    ]
-  },
-  {
-    id: "ecommerce",
-    title: "E-Commerce",
-    icon: "ti ti-shopping-cart",
-    items: [
-      { path: "/orders", label: "Orders" },
-      { path: "/customers", label: "Customers" },
-      { path: "/products", label: "Products" },
-      { path: "/inventory", label: "Inventory" },
-      { path: "/abandoned-carts", label: "Abandoned Carts" }
-    ]
-  },
-  {
-    id: "finance",
-    title: "Finance & Billing",
-    icon: "ti ti-file-invoice",
-    items: [
-      { path: "/billing-dashboard", label: "Billing Dashboard" },
-      { path: "/invoices", label: "Invoices" },
-      { path: "/quotes", label: "Quotes" },
-      { path: "/payments", label: "Payments" },
-      { path: "/ledger", label: "Ledger" },
-      { path: "/expenses", label: "Expenses" },
-      { path: "/gst-reports", label: "GST Reports" }
-    ]
-  },
-  {
-    id: "hrms",
-    title: "HRMS & Payroll",
-    icon: "ti ti-users",
-    items: [
-      { path: "/hrms-dashboard", label: "HRMS Dashboard" },
-      { path: "/directory", label: "Directory" },
-      { path: "/attendance", label: "Attendance" },
-      { path: "/leaves", label: "Leaves" },
-      { path: "/payroll", label: "Payroll" }
-    ]
-  },
-  {
-    id: "tasks",
-    title: "Tasks & Calendar",
-    icon: "ti ti-clipboard-list",
-    items: [
-      { path: "/task-board", label: "Task Board" },
-      { path: "/reminders", label: "Reminders" }
-    ]
-  },
-  {
-    id: "admin",
-    title: "Admin Console",
-    icon: "ti ti-settings",
-    items: [
-      { path: "/ai-assistant", label: "AI Assistant Hub" },
-      { path: "/white-label-settings", label: "White Label Settings" },
-      { path: "/integrations-hub", label: "Integrations Hub" },
-      { path: "/api-management", label: "API Management" },
-      { path: "/user-management", label: "User Management" },
-      { path: "/roles-and-permissions", label: "Roles & Permissions" },
-      { path: "/audit-log", label: "Audit Logs" },
-      { path: "/appearance", label: "Appearance & Theme" }
-    ]
-  }
-];
+import { menuConfig as NAV_SECTIONS } from '../config/menuConfig';
 
-const DEFAULT_ROLES = ["Admin", "Manager", "HR", "Sales", "Support"];
+const DEFAULT_ROLES = ["Super Admin", "admin", "manager", "HR", "sales", "support"];
 
 const getEmptyPermissions = () => {
   const perms = {};
   NAV_SECTIONS.forEach(section => {
     section.items.forEach(item => {
-      perms[item.path] = { view: false, add: false, edit: false, delete: false };
+      if (item.subMenu) {
+        item.subMenu.forEach(subItem => {
+          perms[subItem.path] = { view: false, add: false, edit: false, delete: false };
+        });
+      } else {
+        perms[item.path] = { view: false, add: false, edit: false, delete: false };
+      }
     });
   });
   // Default allow dashboard view
@@ -163,20 +62,47 @@ const RolesPermissions = () => {
     return () => document.head.removeChild(style);
   }, []);
 
-  // Initialize mock data
+  // Initialize data from backend
   useEffect(() => {
-    const mockPresets = {
-      "Admin": { ...getEmptyPermissions() },
-      "Manager": { ...getEmptyPermissions() },
-      "HR": { ...getEmptyPermissions() },
-      "Sales": { ...getEmptyPermissions() },
-      "Support": { ...getEmptyPermissions() }
+    const fetchRoles = async () => {
+      try {
+        const res = await axiosClient.get('/roles/presets');
+        const mockPresets = {
+          "Super Admin": { ...getEmptyPermissions() },
+          "admin": { ...getEmptyPermissions() },
+          "manager": { ...getEmptyPermissions() },
+          "HR": { ...getEmptyPermissions() },
+          "sales": { ...getEmptyPermissions() },
+          "support": { ...getEmptyPermissions() }
+        };
+        // Super Admin has all true by default
+        Object.keys(mockPresets["Super Admin"]).forEach(path => {
+          mockPresets["Super Admin"][path] = { view: true, add: true, edit: true, delete: true };
+        });
+        
+        let fetchedRolesList = [];
+        if (res && res.length > 0) {
+          res.forEach(preset => {
+            mockPresets[preset.role_name] = preset.permissions;
+            if (!DEFAULT_ROLES.map(r => r.toLowerCase()).includes(preset.role_name.toLowerCase())) {
+              fetchedRolesList.push(preset.role_name);
+            }
+          });
+        }
+        
+        setPresets(mockPresets);
+        
+        // Remove duplicates case-insensitively
+        const baseRolesLower = DEFAULT_ROLES.map(r => r.toLowerCase());
+        const uniqueFetched = fetchedRolesList.filter(r => !baseRolesLower.includes(r.toLowerCase()));
+        setRoles([...DEFAULT_ROLES, ...uniqueFetched]);
+        
+      } catch (err) {
+        console.error("Failed to fetch roles", err);
+        toast.error("Failed to load roles");
+      }
     };
-    // Make Admin have all true by default
-    Object.keys(mockPresets["Admin"]).forEach(path => {
-      mockPresets["Admin"][path] = { view: true, add: true, edit: true, delete: true };
-    });
-    setPresets(mockPresets);
+    fetchRoles();
   }, []);
 
   // Update permissions when role changes
@@ -198,17 +124,27 @@ const RolesPermissions = () => {
     }));
   };
 
-  const handlePageAll = (path, checked) => {
-    setCurrentPermissions(prev => ({
-      ...prev,
-      [path]: { view: checked, add: checked, edit: checked, delete: checked }
-    }));
+  const areAllSelected = (section, type) => {
+    return section.items.every(item => {
+      if (item.subMenu) {
+        return item.subMenu.every(subItem => currentPermissions[subItem.path]?.[type]);
+      }
+      return currentPermissions[item.path]?.[type];
+    });
   };
 
-  const handleSectionAll = (section, checked) => {
+  const handleSelectAll = (section, type, isChecked) => {
     const updated = { ...currentPermissions };
     section.items.forEach(item => {
-      updated[item.path] = { view: checked, add: checked, edit: checked, delete: checked };
+      if (item.subMenu) {
+        item.subMenu.forEach(subItem => {
+          if (!updated[subItem.path]) updated[subItem.path] = {};
+          updated[subItem.path][type] = isChecked;
+        });
+      } else {
+        if (!updated[item.path]) updated[item.path] = {};
+        updated[item.path][type] = isChecked;
+      }
     });
     setCurrentPermissions(updated);
   };
@@ -221,29 +157,28 @@ const RolesPermissions = () => {
     setCurrentPermissions(updated);
   };
 
-  const isPageAllChecked = (path) => {
-    const p = currentPermissions[path];
-    return p?.view && p?.add && p?.edit && p?.delete;
-  };
-
-  const isSectionAllChecked = (section) => {
-    return section.items.every(item => isPageAllChecked(item.path));
-  };
-
   const isMasterAllChecked = () => {
     if (Object.keys(currentPermissions).length === 0) return false;
     return Object.values(currentPermissions).every(p => p.view && p.add && p.edit && p.delete);
   };
 
-  const handleSave = () => {
-    setPresets(prev => ({
-      ...prev,
-      [selectedRole]: currentPermissions
-    }));
-    alert(`Permissions for ${selectedRole} saved successfully!`);
+  const handleSave = async () => {
+    try {
+      await axiosClient.put(`/roles/presets/${selectedRole}`, {
+        role_name: selectedRole,
+        permissions: currentPermissions
+      });
+      setPresets(prev => ({
+        ...prev,
+        [selectedRole]: currentPermissions
+      }));
+      toast.success(`Permissions for ${selectedRole} saved successfully!`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to save permissions");
+    }
   };
 
-  const handleCreateCustomRole = (e) => {
+  const handleCreateCustomRole = async (e) => {
     e.preventDefault();
     if (!newRoleName.trim()) return;
     
@@ -253,14 +188,25 @@ const RolesPermissions = () => {
       return;
     }
     
-    setRoles([...roles, roleName]);
-    setPresets(prev => ({
-      ...prev,
-      [roleName]: getEmptyPermissions()
-    }));
-    setNewRoleName('');
-    setShowRoleModal(false);
-    setSelectedRole(roleName);
+    const emptyPerms = getEmptyPermissions();
+    try {
+      await axiosClient.put(`/roles/presets/${roleName}`, {
+        role_name: roleName,
+        permissions: emptyPerms
+      });
+      
+      setRoles([...roles, roleName]);
+      setPresets(prev => ({
+        ...prev,
+        [roleName]: emptyPerms
+      }));
+      setNewRoleName('');
+      setShowRoleModal(false);
+      setSelectedRole(roleName);
+      toast.success(`Custom role ${roleName} created!`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to create custom role");
+    }
   };
 
   return (
@@ -349,83 +295,84 @@ const RolesPermissions = () => {
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Add</th>
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Edit</th>
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Delete</th>
-                        <th className="bg-light text-center fw-bold py-3 border-end-0 border-bottom-0 text-primary" style={{ width: '80px' }}>All</th>
                       </tr>
                     </thead>
                     <tbody>
                       {NAV_SECTIONS.map((section) => (
                         <React.Fragment key={section.id}>
-                          {/* Section Row */}
-                          <tr className="bg-light">
-                            <td className="fw-bold text-dark py-2 border-start-0" style={{ fontSize: '13px' }}>
-                              <div className="d-flex align-items-center gap-2">
-                                <i className={section.icon}></i>
-                                {section.title}
-                              </div>
+                          {/* Section Header Row */}
+                          <tr style={{ backgroundColor: 'var(--custom-hover-bg, #f8f9fa)' }}>
+                            <td className="fw-semibold text-dark border-start-0 py-2">
+                              <i className={`${section.icon} me-2`}></i> {section.title}
                             </td>
-                            <td colSpan={4} className="bg-light py-2"></td>
-                            <td className="bg-light text-center py-2 border-end-0">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input border-primary text-primary custom-primary-checkbox" 
-                                checked={isSectionAllChecked(section)}
-                                onChange={(e) => handleSectionAll(section, e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
+                            <td className="text-center py-2">
+                              <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'view')} onChange={(e) => handleSelectAll(section, 'view', e.target.checked)} style={{ cursor: 'pointer' }} />
+                            </td>
+                            <td className="text-center py-2">
+                              <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'add')} onChange={(e) => handleSelectAll(section, 'add', e.target.checked)} style={{ cursor: 'pointer' }} />
+                            </td>
+                            <td className="text-center py-2">
+                              <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'edit')} onChange={(e) => handleSelectAll(section, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
+                            </td>
+                            <td className="text-center py-2 border-end-0">
+                              <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'delete')} onChange={(e) => handleSelectAll(section, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
                             </td>
                           </tr>
                           
-                          {/* Page Rows */}
-                          {section.items.map((item) => (
+                          {/* Sub-items rows */}
+                          {section.items.map((item) => {
+                            if (item.subMenu) {
+                              return (
+                                <React.Fragment key={item.label}>
+                                  <tr key={item.label} style={{ backgroundColor: 'var(--custom-bg, #fff)' }}>
+                                    <td className="ps-4 fw-medium text-dark py-2 border-start-0 border-end-0">
+                                      {item.label}
+                                    </td>
+                                    <td colSpan="4" className="border-start-0 border-end-0"></td>
+                                  </tr>
+                                  {item.subMenu.map(subItem => (
+                                    <tr key={subItem.path}>
+                                      <td className="ps-5 text-muted py-2 border-start-0">
+                                        {subItem.label}
+                                      </td>
+                                      <td className="text-center py-2">
+                                        <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.view || false} onChange={(e) => handlePermissionChange(subItem.path, 'view', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                      </td>
+                                      <td className="text-center py-2">
+                                        <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.add || false} onChange={(e) => handlePermissionChange(subItem.path, 'add', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                      </td>
+                                      <td className="text-center py-2">
+                                        <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.edit || false} onChange={(e) => handlePermissionChange(subItem.path, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                      </td>
+                                      <td className="text-center py-2 border-end-0">
+                                        <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.delete || false} onChange={(e) => handlePermissionChange(subItem.path, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              );
+                            }
+                            
+                            return (
                             <tr key={item.path}>
-                              <td className="fw-medium ps-4 text-muted py-2 border-start-0" style={{ fontSize: '13px' }}>{item.label}</td>
-                              <td className="text-center py-2">
-                                <input 
-                                  type="checkbox" 
-                                  className="form-check-input text-primary custom-primary-checkbox" 
-                                  checked={currentPermissions[item.path]?.view || false}
-                                  onChange={(e) => handlePermissionChange(item.path, 'view', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
+                              <td className="ps-4 text-muted py-2 border-start-0">
+                                {item.label}
                               </td>
                               <td className="text-center py-2">
-                                <input 
-                                  type="checkbox" 
-                                  className="form-check-input text-primary custom-primary-checkbox" 
-                                  checked={currentPermissions[item.path]?.add || false}
-                                  onChange={(e) => handlePermissionChange(item.path, 'add', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
+                                <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.view || false} onChange={(e) => handlePermissionChange(item.path, 'view', e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
                               <td className="text-center py-2">
-                                <input 
-                                  type="checkbox" 
-                                  className="form-check-input text-primary custom-primary-checkbox" 
-                                  checked={currentPermissions[item.path]?.edit || false}
-                                  onChange={(e) => handlePermissionChange(item.path, 'edit', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
+                                <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.add || false} onChange={(e) => handlePermissionChange(item.path, 'add', e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
                               <td className="text-center py-2">
-                                <input 
-                                  type="checkbox" 
-                                  className="form-check-input text-primary custom-primary-checkbox" 
-                                  checked={currentPermissions[item.path]?.delete || false}
-                                  onChange={(e) => handlePermissionChange(item.path, 'delete', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
+                                <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.edit || false} onChange={(e) => handlePermissionChange(item.path, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
                               <td className="text-center py-2 border-end-0">
-                                <input 
-                                  type="checkbox" 
-                                  className="form-check-input border-primary text-primary custom-primary-checkbox" 
-                                  checked={isPageAllChecked(item.path)}
-                                  onChange={(e) => handlePageAll(item.path, e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
+                                <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.delete || false} onChange={(e) => handlePermissionChange(item.path, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </React.Fragment>
                       ))}
                     </tbody>

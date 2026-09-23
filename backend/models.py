@@ -44,6 +44,7 @@ class UserInDB(UserCreate):
     password_hash: str
     plain_password: str
     is_active: bool = True
+    is_deleted: bool = False
     is_first_login: bool = True
     created_at: datetime
     updated_at: datetime
@@ -57,6 +58,7 @@ class UserResponse(BaseModel):
     permissions: Dict[str, PermissionDict]
     plain_password: Optional[str] = None
     is_active: bool = True
+    is_deleted: bool = False
     is_first_login: bool
     parent_id: Optional[str] = None
     dob: Optional[datetime] = None

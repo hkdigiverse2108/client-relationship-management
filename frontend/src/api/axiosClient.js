@@ -47,8 +47,10 @@ axiosClient.interceptors.response.use(
     } else if (status === 403 && message.includes("deactivate")) {
       storage.remove(STORAGE_KEYS.token);
       storage.remove(STORAGE_KEYS.user);
-      toast.error("Your account has been deactivated by admin. Please contact admin.");
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        toast.error("Your account has been deactivated by admin. Please contact admin.");
+        window.location.href = "/login";
+      }
     } else if (status >= 500) {
       toast.error("Server error. Please try again later.");
     }

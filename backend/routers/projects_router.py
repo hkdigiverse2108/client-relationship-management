@@ -5,7 +5,7 @@ from models import ProjectCreate, ProjectResponse
 from db import projects_collection, client_history_collection, payments_collection, audit_logs_collection
 from history_logger import log_client_history
 from audit_logger import log_audit_action
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -41,7 +41,15 @@ async def create_project(project: ProjectCreate, current_user: dict = Depends(ge
 
 @router.get("/analytics")
 async def get_project_analytics(current_user: dict = Depends(get_current_user)):
-    cursor = projects_collection.find()
+    query = {}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"manager": {"$in": [current_user.get("name"), current_user.get("email")]}} # Optional fallback
+        ]
+        
+    cursor = projects_collection.find(query)
     projects = []
     async for p in cursor:
         projects.append(p)
@@ -117,7 +125,15 @@ async def get_project_analytics(current_user: dict = Depends(get_current_user)):
 
 @router.get("", response_model=List[ProjectResponse])
 async def get_projects(current_user: dict = Depends(get_current_user)):
-    cursor = projects_collection.find()
+    query = {}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"manager": {"$in": [current_user.get("name"), current_user.get("email")]}} # Optional fallback
+        ]
+        
+    cursor = projects_collection.find(query)
     projects = []
     async for p in cursor:
         p["_id"] = str(p["_id"])

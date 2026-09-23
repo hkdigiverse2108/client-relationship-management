@@ -1,46 +1,92 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
-import { mockUsers } from './usersData';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 import UserFormModal from '../components/users/UserFormModal';
 import UserDetailsModal from '../components/users/UserDetailsModal';
 
 const Users = () => {
-  const [users, setUsers] = useState(mockUsers);
-  const [expanded, setExpanded] = useState({});
+  const [users, setUsers] = useState([]);
+  const [expanded, setExpanded] = useState(() => {
+    const saved = localStorage.getItem('users_hierarchy_expanded');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState({});
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   
   const [viewingUser, setViewingUser] = useState(null);
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ isOpen: false, user: null });
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, userId: null });
 
   const [salesTarget, setSalesTarget] = useState('100000');
   const [savingTarget, setSavingTarget] = useState(false);
 
-  // Initialize expanded state so root parents are open by default
+  // Fetch users and sales target from backend
   useEffect(() => {
-    const defaultExpanded = {};
-    users.forEach(u => {
-      if (!u.parent_id) {
-        defaultExpanded[u.id] = true;
+    const fetchData = async () => {
+      try {
+        const [usersRes, targetRes] = await Promise.all([
+          axiosClient.get('/users'),
+          axiosClient.get('/users/settings/sales-target')
+        ]);
+        setUsers(usersRes || []);
+        if (targetRes && targetRes.target) {
+          setSalesTarget(targetRes.target.toString());
+        }
+      } catch (err) {
+        console.error("Failed to fetch data", err);
+        toast.error("Failed to load initial data");
       }
-    });
-    setExpanded(defaultExpanded);
+    };
+    fetchData();
+  }, []);
+
+  // Initialize expanded state so root parents are open by default if not already set
+  useEffect(() => {
+    if (users.length > 0) {
+      setExpanded(prev => {
+        let hasChanges = false;
+        const next = { ...prev };
+        users.forEach(u => {
+          if (!u.parent_id && next[u.id] === undefined) {
+            next[u.id] = true;
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }
   }, [users]);
 
-  const handleSaveTarget = () => {
+  // Persist expanded state to localStorage
+  useEffect(() => {
+    localStorage.setItem('users_hierarchy_expanded', JSON.stringify(expanded));
+  }, [expanded]);
+
+  const handleSaveTarget = async () => {
     setSavingTarget(true);
-    setTimeout(() => {
+    try {
+      await axiosClient.put('/users/settings/sales-target', { target: parseFloat(salesTarget) });
+      toast.success("Sales target updated successfully!");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to update sales target");
+    } finally {
       setSavingTarget(false);
-      // In a real app, you'd show a toast here
-    }, 1000);
+    }
   };
 
   const toggleExpand = (userId) => {
     setExpanded(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const togglePasswordVisibility = (userId) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
   const handleOpenAddModal = () => {
@@ -53,17 +99,51 @@ const Users = () => {
     setIsFormModalOpen(true);
   };
 
-  const handleDeleteUser = (userId) => {
-    if(window.confirm("Are you sure you want to delete this user?")) {
+  const executeDeleteUser = async () => {
+    const userId = confirmDeleteModal.userId;
+    if (!userId) return;
+    try {
+      await axiosClient.delete(`/users/${userId}`);
       setUsers(users.filter(u => u.id !== userId && u.parent_id !== userId));
+      toast.success("User deleted successfully");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to delete user");
+    } finally {
+      setConfirmDeleteModal({ isOpen: false, userId: null });
     }
   };
 
-  const handleSaveUser = (userData) => {
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...userData, id: editingUser.id } : u));
-    } else {
-      setUsers([...users, { ...userData, id: Date.now(), avatar: '/assets/img/profiles/avatar-14.jpg' }]);
+  const handleDeleteUser = (userId) => {
+    setConfirmDeleteModal({ isOpen: true, userId });
+  };
+
+  const handleSaveUser = async (userData) => {
+    try {
+      if (editingUser) {
+        const res = await axiosClient.put(`/users/${editingUser.id}`, userData);
+        setUsers(users.map(u => u.id === editingUser.id ? res : u));
+        toast.success("User updated successfully");
+      } else {
+        const res = await axiosClient.post('/users', userData);
+        setUsers([...users, res]);
+        toast.success("User created successfully");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to save user");
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    const user = confirmStatusModal.user;
+    if (!user) return;
+    try {
+      const res = await axiosClient.patch(`/users/${user.id}/status`, { is_active: !user.is_active });
+      setUsers(users.map(u => u.id === user.id ? { ...u, is_active: res.is_active } : u));
+      toast.success(`User ${res.is_active ? 'activated' : 'deactivated'} successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to update status");
+    } finally {
+      setConfirmStatusModal({ isOpen: false, user: null });
     }
   };
 
@@ -74,7 +154,8 @@ const Users = () => {
       match = false;
     }
     if (roleFilter && u.role !== roleFilter) match = false;
-    if (statusFilter && u.status !== statusFilter) match = false;
+    if (statusFilter === 'Active' && !u.is_active) match = false;
+    if (statusFilter === 'Inactive' && u.is_active) match = false;
     return match;
   });
 
@@ -149,9 +230,15 @@ const Users = () => {
 
           {/* Password */}
           <div style={{ width: '20%' }} className="d-flex align-items-center text-muted">
-            <span className="me-3 fs-14 mt-1">********</span>
-            <button className="btn btn-icon btn-sm btn-white border-0 text-muted">
-              <i className="ti ti-eye fs-16"></i>
+            <span className="me-3 fs-14 mt-1">
+              {visiblePasswords[user.id] ? (user.plain_password || 'N/A') : '********'}
+            </span>
+            <button 
+              className="btn btn-icon btn-sm btn-white border-0 text-muted"
+              onClick={() => togglePasswordVisibility(user.id)}
+              title={visiblePasswords[user.id] ? "Hide Password" : "Show Password"}
+            >
+              <i className={`ti ${visiblePasswords[user.id] ? 'ti-eye-off' : 'ti-eye'} fs-16`}></i>
             </button>
           </div>
 
@@ -162,13 +249,11 @@ const Users = () => {
               <Link to="#" className="text-dark fw-medium fs-14" onClick={(e) => { e.preventDefault(); handleOpenEditModal(user); }}>Edit</Link>
               
               <button 
-                className={`btn btn-sm px-3 rounded-pill fw-medium ${user.status === 'Active' ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                className={`btn btn-sm px-3 rounded-pill fw-medium ${user.is_active ? 'btn-outline-danger' : 'btn-outline-success'}`}
                 style={{ minWidth: '95px' }}
-                onClick={() => {
-                  setUsers(users.map(u => u.id === user.id ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' } : u));
-                }}
+                onClick={() => setConfirmStatusModal({ isOpen: true, user })}
               >
-                {user.status === 'Active' ? 'Deactivate' : 'Activate'}
+                {user.is_active ? 'Deactivate' : 'Activate'}
               </button>
               
               <button 
@@ -327,6 +412,49 @@ const Users = () => {
         user={viewingUser}
         onClose={() => setViewingUser(null)}
       />
+
+      {confirmStatusModal.isOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Action</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmStatusModal({ isOpen: false, user: null })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body">
+                Are you sure you want to <strong>{confirmStatusModal.user?.is_active ? 'deactivate' : 'activate'}</strong> this user? 
+                {confirmStatusModal.user?.is_active && " They will no longer be able to log in."}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-light" onClick={() => setConfirmStatusModal({ isOpen: false, user: null })}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleToggleStatus}>Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteModal.isOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete User</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, userId: null })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">Do you really want to delete this user? This process cannot be undone.</p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, userId: null })}>Cancel</button>
+                <button className="btn btn-danger px-4" onClick={executeDeleteUser}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

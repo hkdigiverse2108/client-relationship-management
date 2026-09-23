@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from dependencies import get_current_user, get_allowed_user_ids
 from typing import List
 from bson import ObjectId
 from datetime import datetime
@@ -19,11 +20,11 @@ def serialize_doc(doc):
     return doc
 
 @router.post("", response_model=TaskResponse)
-async def create_task(task: TaskCreate):
+async def create_task(task: TaskCreate, current_user: dict = Depends(get_current_user)):
     task_dict = task.dict()
     task_dict["created_at"] = datetime.utcnow().isoformat()
     task_dict["updated_at"] = task_dict["created_at"]
-    task_dict["created_by"] = "system" # Mocking user for now
+    task_dict["created_by"] = str(current_user["_id"])
     
     result = await db.tasks.insert_one(task_dict)
     created_task = await db.tasks.find_one({"_id": result.inserted_id})
@@ -44,7 +45,7 @@ async def create_task(task: TaskCreate):
         
     await log_audit_action(
         audit_logs_collection,
-        {"_id": "system", "name": "System"},
+        current_user,
         "Create",
         "Tasks",
         f"Created task '{task_dict.get('title', 'Untitled')}'"
@@ -53,10 +54,18 @@ async def create_task(task: TaskCreate):
     return serialize_doc(created_task)
 
 @router.get("", response_model=List[TaskResponse])
-async def get_tasks(project_id: str = None):
+async def get_tasks(project_id: str = None, current_user: dict = Depends(get_current_user)):
     query = {}
     if project_id:
         query["project_id"] = project_id
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"assigned_to": {"$in": allowed_ids}},
+            {"assigned_to": {"$in": [current_user.get("name"), current_user.get("email")]}} # Fallback for old records using name/email
+        ]
     
     cursor = db.tasks.find(query)
     tasks = await cursor.to_list(length=1000)
@@ -70,7 +79,7 @@ async def get_task(task_id: str):
     return serialize_doc(task)
 
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: str, task_update: TaskUpdate):
+async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict = Depends(get_current_user)):
     update_data = {k: v for k, v in task_update.dict(exclude_unset=True).items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
@@ -106,7 +115,7 @@ async def update_task(task_id: str, task_update: TaskUpdate):
         
     await log_audit_action(
         audit_logs_collection,
-        {"_id": "system", "name": "System"},
+        current_user,
         "Update",
         "Tasks",
         f"Updated task '{updated_task.get('title', 'Untitled')}'"
@@ -115,7 +124,7 @@ async def update_task(task_id: str, task_update: TaskUpdate):
     return serialize_doc(updated_task)
 
 @router.delete("/{task_id}")
-async def delete_task(task_id: str):
+async def delete_task(task_id: str, current_user: dict = Depends(get_current_user)):
     task = await db.tasks.find_one({"_id": ObjectId(task_id)})
     
     result = await db.tasks.delete_one({"_id": ObjectId(task_id)})
@@ -125,7 +134,7 @@ async def delete_task(task_id: str):
     title = task.get("title", "Untitled") if task else task_id
     await log_audit_action(
         audit_logs_collection,
-        {"_id": "system", "name": "System"},
+        current_user,
         "Delete",
         "Tasks",
         f"Deleted task '{title}'"

@@ -19,7 +19,7 @@ const UserDetailsModal = ({ user, onClose }) => {
         <div className="modal-content">
           <div className="modal-header border-0 pb-0 mt-3 mx-3">
             <h5 className="modal-title fs-18 fw-bold">User Details</h5>
-            <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
+            <button type="button" className="btn-close" onClick={onClose} aria-label="Close">✖</button>
           </div>
           <div className="modal-body p-4">
             
@@ -38,8 +38,8 @@ const UserDetailsModal = ({ user, onClose }) => {
                   <span className="badge bg-primary-transparent px-3 py-1 rounded-pill fw-medium" style={{ fontSize: '12px' }}>
                     {user.role}
                   </span>
-                  <span className={`badge ${user.status === 'Active' ? 'bg-success-transparent' : 'bg-danger-transparent'} px-3 py-1 rounded-pill fw-medium`} style={{ fontSize: '12px' }}>
-                    {user.status}
+                  <span className={`badge ${user.is_active ? 'bg-success-transparent' : 'bg-danger-transparent'} px-3 py-1 rounded-pill fw-medium`} style={{ fontSize: '12px' }}>
+                    {user.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
@@ -101,29 +101,29 @@ const UserDetailsModal = ({ user, onClose }) => {
               
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">Bank Name</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.bankName || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.bank_name || 'N/A'}</p>
               </div>
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">Account Holder</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.accountHolder || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.account_holder_name || 'N/A'}</p>
               </div>
               
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">Account Number</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.accountNumber || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.account_number || 'N/A'}</p>
               </div>
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">IFSC Code</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.ifscCode || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.ifsc_code || 'N/A'}</p>
               </div>
               
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">PAN Card Number</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.panCard || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.pan_number || 'N/A'}</p>
               </div>
               <div className="col-md-6 mb-3">
                 <p className="text-muted mb-1 fs-13">Aadhar Number</p>
-                <p className="text-dark fw-medium fs-14 mb-0">{user.aadharNumber || 'N/A'}</p>
+                <p className="text-dark fw-medium fs-14 mb-0">{user.aadhar_number || 'N/A'}</p>
               </div>
             </div>
             

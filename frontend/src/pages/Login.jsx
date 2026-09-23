@@ -25,7 +25,8 @@ const Login = () => {
       toast.success('Welcome back! Logged in successfully.');
       navigate('/');
     } catch (err) {
-      toast.error(err.message || 'Login failed. Please try again.');
+      const backendMessage = err.response?.data?.detail;
+      toast.error(backendMessage || err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

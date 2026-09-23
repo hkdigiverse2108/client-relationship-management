@@ -1,15 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import PageHeader from '../components/common/PageHeader';
 import TaskModal from '../components/tasks/TaskModal';
 import KanbanBoard from '../components/tasks/KanbanBoard';
 import CalendarView from '../components/tasks/CalendarView';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const TaskBoard = () => {
   const [activePriority, setActivePriority] = useState('All');
   const [isTaskModalOpen, setTaskModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState('board'); // 'board' or 'calendar'
+  
+  const [tasks, setTasks] = useState([]);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await axiosClient.get('/tasks');
+      setTasks(res);
+    } catch (err) {
+      toast.error("Failed to fetch tasks");
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const handleSaveTask = async (taskData) => {
+    try {
+      await axiosClient.post('/tasks', taskData);
+      toast.success("Task created successfully!");
+      setTaskModalOpen(false);
+      fetchTasks();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to save task");
+    }
+  };
 
   return (
     <>
@@ -37,7 +65,7 @@ const TaskBoard = () => {
               </a>
             </div>
           </PageHeader>
-          <TaskModal isOpen={isTaskModalOpen} onClose={() => setTaskModalOpen(false)} />
+          <TaskModal isOpen={isTaskModalOpen} onClose={() => setTaskModalOpen(false)} onSave={handleSaveTask} />
           
           {viewMode === 'board' ? (
           <div className="card">
@@ -57,9 +85,9 @@ const TaskBoard = () => {
                   <span className="avatar avatar-rounded bg-primary fs-12">1+</span>
                 </div>
                 <div className="d-flex align-items-center me-3">
-                  <p className="mb-0 me-3 pe-3 border-end fs-14">Total Task : <span className="text-dark">55</span></p>
-                  <p className="mb-0 me-3 pe-3 border-end fs-14">Pending : <span className="text-dark">15</span></p>
-                  <p className="mb-0 fs-14">Completed : <span className="text-dark">40</span></p>
+                  <p className="mb-0 me-3 pe-3 border-end fs-14">Total Task : <span className="text-dark">{tasks.length}</span></p>
+                  <p className="mb-0 me-3 pe-3 border-end fs-14">Pending : <span className="text-dark">{tasks.filter(t => t.status === 'Pending').length}</span></p>
+                  <p className="mb-0 fs-14">Completed : <span className="text-dark">{tasks.filter(t => t.status === 'Completed').length}</span></p>
                 </div>
                 <div className="input-icon-start position-relative">
                   <span className="input-icon-addon">
@@ -112,7 +140,7 @@ const TaskBoard = () => {
                 </div>
               </div>
               
-              <KanbanBoard onAddTask={() => setTaskModalOpen(true)} />
+              <KanbanBoard tasks={tasks} onAddTask={() => setTaskModalOpen(true)} onTaskUpdate={fetchTasks} />
               
             </div>
           </div>

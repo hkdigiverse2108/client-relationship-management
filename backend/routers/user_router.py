@@ -5,7 +5,7 @@ import uuid
 import secrets
 import string
 from models import UserCreate, UserResponse, PermissionDict, UserUpdate, StatusUpdate
-from db import users_collection, audit_logs_collection
+from db import users_collection, audit_logs_collection, db
 from auth_utils import get_password_hash, decode_access_token
 from dependencies import get_current_user
 from audit_logger import log_audit_action
@@ -127,10 +127,10 @@ async def get_users(current_user: dict = Depends(get_current_user)):
     users = []
     
     if current_user["role"] == "Super Admin":
-        cursor = users_collection.find({})
+        cursor = users_collection.find({"is_deleted": {"$ne": True}})
     else:
         # User can only see their descendants
-        cursor = users_collection.find({"ancestors": current_user["_id"]})
+        cursor = users_collection.find({"ancestors": current_user["_id"], "is_deleted": {"$ne": True}})
         
     async for user in cursor:
         user["id"] = user.pop("_id")
@@ -167,10 +167,11 @@ async def update_user(user_id: str, user_update: UserUpdate, current_user: dict 
     
     if "password" in update_data:
         raw_password = update_data.pop("password")
-        update_data["password_hash"] = get_password_hash(raw_password)
-        update_data["plain_password"] = raw_password
-        login_url = os.getenv("VITE_APP_URL", "http://localhost:5173") + "/login"
-        send_password_changed_by_admin_email(target_user["email"], target_user["name"], raw_password, login_url)
+        if raw_password:  # Only update if password is not empty
+            update_data["password_hash"] = get_password_hash(raw_password)
+            update_data["plain_password"] = raw_password
+            login_url = os.getenv("VITE_APP_URL", "http://localhost:5173") + "/login"
+            send_password_changed_by_admin_email(target_user["email"], target_user["name"], raw_password, login_url)
 
     await users_collection.update_one({"_id": user_id}, {"$set": update_data})
     
@@ -235,7 +236,10 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
     if target_user["role"] == "Super Admin":
         raise HTTPException(status_code=400, detail="Cannot delete Super Admin")
         
-    await users_collection.delete_one({"_id": user_id})
+    await users_collection.update_one(
+        {"_id": user_id}, 
+        {"$set": {"is_deleted": True, "is_active": False, "updated_at": datetime.utcnow()}}
+    )
     
     await log_audit_action(
         audit_logs_collection, 
@@ -288,3 +292,31 @@ async def upload_profile_photo(file: UploadFile = File(...), current_user: dict 
     )
     
     return {"message": "Profile photo uploaded successfully", "profile_photo": photo_url}
+
+from pydantic import BaseModel
+
+class SalesTargetUpdate(BaseModel):
+    target: float
+
+@router.put("/settings/sales-target")
+async def update_sales_target(payload: SalesTargetUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] not in ["Super Admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized to update sales target")
+        
+    tenant_admin_id = current_user["_id"] if current_user["role"] in ["Super Admin", "admin"] else current_user.get("ancestors", [current_user["_id"]])[1] if len(current_user.get("ancestors", [])) > 1 else current_user["_id"]
+    
+    settings_collection = db.get_collection("tenant_settings")
+    await settings_collection.update_one(
+        {"tenant_admin_id": tenant_admin_id},
+        {"$set": {"sales_target": payload.target}},
+        upsert=True
+    )
+    return {"message": "Sales target updated successfully"}
+
+@router.get("/settings/sales-target")
+async def get_sales_target(current_user: dict = Depends(get_current_user)):
+    tenant_admin_id = current_user["_id"] if current_user["role"] in ["Super Admin", "admin"] else current_user.get("ancestors", [current_user["_id"]])[1] if len(current_user.get("ancestors", [])) > 1 else current_user["_id"]
+    
+    settings_collection = db.get_collection("tenant_settings")
+    settings = await settings_collection.find_one({"tenant_admin_id": tenant_admin_id})
+    return {"target": settings.get("sales_target", 100000) if settings else 100000}

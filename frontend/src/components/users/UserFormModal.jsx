@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CustomSelect from '../common/CustomSelect';
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import axiosClient from '../../api/axiosClient';
 
 const NAV_SECTIONS = [
   {
@@ -127,15 +128,44 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const roleOptions = [
+  const [roleOptions, setRoleOptions] = useState([
     { value: 'Super Admin', label: 'Super Admin' },
     { value: 'admin', label: 'Admin' },
     { value: 'manager', label: 'Manager' },
     { value: 'HR', label: 'HR' },
     { value: 'sales', label: 'Sales' },
     { value: 'support', label: 'Support' }
-  ];
+  ]);
+
+  const [rolePresets, setRolePresets] = useState([]);
+  const [submitted, setSubmitted] = useState(false);
+
+  // Fetch dynamic roles
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await axiosClient.get('/roles/presets');
+        if (res && res.length > 0) {
+          setRolePresets(res);
+          const dynamicRoles = res.map(r => ({ value: r.role_name, label: r.role_name }));
+          
+          // Merge avoiding duplicates
+          const baseRoles = [
+            { value: 'Super Admin', label: 'Super Admin' },
+            { value: 'admin', label: 'Admin' },
+          ];
+          
+          const existingValues = new Set(baseRoles.map(r => r.value.toLowerCase()));
+          const extraRoles = dynamicRoles.filter(r => !existingValues.has(r.value.toLowerCase()));
+          
+          setRoleOptions([...baseRoles, ...extraRoles]);
+        }
+      } catch (err) {
+        console.error("Failed to load roles", err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   // Initialize form
   useEffect(() => {
@@ -162,8 +192,16 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
 
   const handleRoleChange = (selected) => {
     setFormData(prev => {
-      const perms = { ...prev.permissions };
-      if (selected === 'Super Admin') {
+      let perms = { ...prev.permissions };
+      
+      const preset = rolePresets.find(p => p.role_name === selected);
+      if (preset && preset.permissions) {
+        perms = preset.permissions;
+      } else if (selected === 'Super Admin') {
+        Object.keys(perms).forEach(k => {
+          perms[k] = { view: true, add: true, edit: true, delete: true };
+        });
+      } else if (selected === 'admin') {
         Object.keys(perms).forEach(k => {
           perms[k] = { view: true, add: true, edit: true, delete: true };
         });
@@ -225,14 +263,29 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
+    
+    // Check required fields based on whether we are creating or editing
+    const isEditing = !!initialData;
+    if (!formData.name || !formData.role || (!isEditing && (!formData.email || !formData.password || !formData.confirmPassword))) {
+      return; // Stop if required fields are missing
+    }
+
     if (formData.password || formData.confirmPassword || !initialData) {
       if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match!");
+        import('react-hot-toast').then(({ toast }) => toast.error("Passwords do not match!"));
         return;
       }
     }
     if (onSave) {
-      onSave(formData);
+      const dataToSave = { ...formData };
+      delete dataToSave.confirmPassword;
+      if (!dataToSave.password) {
+        delete dataToSave.password;
+      }
+      if (dataToSave.phone === '') dataToSave.phone = null;
+      if (dataToSave.parent_id === '') dataToSave.parent_id = null;
+      onSave(dataToSave);
     }
     onClose();
   };
@@ -245,18 +298,20 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">{initialData ? 'Edit User' : 'Add New User'}</h5>
-            <button type="button" className="btn-close" onClick={onClose} aria-label="Close">x</button>
+            <button type="button" className="btn-close" onClick={onClose} aria-label="Close">✕</button>
           </div>
           <div className="modal-body">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Full Name <span className="text-danger">*</span></label>
-                  <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
+                  <input type="text" className={`form-control ${submitted && !formData.name ? 'is-invalid' : ''}`} name="name" value={formData.name} onChange={handleInputChange} required />
+                  {submitted && !formData.name && <div className="invalid-feedback d-block mt-1">Full Name is required</div>}
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Email <span className="text-danger">*</span></label>
-                  <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} required disabled={!!initialData} />
+                  <input type="email" className={`form-control ${submitted && !formData.email && !initialData ? 'is-invalid' : ''}`} name="email" value={formData.email} onChange={handleInputChange} required disabled={!!initialData} />
+                  {submitted && !formData.email && !initialData && <div className="invalid-feedback d-block mt-1">Email is required</div>}
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Phone</label>
@@ -264,11 +319,14 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Role <span className="text-danger">*</span></label>
-                  <CustomSelect 
-                    options={roleOptions} 
-                    value={formData.role}
-                    onChange={(val) => handleRoleChange(val?.value)}
-                  />
+                  <div className={submitted && !formData.role ? 'border border-danger rounded' : ''}>
+                    <CustomSelect 
+                      options={roleOptions} 
+                      value={roleOptions.find(r => r.value === formData.role) || { value: formData.role, label: formData.role }}
+                      onChange={(val) => handleRoleChange(val?.value)}
+                    />
+                  </div>
+                  {submitted && !formData.role && <div className="text-danger mt-1" style={{ fontSize: '0.875em' }}>Role is required</div>}
                 </div>
                 
                 <div className="col-md-6 mb-3">
@@ -276,12 +334,13 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <div className="position-relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
-                      className="form-control" 
+                      className={`form-control ${submitted && !formData.password && !initialData ? 'is-invalid' : ''}`} 
                       name="password" 
                       placeholder={initialData ? "Leave blank to keep unchanged" : ""}
                       value={formData.password} 
                       onChange={handleInputChange} 
                       required={!initialData} 
+                      style={{ backgroundImage: 'none' }}
                     />
                     <button 
                       type="button"
@@ -292,18 +351,20 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
                       {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                     </button>
                   </div>
+                  {submitted && !formData.password && !initialData && <div className="invalid-feedback d-block mt-1">Password is required</div>}
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Confirm Password {initialData ? '' : <span className="text-danger">*</span>}</label>
                   <div className="position-relative">
                     <input 
                       type={showConfirmPassword ? "text" : "password"} 
-                      className="form-control" 
+                      className={`form-control ${submitted && !formData.confirmPassword && !initialData ? 'is-invalid' : ''} ${submitted && formData.password !== formData.confirmPassword && (formData.password || formData.confirmPassword) ? 'is-invalid' : ''}`} 
                       name="confirmPassword" 
                       placeholder={initialData ? "Leave blank to keep unchanged" : ""}
                       value={formData.confirmPassword} 
                       onChange={handleInputChange} 
                       required={!initialData} 
+                      style={{ backgroundImage: 'none' }}
                     />
                     <button 
                       type="button"
@@ -314,6 +375,7 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
                       {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                     </button>
                   </div>
+                  {submitted && !formData.confirmPassword && !initialData && <div className="invalid-feedback d-block mt-1">Confirm Password is required</div>}
                 </div>
               </div>
 

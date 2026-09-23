@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import ConfirmationModal from './ConfirmationModal';
 
 const Header = ({ toggleMobileMenu }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   // WhatsApp API Connection status state (ON by default)
   const [waConnected, setWaConnected] = useState(true);
@@ -299,7 +299,7 @@ const Header = ({ toggleMobileMenu }) => {
 								<a href="#" className="dropdown-toggle d-flex align-items-center"
 									data-bs-toggle="dropdown">
 									<span className="avatar avatar-md online">
-										<img src="/assets/img/profiles/avatar-12.jpg" alt="Img"
+										<img src={user?.profile_photo || "/assets/img/profiles/avatar-14.jpg"} alt="Img"
 											className="img-fluid rounded-circle" />
 									</span>
 								</a>
@@ -307,12 +307,12 @@ const Header = ({ toggleMobileMenu }) => {
 									<div className="card mb-0">
 										<div className="card-header">
 											<div className="d-flex align-items-center">
-												<span className="avatar avatar-lg me-2 avatar-rounded">
-													<img src="/assets/img/profiles/avatar-12.jpg" alt="img" />
-												</span>
+												
 												<div>
-													<h5 className="mb-0">Kevin Larry</h5>
-													<p className="fs-12 fw-medium mb-0">warren@example.com</p>
+													<h5 className="mb-0 fs-11 text-capitalize">{user?.name || "User"}</h5>
+													
+													<p className="fs-11 fw-medium mb-0 text-muted">{user?.email || ""}</p>
+													<p className="fs-12 fw-medium mb-0 text-primary text-capitalize">{user?.role || ""}</p>
 												</div>
 											</div>
 										</div>
