@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import LeadFormModal from '../components/leads/LeadFormModal';
@@ -104,6 +104,152 @@ const Leads = () => {
       toast.error(`Error updating ${field}`);
       setLeads(previousLeads);
     }
+  };
+
+  const fileInputRef = useRef(null);
+  
+  const handleImportClick = (e) => {
+    e.preventDefault();
+    fileInputRef.current.click();
+  };
+  
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Only CSV files are allowed');
+      e.target.value = '';
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      await axiosClient.post('/leads/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      toast.success('Leads imported successfully!');
+      fetchLeadsAndUsers();
+    } catch (error) {
+      console.error('Error importing leads:', error);
+      toast.error(error.response?.data?.detail || 'Error importing leads');
+    }
+    
+    e.target.value = '';
+  };
+
+  const exportToExcel = (e) => {
+    e.preventDefault();
+    if (!filteredLeads || filteredLeads.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+    const headers = ['Lead Name', 'Company Name', 'Email', 'Mobile', 'Source', 'Status', 'Assigned To'];
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    filteredLeads.forEach(lead => {
+      const assignedUser = users.find(u => (u._id || u.id) === lead.assigned_to);
+      const assignedName = assignedUser ? assignedUser.name : (lead.assigned_to || 'Unassigned');
+      
+      const row = [
+        `"${lead.lead_name || ''}"`,
+        `"${lead.company_name || ''}"`,
+        `"${lead.email || ''}"`,
+        `"${lead.mobile_number || ''}"`,
+        `"${lead.source || ''}"`,
+        `"${lead.status || ''}"`,
+        `"${assignedName}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "Leads_Export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Exported to Excel successfully');
+  };
+
+  const exportToPDF = (e) => {
+    e.preventDefault();
+    if (!filteredLeads || filteredLeads.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    
+    let html = `
+      <html>
+        <head>
+          <title>Leads Export</title>
+          <style>
+            @page { size: landscape; margin: 15mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; margin: 0; color: #333; }
+            h2 { text-align: center; color: #ff6a00; font-weight: 600; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #e0e0e0; padding: 10px 12px; text-align: left; vertical-align: middle; }
+            th { background-color: #f8f9fa; color: #495057; font-weight: 600; text-transform: uppercase; font-size: 11px; white-space: nowrap; }
+            tr:nth-child(even) { background-color: #fafafa; }
+            .no-wrap { white-space: nowrap; }
+          </style>
+        </head>
+        <body>
+          <h2>Leads List</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Lead Name</th>
+                <th>Company Name</th>
+                <th>Email</th>
+                <th>Mobile</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredLeads.forEach(lead => {
+      const assignedUser = users.find(u => (u._id || u.id) === lead.assigned_to);
+      const assignedName = assignedUser ? assignedUser.name : (lead.assigned_to || 'Unassigned');
+      
+      html += `
+        <tr>
+          <td class="no-wrap">${lead.lead_name || ''}</td>
+          <td class="no-wrap">${lead.company_name || ''}</td>
+          <td>${lead.email || ''}</td>
+          <td class="no-wrap">${lead.mobile_number || ''}</td>
+          <td class="no-wrap" style="text-transform: capitalize;">${lead.status || ''}</td>
+          <td class="no-wrap">${assignedName}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const getSelectValue = (val, options = []) => {
@@ -393,9 +539,16 @@ const Leads = () => {
 						</div>
 						
 						<div className="me-2 mb-2">
-							<a href="#" onClick={(e) => e.preventDefault()} className="btn btn-white d-inline-flex align-items-center">
+							<a href="#" onClick={handleImportClick} className="btn btn-white d-inline-flex align-items-center">
 								<i className="ti ti-file-import me-1"></i>Import
 							</a>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                accept=".csv"
+                onChange={handleFileChange} 
+              />
 						</div>
 
 						<div className="me-2 mb-2">
@@ -407,11 +560,11 @@ const Leads = () => {
 								</a>
 								<ul className="dropdown-menu  dropdown-menu-end p-3">
 									<li>
-										<a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i
+										<a href="#" onClick={exportToPDF} className="dropdown-item rounded-1"><i
 												className="ti ti-file-type-pdf me-1"></i>Export as PDF</a>
 									</li>
 									<li>
-										<a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i
+										<a href="#" onClick={exportToExcel} className="dropdown-item rounded-1"><i
 												className="ti ti-file-type-xls me-1"></i>Export as Excel </a>
 									</li>
 								</ul>
