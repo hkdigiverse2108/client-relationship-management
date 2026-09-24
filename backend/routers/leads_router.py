@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from typing import List
 import csv
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson import ObjectId
-from models import LeadCreate, LeadUpdate, LeadResponse
+from models import LeadCreate, LeadUpdate, LeadResponse, LeadStatsResponse
 from dependencies import get_current_user
 from db import leads_collection, audit_logs_collection, users_collection, clients_collection
 from audit_logger import log_audit_action
@@ -143,6 +143,71 @@ async def import_leads(file: UploadFile = File(...), current_user: dict = Depend
     )
     
     return {"message": f"Successfully imported {len(valid_leads)} leads.", "skipped": skipped}
+
+@router.get("/stats", response_model=LeadStatsResponse)
+async def get_lead_stats(current_user: dict = Depends(get_current_user)):
+    base_query = {}
+    if current_user["role"] not in ["Super Admin", "admin"]:
+        base_query = {
+            "$or": [
+                {"assigned_to": str(current_user["_id"])},
+                {"created_by": str(current_user["_id"])}
+            ]
+        }
+
+    now = datetime.utcnow()
+    one_week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+
+    def build_stat_detail(current_count, previous_count, all_time_count):
+        if previous_count == 0:
+            percent_change = 100.0 if current_count > 0 else 0.0
+        else:
+            percent_change = ((current_count - previous_count) / previous_count) * 100
+        
+        return {
+            "count": all_time_count,
+            "percent_change": round(abs(percent_change), 2),
+            "is_positive": percent_change >= 0
+        }
+
+    async def fetch_count(match):
+        # combine base_query and match securely
+        if not match:
+            query = base_query
+        elif not base_query:
+            query = match
+        else:
+            query = {"$and": [base_query, match]}
+        return await leads_collection.count_documents(query)
+
+    total_all_time = await fetch_count({})
+    total_current = await fetch_count({"created_at": {"$gte": one_week_ago}})
+    total_previous = await fetch_count({"created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    total_leads_stat = build_stat_detail(total_current, total_previous, total_all_time)
+
+    new_all_time = await fetch_count({"status": "new"})
+    new_current = await fetch_count({"status": "new", "created_at": {"$gte": one_week_ago}})
+    new_previous = await fetch_count({"status": "new", "created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    new_leads_stat = build_stat_detail(new_current, new_previous, new_all_time)
+
+    lost_all_time = await fetch_count({"status": "lost"})
+    lost_current = await fetch_count({"status": "lost", "created_at": {"$gte": one_week_ago}})
+    lost_previous = await fetch_count({"status": "lost", "created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    lost_leads_stat = build_stat_detail(lost_current, lost_previous, lost_all_time)
+
+    qualified_all_time = await fetch_count({"status": "qualified"})
+    qualified_current = await fetch_count({"status": "qualified", "created_at": {"$gte": one_week_ago}})
+    qualified_previous = await fetch_count({"status": "qualified", "created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    qualified_leads_stat = build_stat_detail(qualified_current, qualified_previous, qualified_all_time)
+
+    return LeadStatsResponse(
+        total_leads=total_leads_stat,
+        new_leads=new_leads_stat,
+        lost_leads=lost_leads_stat,
+        qualified_leads=qualified_leads_stat
+    )
+
 
 @router.get("", response_model=List[LeadResponse])
 async def get_leads(current_user: dict = Depends(get_current_user)):

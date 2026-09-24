@@ -1060,3 +1060,14 @@ class HRAppraisalResponse(HRAppraisalCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class LeadStatDetail(BaseModel):
+    count: int
+    percent_change: float
+    is_positive: bool
+
+class LeadStatsResponse(BaseModel):
+    total_leads: LeadStatDetail
+    new_leads: LeadStatDetail
+    lost_leads: LeadStatDetail
+    qualified_leads: LeadStatDetail

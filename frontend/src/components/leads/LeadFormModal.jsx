@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
+import axiosClient from '../../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const INITIAL_STATE = {
   lead_name: "", first_name: "", last_name: "", company_name: "",
@@ -13,33 +15,108 @@ const INITIAL_STATE = {
   requirement: "", description: "", notes: ""
 };
 
-export default function LeadFormModal({ open, onClose }) {
+export default function LeadFormModal({ open, onClose, mode = 'add', leadData = null, onSuccess }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
+  const [users, setUsers] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await axiosClient.get('/users');
+        setUsers(res || []);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      }
+    };
+    if (open) {
+      fetchUsers();
+      if (mode === 'edit' && leadData) {
+        setFormData({ ...INITIAL_STATE, ...leadData });
+      } else {
+        setFormData(INITIAL_STATE);
+      }
+      setErrors({});
+    }
+  }, [open, mode, leadData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSelectChange = (name) => (selected) => {
     setFormData(prev => ({ ...prev, [name]: selected ? selected.value : "" }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleDateChange = (name) => (date) => {
     setFormData(prev => ({ ...prev, [name]: date }));
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.lead_name) newErrors.lead_name = 'Lead Name is required';
+    if (!formData.first_name) newErrors.first_name = 'First Name is required';
+    if (!formData.last_name) newErrors.last_name = 'Last Name is required';
+    if (!formData.company_name) newErrors.company_name = 'Company Name is required';
+    if (!formData.mobile_number) newErrors.mobile_number = 'Mobile Number is required';
+    if (!formData.email) newErrors.email = 'Email Address is required';
+    if (!formData.assigned_to) newErrors.assigned_to = 'Assignee is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted: ", formData);
-    onClose();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const payload = { ...formData };
+      payload.expected_value = parseFloat(payload.expected_value) || 0;
+      payload.probability = payload.probability ? parseFloat(payload.probability) : null;
+
+      if (mode === 'edit' && leadData) {
+        await axiosClient.put(`/leads/${leadData._id || leadData.id}`, payload);
+        toast.success("Lead updated successfully!");
+      } else {
+        await axiosClient.post('/leads', payload);
+        toast.success("Lead created successfully!");
+      }
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      console.error("Error saving lead:", err);
+      let errorMsg = "Error saving lead";
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMsg = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map(d => d.msg).join(', ');
+        }
+      }
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper to format react-select value
-  const getSelectValue = (val) => {
+  const getSelectValue = (val, options = []) => {
     if (!val) return null;
+    const existing = options.find(o => o.value === val);
+    if (existing) return existing;
     return { value: val, label: val.charAt(0).toUpperCase() + val.slice(1) };
   };
+
+  const userOptions = users.map(u => ({ value: u._id || u.id, label: u.name }));
 
   return (
     <Modal 
@@ -49,8 +126,10 @@ export default function LeadFormModal({ open, onClose }) {
       size="lg"
       footer={
         <div className="d-flex align-items-center justify-content-end w-100">
-          <button type="button" className="btn btn-light me-2" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-primary" onClick={handleSubmit}>Create Lead</button>
+          <button type="button" className="btn btn-light me-2" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : (mode === 'edit' ? 'Update Lead' : 'Create Lead')}
+          </button>
         </div>
       }
     >
@@ -60,19 +139,23 @@ export default function LeadFormModal({ open, onClose }) {
         <div className="row g-3 mb-4">
           <div className="col-md-3">
             <label className="form-label">Lead Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="lead_name" value={formData.lead_name} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.lead_name ? 'is-invalid' : ''}`} name="lead_name" value={formData.lead_name} onChange={handleChange} />
+            {errors.lead_name && <div className="invalid-feedback">{errors.lead_name}</div>}
           </div>
           <div className="col-md-3">
             <label className="form-label">First Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="first_name" value={formData.first_name} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.first_name ? 'is-invalid' : ''}`} name="first_name" value={formData.first_name} onChange={handleChange} />
+            {errors.first_name && <div className="invalid-feedback">{errors.first_name}</div>}
           </div>
           <div className="col-md-3">
             <label className="form-label">Last Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="last_name" value={formData.last_name} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.last_name ? 'is-invalid' : ''}`} name="last_name" value={formData.last_name} onChange={handleChange} />
+            {errors.last_name && <div className="invalid-feedback">{errors.last_name}</div>}
           </div>
           <div className="col-md-3">
             <label className="form-label">Company Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="company_name" value={formData.company_name} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.company_name ? 'is-invalid' : ''}`} name="company_name" value={formData.company_name} onChange={handleChange} />
+            {errors.company_name && <div className="invalid-feedback">{errors.company_name}</div>}
           </div>
         </div>
 
@@ -80,7 +163,8 @@ export default function LeadFormModal({ open, onClose }) {
         <div className="row g-3 mb-4">
           <div className="col-md-3">
             <label className="form-label">Mobile Number <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="mobile_number" value={formData.mobile_number} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.mobile_number ? 'is-invalid' : ''}`} name="mobile_number" value={formData.mobile_number} onChange={handleChange} />
+            {errors.mobile_number && <div className="invalid-feedback">{errors.mobile_number}</div>}
           </div>
           <div className="col-md-3">
             <label className="form-label">Alternate Number</label>
@@ -88,7 +172,8 @@ export default function LeadFormModal({ open, onClose }) {
           </div>
           <div className="col-md-3">
             <label className="form-label">Email Address <span className="text-danger">*</span></label>
-            <input type="email" className="form-control" name="email" value={formData.email} onChange={handleChange} required />
+            <input type="email" className={`form-control ${errors.email ? 'is-invalid' : ''}`} name="email" value={formData.email} onChange={handleChange} />
+            {errors.email && <div className="invalid-feedback">{errors.email}</div>}
           </div>
           <div className="col-md-3">
             <label className="form-label">Website</label>
@@ -99,7 +184,7 @@ export default function LeadFormModal({ open, onClose }) {
         <h6 className="fw-semibold mb-3 text-primary">Lead Qualification</h6>
         <div className="row g-3 mb-4">
           <div className="col-md-3">
-            <label className="form-label">Lead Source <span className="text-danger">*</span></label>
+            <label className="form-label">Lead Source</label>
             <div className="custom-select-wrapper">
               <CustomSelect 
                 className="select" 
@@ -114,7 +199,7 @@ export default function LeadFormModal({ open, onClose }) {
             </div>
           </div>
           <div className="col-md-3">
-            <label className="form-label">Lead Status <span className="text-danger">*</span></label>
+            <label className="form-label">Lead Status</label>
             <div className="custom-select-wrapper">
               <CustomSelect 
                 className="select" 
@@ -131,7 +216,7 @@ export default function LeadFormModal({ open, onClose }) {
             </div>
           </div>
           <div className="col-md-3">
-            <label className="form-label">Priority <span className="text-danger">*</span></label>
+            <label className="form-label">Priority</label>
             <div className="custom-select-wrapper">
               <CustomSelect 
                 className="select" 
@@ -149,8 +234,8 @@ export default function LeadFormModal({ open, onClose }) {
             <input type="text" className="form-control" name="industry" value={formData.industry} onChange={handleChange} />
           </div>
           <div className="col-md-3">
-            <label className="form-label">Expected Value (₹) <span className="text-danger">*</span></label>
-            <input type="number" className="form-control" name="expected_value" value={formData.expected_value} onChange={handleChange} required />
+            <label className="form-label">Expected Value (₹)</label>
+            <input type="number" className="form-control" name="expected_value" value={formData.expected_value} onChange={handleChange} />
           </div>
           <div className="col-md-3">
             <label className="form-label">Probability (%)</label>
@@ -217,13 +302,12 @@ export default function LeadFormModal({ open, onClose }) {
             <label className="form-label">Assign To <span className="text-danger">*</span></label>
             <div className="custom-select-wrapper">
               <CustomSelect 
-                className="select" 
-                value={getSelectValue(formData.assigned_to)} 
+                className={`select ${errors.assigned_to ? 'is-invalid' : ''}`} 
+                value={getSelectValue(formData.assigned_to, userOptions)} 
                 onChange={handleSelectChange('assigned_to')}
-              >
-                <option value="user1">John Doe (Sales)</option>
-                <option value="user2">Jane Smith (Manager)</option>
-              </CustomSelect>
+                options={userOptions}
+              />
+              {errors.assigned_to && <div className="invalid-feedback d-block">{errors.assigned_to}</div>}
             </div>
           </div>
           <div className="col-md-12">
@@ -235,20 +319,20 @@ export default function LeadFormModal({ open, onClose }) {
         <h6 className="fw-semibold mb-3 text-primary">Address Information</h6>
         <div className="row g-3 mb-4">
           <div className="col-md-3">
-            <label className="form-label">City <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="city" value={formData.city} onChange={handleChange} required />
+            <label className="form-label">City</label>
+            <input type="text" className="form-control" name="city" value={formData.city} onChange={handleChange} />
           </div>
           <div className="col-md-3">
-            <label className="form-label">State <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="state" value={formData.state} onChange={handleChange} required />
+            <label className="form-label">State</label>
+            <input type="text" className="form-control" name="state" value={formData.state} onChange={handleChange} />
           </div>
           <div className="col-md-3">
-            <label className="form-label">Country <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="country" value={formData.country} onChange={handleChange} required />
+            <label className="form-label">Country</label>
+            <input type="text" className="form-control" name="country" value={formData.country} onChange={handleChange} />
           </div>
           <div className="col-md-3">
-            <label className="form-label">Pincode <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="pincode" value={formData.pincode} onChange={handleChange} required />
+            <label className="form-label">Pincode</label>
+            <input type="text" className="form-control" name="pincode" value={formData.pincode} onChange={handleChange} />
           </div>
         </div>
 
