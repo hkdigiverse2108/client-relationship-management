@@ -19,7 +19,7 @@ const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti
     }),
     valueContainer: (provided) => ({
       ...provided,
-      padding: '2px 15px',
+      padding: '2px 4px',
     }),
     input: (provided) => ({
       ...provided,
@@ -36,7 +36,7 @@ const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti
     dropdownIndicator: (provided, state) => ({
       ...provided,
       color: 'var(--custom-muted, #6f7072)',
-      padding: '8px 15px',
+      padding: '0 4px',
       '&:hover': {
         color: 'var(--custom-text, #333)'
       }

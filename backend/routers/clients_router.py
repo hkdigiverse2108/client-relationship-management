@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime, timezone
-from models import ClientCreate, ClientResponse, ClientUpdate
+from models import ClientCreate, ClientResponse, ClientUpdate, ClientStatsResponse
 from db import clients_collection, audit_logs_collection, deals_collection, projects_collection, invoices_collection, payments_collection, client_history_collection
 from dependencies import get_current_user
 from audit_logger import log_audit_action
@@ -59,6 +59,80 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
     created_client["_id"] = str(created_client["_id"])
     return ClientResponse(**created_client)
 
+from datetime import timedelta
+
+@router.get("/stats", response_model=ClientStatsResponse)
+async def get_client_stats(current_user: dict = Depends(get_current_user)):
+    base_query = {}
+    
+    # Optional RBAC: If Super Admin or admin, see all. Else might restrict (commented out for now if clients are global, 
+    # but let's apply same logic as leads if needed)
+    if current_user["role"] not in ["Super Admin", "admin"]:
+        base_query = {
+            "created_by": str(current_user["_id"])
+        }
+
+    now = datetime.utcnow()
+    one_week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+
+    def build_stat_detail(current_count, previous_count, all_time_count):
+        if previous_count == 0:
+            percent_change = 100.0 if current_count > 0 else 0.0
+        else:
+            percent_change = ((current_count - previous_count) / previous_count) * 100
+        
+        return {
+            "count": all_time_count,
+            "percent_change": round(abs(percent_change), 2),
+            "is_positive": percent_change >= 0
+        }
+
+    async def fetch_count(match):
+        if not match:
+            query = base_query
+        elif not base_query:
+            query = match
+        else:
+            query = {"$and": [base_query, match]}
+        return await clients_collection.count_documents(query)
+
+    # 1. Total Clients
+    total_all_time = await fetch_count({})
+    total_current = await fetch_count({"created_at": {"$gte": one_week_ago}})
+    total_previous = await fetch_count({"created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    total_stat = build_stat_detail(total_current, total_previous, total_all_time)
+
+    # 2. Active Clients
+    active_all_time = await fetch_count({"status": "active"})
+    active_current = await fetch_count({"status": "active", "created_at": {"$gte": one_week_ago}})
+    active_previous = await fetch_count({"status": "active", "created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    active_stat = build_stat_detail(active_current, active_previous, active_all_time)
+
+    # 3. Inactive Clients
+    inactive_all_time = await fetch_count({"status": "inactive"})
+    inactive_current = await fetch_count({"status": "inactive", "created_at": {"$gte": one_week_ago}})
+    inactive_previous = await fetch_count({"status": "inactive", "created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    inactive_stat = build_stat_detail(inactive_current, inactive_previous, inactive_all_time)
+
+    # 4. New Clients (Same as Total current in this logic, but let's measure based on last 30 days or just total)
+    # The requirement says "New Clients". Usually this implies created recently. Let's use last 30 days as new clients count
+    # Or just use same logic as total_current for all_time, but only count those in last month.
+    # We will use "created_at in last 30 days" for the all_time count for "New Clients".
+    thirty_days_ago = now - timedelta(days=30)
+    new_all_time = await fetch_count({"created_at": {"$gte": thirty_days_ago}})
+    # For percent change, compare current week vs previous week
+    new_current = await fetch_count({"created_at": {"$gte": one_week_ago}})
+    new_previous = await fetch_count({"created_at": {"$gte": two_weeks_ago, "$lt": one_week_ago}})
+    new_stat = build_stat_detail(new_current, new_previous, new_all_time)
+
+    return ClientStatsResponse(
+        total_clients=total_stat,
+        active_clients=active_stat,
+        inactive_clients=inactive_stat,
+        new_clients=new_stat
+    )
+
 @router.get("", response_model=List[ClientResponse])
 async def get_all_clients(current_user: dict = Depends(get_current_user)):
     # In future, filter based on user permissions
@@ -66,7 +140,10 @@ async def get_all_clients(current_user: dict = Depends(get_current_user)):
     clients = []
     async for client in cursor:
         client["_id"] = str(client["_id"])
-        clients.append(ClientResponse(**client))
+        try:
+            clients.append(ClientResponse(**client))
+        except Exception as e:
+            print(f"Skipping client {client.get('_id')} due to validation error: {e}")
     return clients
 
 @router.put("/{client_id}", response_model=ClientResponse)

@@ -337,17 +337,17 @@ class ClientCreate(BaseModel):
     contact_person: Optional[str] = None
     mobile_number: Optional[str] = ""
     alternate_number: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     website: Optional[str] = None
     industry: Optional[str] = None
     customer_type: Optional[str] = None
     status: str = "Active"
-    assigned_to: str
+    assigned_to: Optional[str] = ""
     address: Optional[str] = None
-    city: str
-    state: str
-    country: str
-    pincode: str
+    city: Optional[str] = ""
+    state: Optional[str] = ""
+    country: Optional[str] = ""
+    pincode: Optional[str] = ""
     contract_value: Optional[float] = None
     requirement: Optional[str] = None
     notes: Optional[str] = None
@@ -1071,3 +1071,14 @@ class LeadStatsResponse(BaseModel):
     new_leads: LeadStatDetail
     lost_leads: LeadStatDetail
     qualified_leads: LeadStatDetail
+
+class ClientStatDetail(BaseModel):
+    count: int
+    percent_change: float
+    is_positive: bool
+
+class ClientStatsResponse(BaseModel):
+    total_clients: ClientStatDetail
+    active_clients: ClientStatDetail
+    inactive_clients: ClientStatDetail
+    new_clients: ClientStatDetail
