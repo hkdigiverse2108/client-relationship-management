@@ -193,7 +193,7 @@ const Clients = () => {
       name: 'Client id',
       sortable: true,
       selector: row => row.client_id || row._id,
-      cell: (row) => <Link to="/client-details">{row.client_id || row._id}</Link>,
+      cell: (row) => <Link to="/client-details" state={{ client: row }}>{row.client_id || row._id}</Link>,
     },
     {
       name: 'Client name',
@@ -201,7 +201,7 @@ const Clients = () => {
       selector: row => row.client_name,
       cell: (row) => (
         <div className="d-flex align-items-center file-name-icon">
-          <Link to="/client-details" className="avatar avatar-md border avatar-rounded flex-shrink-0">
+          <Link to="/client-details" state={{ client: row }} className="avatar avatar-md border avatar-rounded flex-shrink-0">
             {row.clientAvatar ? (
               <img src={row.clientAvatar} className="img-fluid" alt="img" />
             ) : (
@@ -211,7 +211,7 @@ const Clients = () => {
             )}
           </Link>
           <div className="ms-2">
-            <h6 className="fw-medium mb-0"><Link to="/client-details">{row.client_name}</Link></h6>
+            <h6 className="fw-medium mb-0"><Link to="/client-details" state={{ client: row }}>{row.client_name}</Link></h6>
           </div>
         </div>
       ),
@@ -265,11 +265,17 @@ const Clients = () => {
       name: 'Status',
       sortable: true,
       selector: row => row.status,
-      cell: (row) => (
-        <span className={`badge badge-${(row.status || '').toLowerCase() === 'active' ? 'success' : 'danger'} d-inline-flex align-items-center badge-xs`}>
-          <i className="ti ti-point-filled me-1"></i>{row.status || 'Active'}
-        </span>
-      ),
+      cell: (row) => {
+        const s = (row.status || '').toLowerCase();
+        let badgeColor = 'danger';
+        if (s === 'active') badgeColor = 'success';
+        else if (s === 'on_hold' || s === 'on hold') badgeColor = 'warning';
+        return (
+          <span className={`badge badge-${badgeColor} d-inline-flex align-items-center badge-xs`}>
+            <i className="ti ti-point-filled me-1"></i>{row.status || 'Active'}
+          </span>
+        );
+      },
     },
     {
       name: 'Created at',

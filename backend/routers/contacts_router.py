@@ -4,7 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 from models import ContactCreate, ContactUpdate, ContactResponse
 from db import db
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from audit_logger import log_audit_action
 from routers.notifications_router import create_notification
 
@@ -16,6 +16,7 @@ audit_logs_collection = db["audit_logs"]
 async def create_contact(contact: ContactCreate, current_user: dict = Depends(get_current_user)):
     # Uniqueness check
     existing = await contacts_collection.find_one({
+        "is_deleted": {"$ne": True},
         "$or": [
             {"email": contact.email},
             {"contact_number": contact.contact_number}
@@ -57,7 +58,12 @@ async def create_contact(contact: ContactCreate, current_user: dict = Depends(ge
 @router.get("", response_model=List[ContactResponse])
 async def get_contacts(current_user: dict = Depends(get_current_user)):
     contacts = []
-    cursor = contacts_collection.find().sort("created_at", -1)
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = contacts_collection.find(query).sort("created_at", -1)
         
     async for contact in cursor:
         contact["_id"] = str(contact["_id"])
@@ -74,7 +80,7 @@ async def update_contact(contact_id: str, contact_update: ContactUpdate, current
         
     # If updating email or phone, check uniqueness
     if contact_update.email or contact_update.contact_number:
-        query = {"_id": {"$ne": obj_id}, "$or": []}
+        query = {"_id": {"$ne": obj_id}, "is_deleted": {"$ne": True}, "$or": []}
         if contact_update.email:
             query["$or"].append({"email": contact_update.email})
         if contact_update.contact_number:
@@ -88,6 +94,14 @@ async def update_contact(contact_id: str, contact_update: ContactUpdate, current
                 else:
                     raise HTTPException(status_code=400, detail="Phone number already belongs to another contact")
 
+    target_contact = await contacts_collection.find_one({"_id": obj_id})
+    if not target_contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and target_contact.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this contact")
+        
     update_data = contact_update.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
@@ -126,7 +140,11 @@ async def delete_contact(contact_id: str, current_user: dict = Depends(get_curre
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
         
-    await contacts_collection.delete_one({"_id": obj_id})
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and contact.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this contact")
+        
+    await contacts_collection.update_one({"_id": obj_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     
     await log_audit_action(
         audit_logs_collection, 

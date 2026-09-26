@@ -41,7 +41,7 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
 
 @router.get("", response_model=List[InvoiceResponse])
 async def get_invoices(current_user: dict = Depends(get_current_user)):
-    cursor = invoices_collection.find()
+    cursor = invoices_collection.find({"is_deleted": {"$ne": True}})
     invoices = []
     async for i in cursor:
         i["_id"] = str(i["_id"])
@@ -88,8 +88,8 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
 async def delete_invoice(obj_id: str, current_user: dict = Depends(get_current_user)):
     invoice = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
     
-    result = await invoices_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await invoices_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Invoice not found")
         
     invoice_number = invoice.get("invoice_number", "") if invoice else obj_id

@@ -59,7 +59,7 @@ async def create_task(task: TaskCreate, current_user: dict = Depends(get_current
 
 @router.get("", response_model=List[TaskResponse])
 async def get_tasks(project_id: str = None, current_user: dict = Depends(get_current_user)):
-    query = {}
+    query = {"is_deleted": {"$ne": True}}
     if project_id:
         query["project_id"] = project_id
         
@@ -133,8 +133,8 @@ async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict 
 async def delete_task(task_id: str, current_user: dict = Depends(get_current_user)):
     task = await db.tasks.find_one({"_id": ObjectId(task_id)})
     
-    result = await db.tasks.delete_one({"_id": ObjectId(task_id)})
-    if result.deleted_count == 0:
+    result = await db.tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Task not found")
         
     title = task.get("title", "Untitled") if task else task_id

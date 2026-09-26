@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import PageHeader from '../components/common/PageHeader';
 
 import ClientProjects from '../components/clients/ClientProjects';
@@ -12,10 +13,35 @@ import ClientHistory from '../components/clients/ClientHistory';
 
 
 const ClientDetails = () => {
+  const location = useLocation();
+  const client = location.state?.client;
+
+  const getInitials = (name) => {
+    if (!name) return 'C';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) {
+      return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   // Pagination state for clientdetails
   const [currentPage_clientdetails, setCurrentPage_clientdetails] = useState(1);
   const [rowsPerPage_clientdetails, setRowsPerPage_clientdetails] = useState(10);
+  const plusBtnRef = React.useRef(null);
   const [searchQuery_clientdetails, setSearchQuery_clientdetails] = useState('');
+
+  if (!client) {
+    return (
+      <div className="page-wrapper text-center p-5 mt-5">
+        <h4>No Client Data Found</h4>
+        <Link to="/clients" className="btn btn-primary mt-3">Back to Clients</Link>
+      </div>
+    );
+  }
+
+  const fullAddress = [client.city, client.state, client.country, client.pincode].filter(Boolean).join(', ') || '-';
+
   return (
     <>
       <div className="page-wrapper">
@@ -49,15 +75,18 @@ const ClientDetails = () => {
 						<div className="card card-bg-1">
 							<div className="card-body p-0">
 								<span
-									className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
-									<img src="/assets/img/users/user-13.jpg" className="w-auto h-auto" alt="Img" />
+									className="avatar avatar-xl avatar-rounded border border-2 border-primary m-auto d-flex justify-content-center align-items-center mb-2 bg-primary text-white fs-24 fw-bold">
+									{client.clientAvatar ? (
+                    <img src={client.clientAvatar} className="w-100 h-100 rounded-circle" style={{ objectFit: 'cover' }} alt="Img" />
+                  ) : (
+                    getInitials(client.client_name || client.company_name)
+                  )}
 								</span>
 								<div className="text-center px-3 pb-3 border-bottom">
 									<div className="mb-3">
-										<h5 className="d-flex align-items-center justify-content-center mb-1">Stephan
-											Peralt<i className="ti ti-discount-check-filled text-success ms-1"></i></h5>
-										<p className="text-dark mb-1">EcoVision Enterprises</p>
-										<span className="badge badge-soft-secondary fw-medium">Operational Manager</span>
+										<h5 className="d-flex align-items-center justify-content-center mb-1">{client.client_name}<i className="ti ti-discount-check-filled text-success ms-1"></i></h5>
+										<p className="text-dark mb-1">{client.company_name || '-'}</p>
+										<span className="badge badge-soft-secondary fw-medium">{client.contact_person || 'Contact Person'}</span>
 									</div>
 									<div>
 										<div className="d-flex align-items-center justify-content-between mb-2">
@@ -65,14 +94,14 @@ const ClientDetails = () => {
 												<i className="ti ti-id me-2"></i>
 												Client ID
 											</span>
-											<p className="text-dark">CLT-0024</p>
+											<p className="text-dark">{client.client_id || client._id}</p>
 										</div>
 										<div className="d-flex align-items-center justify-content-between">
 											<span className="d-inline-flex align-items-center">
 												<i className="ti ti-calendar-check me-2"></i>
 												Added on
 											</span>
-											<p className="text-dark">1st Jan 2023</p>
+											<p className="text-dark">{client.created_at ? new Date(client.created_at).toLocaleDateString() : '-'}</p>
 										</div>
 										<div className="row gx-2 mt-3">
 											
@@ -88,23 +117,27 @@ const ClientDetails = () => {
 								<div className="p-3 border-bottom">
 									<div className="d-flex align-items-center justify-content-between mb-2">
 										<h6>Basic information</h6>
-										<a href="#" onClick={(e) => e.preventDefault()} className="btn btn-icon btn-sm" data-bs-toggle="modal"
-											data-bs-target="#edit_client"><i className="ti ti-edit"></i></a>
 									</div>
 									<div className="d-flex align-items-center justify-content-between mb-2">
 										<span className="d-inline-flex align-items-center">
 											<i className="ti ti-phone me-2"></i>
 											Phone
 										</span>
-										<p className="text-dark">(163) 2459 315</p>
+										<p className="text-dark">{client.mobile_number || '-'}</p>
 									</div>
 									<div className="d-flex align-items-center justify-content-between mb-2">
 										<span className="d-inline-flex align-items-center">
 											<i className="ti ti-mail-check me-2"></i>
 											Email
 										</span>
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="text-info d-inline-flex align-items-center">perralt12@example.com<i
+										<a href="#" onClick={(e) => { 
+                      e.preventDefault(); 
+                      if(client.email) {
+                        navigator.clipboard.writeText(client.email); 
+                        toast.success("Email copied!");
+                      }
+                    }}
+											className="text-info d-inline-flex align-items-center">{client.email || '-'}<i
 												className="ti ti-copy text-dark ms-2"></i></a>
 									</div>
 									<div className="d-flex align-items-center justify-content-between">
@@ -112,14 +145,12 @@ const ClientDetails = () => {
 											<i className="ti ti-map-pin-check me-2"></i>
 											Address
 										</span>
-										<p className="text-dark text-end">1861 Bayonne Ave, <br /> Manchester, NJ, 08759</p>
+										<p className="text-dark text-end">{fullAddress}</p>
 									</div>
 								</div>
 								<div className="p-3">
 									<div className="d-flex align-items-center justify-content-between mb-2">
 										<h6>Social Links</h6>
-										<a href="#" onClick={(e) => e.preventDefault()} className="btn btn-icon btn-sm"><i
-												className="ti ti-edit"></i></a>
 									</div>
 									<div className="d-flex align-items-center">
 										<a href="#" onClick={(e) => e.preventDefault()} className="me-2"><img
@@ -206,38 +237,56 @@ const ClientDetails = () => {
 <div className="tab-content custom-accordion-items client-accordion">
     <div className="tab-pane active show" id="bottom-justified-tab1" role="tabpanel">
         <div className="accordion accordions-items-seperate" id="overviewAccordion">
-            <ClientProjects isAccordion={true} />
-            <ClientTasks isAccordion={true} />
-            <ClientInvoices isAccordion={true} />
-            <ClientPayments isAccordion={true} />
-            <ClientDeals isAccordion={true} />
-            <ClientHistory isAccordion={true} />
+            <ClientProjects isAccordion={true} client={client} />
+            <ClientTasks isAccordion={true} client={client} />
+            <ClientInvoices isAccordion={true} client={client} />
+            <ClientPayments isAccordion={true} client={client} />
+            <ClientDeals isAccordion={true} client={client} />
+            <ClientHistory isAccordion={true} client={client} />
         </div>
     </div>
     
     <div className="tab-pane" id="bottom-justified-tab2" role="tabpanel">
-        <ClientProjects isAccordion={false} />
+        <ClientProjects isAccordion={false} client={client} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab3" role="tabpanel">
-        <ClientTasks isAccordion={false} />
+        <ClientTasks isAccordion={false} client={client} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab4" role="tabpanel">
-        <ClientInvoices isAccordion={false} />
+        <ClientInvoices isAccordion={false} client={client} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab5" role="tabpanel">
-        <ClientPayments isAccordion={false} />
+        <ClientPayments isAccordion={false} client={client} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab6" role="tabpanel">
-        <ClientDeals isAccordion={false} />
+        <ClientDeals isAccordion={false} client={client} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab7" role="tabpanel">
-        <ClientHistory isAccordion={false} />
+        <ClientHistory isAccordion={false} client={client} />
     </div>
 </div>
 <div className="text-end mb-4">
     <div className="dropdown">
         <a href="#" onClick={(e) => e.preventDefault()}
+            ref={plusBtnRef}
+            onMouseEnter={() => {
+              if (plusBtnRef.current) {
+                plusBtnRef.current.classList.remove('bg-primary');
+                plusBtnRef.current.classList.add('bg-white', 'border', 'border-primary');
+                const i = plusBtnRef.current.querySelector('i');
+                if (i) { i.classList.remove('text-white'); i.classList.add('text-primary'); }
+              }
+            }}
+            onMouseLeave={() => {
+              if (plusBtnRef.current) {
+                plusBtnRef.current.classList.add('bg-primary');
+                plusBtnRef.current.classList.remove('bg-white', 'border', 'border-primary');
+                const i = plusBtnRef.current.querySelector('i');
+                if (i) { i.classList.add('text-white'); i.classList.remove('text-primary'); }
+              }
+            }}
             className="d-inline-flex align-items-center avatar avatar-lg avatar-rounded bg-primary"
+            style={{ transition: 'all 0.3s ease' }}
             data-bs-toggle="dropdown">
             <i className="ti ti-plus fs-24 text-white"></i>
         </a>
@@ -287,7 +336,7 @@ const ClientDetails = () => {
                 </a>
             </li>
             <li>
-                <a href="#" onClick={(e) => e.preventDefault()}
+                <a href="#" onClick={(e) => { e.preventDefault(); document.dispatchEvent(new CustomEvent('openClientDealModal')); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-target"></i></span>

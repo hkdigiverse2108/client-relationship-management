@@ -51,7 +51,7 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
         if current_user["role"] not in ["Super Admin", "admin"]:
             raise HTTPException(status_code=403, detail=f"Not authorized to create role: {user_in.role}")
         
-    existing = await users_collection.find_one({"email": user_in.email})
+    existing = await users_collection.find_one({"is_deleted": {"$ne": True}, "email": user_in.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
         
@@ -159,7 +159,7 @@ async def update_user(user_id: str, user_update: UserUpdate, current_user: dict 
     update_data = user_update.model_dump(exclude_unset=True)
     
     if "role" in update_data and update_data["role"] == "Super Admin" and target_user["role"] != "Super Admin":
-        existing_super = await users_collection.find_one({"role": "Super Admin"})
+        existing_super = await users_collection.find_one({"is_deleted": {"$ne": True}, "role": "Super Admin"})
         if existing_super:
             raise HTTPException(status_code=400, detail="A Super Admin already exists.")
             

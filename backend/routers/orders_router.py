@@ -120,7 +120,7 @@ async def create_order(order: OrderCreate, current_user: dict = Depends(get_curr
 
 @router.get("", response_model=List[OrderResponse])
 async def get_orders(current_user: dict = Depends(get_current_user)):
-    cursor = orders_collection.find()
+    cursor = orders_collection.find({"is_deleted": {"$ne": True}})
     orders = []
     async for o in cursor:
         o["_id"] = str(o["_id"])
@@ -181,8 +181,8 @@ async def delete_order(obj_id: str, current_user: dict = Depends(get_current_use
     if not order:
          raise HTTPException(status_code=404, detail="Order not found")
          
-    result = await orders_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await orders_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
         
     await log_audit_action(

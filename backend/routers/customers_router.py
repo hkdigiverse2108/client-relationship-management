@@ -34,7 +34,7 @@ async def create_customer(customer: CustomerCreate, current_user: dict = Depends
         query.append({"phone": customer.phone})
         
     if query:
-        existing = await customers_collection.find_one({"$or": query})
+        existing = await customers_collection.find_one({"is_deleted": {"$ne": True}, "$or": query})
         if existing:
             raise HTTPException(status_code=400, detail="A customer with this email or phone number already exists")
 
@@ -60,7 +60,7 @@ async def create_customer(customer: CustomerCreate, current_user: dict = Depends
 
 @router.get("", response_model=List[CustomerResponse])
 async def get_customers(current_user: dict = Depends(get_current_user)):
-    cursor = customers_collection.find().sort("created_at", -1)
+    cursor = customers_collection.find({"is_deleted": {"$ne": True}}).sort("created_at", -1)
     customers = []
     async for c in cursor:
         c["_id"] = str(c["_id"])
@@ -83,6 +83,7 @@ async def update_customer(obj_id: str, customer: CustomerUpdate, current_user: d
         
     if query:
         existing = await customers_collection.find_one({
+            "is_deleted": {"$ne": True},
             "$or": query,
             "_id": {"$ne": ObjectId(obj_id)}
         })
@@ -134,8 +135,8 @@ async def delete_customer(obj_id: str, current_user: dict = Depends(get_current_
     if not customer:
          raise HTTPException(status_code=404, detail="Customer not found")
          
-    result = await customers_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await customers_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Customer not found")
         
     await log_audit_action(

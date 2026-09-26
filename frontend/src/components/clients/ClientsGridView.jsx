@@ -47,7 +47,7 @@ const ClientsGridView = ({ clients, users = [], handleEdit, setClientToDelete })
                 </div>
                 
                 <div className="d-flex justify-content-center pt-2">
-                  <Link to="/client-details" className="avatar avatar-xl avatar-rounded border p-1 border-primary rounded-circle d-flex align-items-center justify-content-center text-decoration-none">
+                  <Link to="/client-details" state={{ client }} className="avatar avatar-xl avatar-rounded border p-1 border-primary rounded-circle d-flex align-items-center justify-content-center text-decoration-none">
                     {client.clientAvatar ? (
                       <img src={client.clientAvatar} className="img-fluid h-100 w-100 rounded-circle" alt="img" style={{ objectFit: 'cover' }} />
                     ) : (
@@ -59,10 +59,18 @@ const ClientsGridView = ({ clients, users = [], handleEdit, setClientToDelete })
                 </div>
               </div>
               <div className="text-center mb-3">
-                <h6 className="mb-1 text-truncate"><Link to="/client-details">{client.client_name}</Link></h6>
-                <span className={`badge badge-${(client.status || '').toLowerCase() === 'active' ? 'success' : 'danger'} d-inline-flex align-items-center badge-xs`}>
-                  <i className="ti ti-point-filled me-1"></i>{client.status || 'Active'}
-                </span>
+                <h6 className="mb-1 text-truncate"><Link to="/client-details" state={{ client }}>{client.client_name}</Link></h6>
+                {(() => {
+                  const s = (client.status || '').toLowerCase();
+                  let badgeColor = 'danger';
+                  if (s === 'active') badgeColor = 'success';
+                  else if (s === 'on_hold' || s === 'on hold') badgeColor = 'warning';
+                  return (
+                    <span className={`badge badge-${badgeColor} d-inline-flex align-items-center badge-xs`}>
+                      <i className="ti ti-point-filled me-1"></i>{client.status || 'Active'}
+                    </span>
+                  );
+                })()}
               </div>
               
               <div className="d-flex flex-column border-top pt-3 mt-3">

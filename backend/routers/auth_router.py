@@ -13,7 +13,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login")
 async def login(request: LoginRequest):
-    user = await users_collection.find_one({"email": request.email})
+    user = await users_collection.find_one({"is_deleted": {"$ne": True}, "email": request.email})
     if not user or user.get("is_deleted", False) or not verify_password(request.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -49,7 +49,7 @@ async def login(request: LoginRequest):
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
-    user = await users_collection.find_one({"email": request.email})
+    user = await users_collection.find_one({"is_deleted": {"$ne": True}, "email": request.email})
     if not user:
         # Send an email warning them that their email is not registered
         send_unregistered_login_attempt_email(request.email)

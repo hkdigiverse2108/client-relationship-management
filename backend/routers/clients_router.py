@@ -3,7 +3,7 @@ from typing import List
 from datetime import datetime, timezone
 from models import ClientCreate, ClientResponse, ClientUpdate, ClientStatsResponse
 from db import clients_collection, audit_logs_collection, deals_collection, projects_collection, invoices_collection, payments_collection, client_history_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from audit_logger import log_audit_action
 from history_logger import log_client_history
 from bson import ObjectId
@@ -63,14 +63,17 @@ from datetime import timedelta
 
 @router.get("/stats", response_model=ClientStatsResponse)
 async def get_client_stats(current_user: dict = Depends(get_current_user)):
-    base_query = {}
+    base_query = {"is_deleted": {"$ne": True}}
     
-    # Optional RBAC: If Super Admin or admin, see all. Else might restrict (commented out for now if clients are global, 
-    # but let's apply same logic as leads if needed)
-    if current_user["role"] not in ["Super Admin", "admin"]:
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
         base_query = {
-            "created_by": str(current_user["_id"])
+            "$and": [
+                {"is_deleted": {"$ne": True}},
+                {"created_by": {"$in": allowed_ids}}
+            ]
         }
+
 
     now = datetime.utcnow()
     one_week_ago = now - timedelta(days=7)
@@ -135,8 +138,12 @@ async def get_client_stats(current_user: dict = Depends(get_current_user)):
 
 @router.get("", response_model=List[ClientResponse])
 async def get_all_clients(current_user: dict = Depends(get_current_user)):
-    # In future, filter based on user permissions
-    cursor = clients_collection.find()
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = clients_collection.find(query)
     clients = []
     async for client in cursor:
         client["_id"] = str(client["_id"])
@@ -151,6 +158,10 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
     target_client = await clients_collection.find_one({"_id": ObjectId(client_id)})
     if not target_client:
         raise HTTPException(status_code=404, detail="Client not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and target_client.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this client")
         
     update_data = client_update.model_dump(exclude_unset=True)
     update_data["updated_at"] = datetime.utcnow()
@@ -183,7 +194,11 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     if not target_client:
         raise HTTPException(status_code=404, detail="Client not found")
         
-    await clients_collection.delete_one({"_id": ObjectId(client_id)})
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and target_client.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this client")
+        
+    await clients_collection.update_one({"_id": ObjectId(client_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     
     await log_audit_action(
         audit_logs_collection, 

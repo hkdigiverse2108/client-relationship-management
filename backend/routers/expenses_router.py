@@ -17,7 +17,7 @@ async def list_expenses(
     end_date: str = None, 
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    query = {"is_deleted": {"$ne": True}}
     if category:
         query["category"] = category
     
@@ -129,8 +129,8 @@ async def update_expense(expense_id: str, expense: ExpenseUpdate, current_user: 
 @router.delete("/{expense_id}")
 async def delete_expense(expense_id: str, current_user: dict = Depends(get_current_user)):
     # Delete the expense
-    result = await expenses_collection.delete_one({"_id": ObjectId(expense_id)})
-    if result.deleted_count == 0:
+    result = await expenses_collection.update_one({"_id": ObjectId(expense_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Expense not found")
         
     # Also delete corresponding ledger entries

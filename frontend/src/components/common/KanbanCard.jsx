@@ -1,6 +1,15 @@
 import React from 'react';
 
-const KanbanCard = ({ card, columnColor, onDragStart }) => {
+const KanbanCard = ({ card, columnColor, onDragStart, onEdit, onDelete }) => {
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div 
       className="card kanban-card mb-2" 
@@ -24,10 +33,10 @@ const KanbanCard = ({ card, columnColor, onDragStart }) => {
             </a>
             <ul className="dropdown-menu dropdown-menu-end p-3">
               <li>
-                <a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); onEdit && onEdit(); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a>
               </li>
               <li>
-                <a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); onDelete && onDelete(); }} className="dropdown-item rounded-1" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash me-2"></i>Delete</a>
               </li>
             </ul>
           </div>
@@ -36,6 +45,9 @@ const KanbanCard = ({ card, columnColor, onDragStart }) => {
         <div className="mb-2">
           <h6 className="d-flex align-items-center">{card.title}</h6>
           {card.client && <p className="text-muted fs-12 mb-0 mt-1">{card.client}</p>}
+          {card.reason && (
+            <p className={`text-${columnColor} fs-12 mb-0 mt-1 fst-italic`}>Reason: {card.reason}</p>
+          )}
         </div>
         
         {card.value && (
@@ -48,22 +60,21 @@ const KanbanCard = ({ card, columnColor, onDragStart }) => {
           <p className="fw-medium mb-0">Expected Close : <span className="text-gray-9"> {card.dueDate}</span></p>
         )}
         
-        <div className="d-flex align-items-center justify-content-between border-top pt-2 mt-2">
-          <div className="avatar-list-stacked avatar-group-sm me-3">
-            {card.assignees && card.assignees.map((avatar, idx) => (
-              <span key={idx} className="avatar avatar-rounded">
-                <img className="border border-white" src={avatar} alt="img" />
-              </span>
-            ))}
-          </div>
-          <div className="d-flex align-items-center">
-            <a href="#" onClick={(e) => e.preventDefault()} className="d-flex align-items-center text-dark me-2">
-              <i className="ti ti-message-circle text-gray me-1"></i>{card.comments || 0}
-            </a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="d-flex align-items-center text-dark">
-              <i className="ti ti-paperclip text-gray me-1"></i>{card.attachments || 0}
-            </a>
-          </div>
+        <div className="d-flex align-items-center border-top pt-2 mt-2">
+          {card.assignee && (
+            <div className="d-flex align-items-center">
+              {card.assignee.avatar ? (
+                <span className="avatar avatar-sm avatar-rounded me-2">
+                  <img src={card.assignee.avatar} alt="img" />
+                </span>
+              ) : (
+                <span className="avatar avatar-sm avatar-rounded bg-primary text-white d-flex align-items-center justify-content-center me-2 fw-semibold fs-11">
+                  {getInitials(card.assignee.name)}
+                </span>
+              )}
+              <span className="fs-13 fw-medium text-dark">{card.assignee.name}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

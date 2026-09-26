@@ -58,7 +58,7 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
 
 @router.get("", response_model=List[PaymentResponse])
 async def get_payments(current_user: dict = Depends(get_current_user)):
-    cursor = payments_collection.find()
+    cursor = payments_collection.find({"is_deleted": {"$ne": True}})
     payments = []
     async for p in cursor:
         p["_id"] = str(p["_id"])
@@ -128,8 +128,8 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
 async def delete_payment(obj_id: str, current_user: dict = Depends(get_current_user)):
     payment = await payments_collection.find_one({"_id": ObjectId(obj_id)})
     
-    result = await payments_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await payments_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Payment not found")
         
     amount = payment.get("amount_received", 0) if payment else "unknown"

@@ -41,7 +41,7 @@ async def create_project(project: ProjectCreate, current_user: dict = Depends(ge
 
 @router.get("/analytics")
 async def get_project_analytics(current_user: dict = Depends(get_current_user)):
-    query = {}
+    query = {"is_deleted": {"$ne": True}}
     allowed_ids = await get_allowed_user_ids(current_user)
     if allowed_ids is not None:
         query["$or"] = [
@@ -125,7 +125,7 @@ async def get_project_analytics(current_user: dict = Depends(get_current_user)):
 
 @router.get("", response_model=List[ProjectResponse])
 async def get_projects(current_user: dict = Depends(get_current_user)):
-    query = {}
+    query = {"is_deleted": {"$ne": True}}
     allowed_ids = await get_allowed_user_ids(current_user)
     if allowed_ids is not None:
         query["$or"] = [
@@ -149,6 +149,14 @@ async def update_project(obj_id: str, project: ProjectUpdate, current_user: dict
     if not data:
         raise HTTPException(status_code=400, detail="No fields provided")
     data["updated_at"] = datetime.utcnow()
+    
+    old_project = await projects_collection.find_one({"_id": ObjectId(obj_id)})
+    if not old_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and old_project.get("created_by") not in allowed_ids and old_project.get("manager") not in [current_user.get("name"), current_user.get("email")]:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this project")
     
     result = await projects_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
     if result.matched_count == 0:
@@ -179,9 +187,15 @@ async def update_project(obj_id: str, project: ProjectUpdate, current_user: dict
 @router.delete("/{obj_id}")
 async def delete_project(obj_id: str, current_user: dict = Depends(get_current_user)):
     project = await projects_collection.find_one({"_id": ObjectId(obj_id)})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and project.get("created_by") not in allowed_ids and project.get("manager") not in [current_user.get("name"), current_user.get("email")]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this project")
     
-    result = await projects_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await projects_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Project not found")
         
     title = project.get("title", "") if project else obj_id

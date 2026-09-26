@@ -5,7 +5,7 @@ from io import StringIO
 from datetime import datetime, timedelta
 from bson import ObjectId
 from models import LeadCreate, LeadUpdate, LeadResponse, LeadStatsResponse
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from db import leads_collection, audit_logs_collection, users_collection, clients_collection
 from audit_logger import log_audit_action
 from routers.notifications_router import create_notification
@@ -146,12 +146,18 @@ async def import_leads(file: UploadFile = File(...), current_user: dict = Depend
 
 @router.get("/stats", response_model=LeadStatsResponse)
 async def get_lead_stats(current_user: dict = Depends(get_current_user)):
-    base_query = {}
-    if current_user["role"] not in ["Super Admin", "admin"]:
+    base_query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
         base_query = {
-            "$or": [
-                {"assigned_to": str(current_user["_id"])},
-                {"created_by": str(current_user["_id"])}
+            "$and": [
+                {"is_deleted": {"$ne": True}},
+                {
+                    "$or": [
+                        {"assigned_to": {"$in": allowed_ids}},
+                        {"created_by": {"$in": allowed_ids}}
+                    ]
+                }
             ]
         }
 
@@ -213,14 +219,15 @@ async def get_lead_stats(current_user: dict = Depends(get_current_user)):
 async def get_leads(current_user: dict = Depends(get_current_user)):
     leads = []
     
-    # If Super Admin or admin, see all leads. Else see assigned or created leads.
-    if current_user["role"] in ["Super Admin", "admin"]:
-        cursor = leads_collection.find().sort("created_at", -1)
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is None:
+        cursor = leads_collection.find({"is_deleted": {"$ne": True}}).sort("created_at", -1)
     else:
         cursor = leads_collection.find({
+            "is_deleted": {"$ne": True},
             "$or": [
-                {"assigned_to": str(current_user["_id"])},
-                {"created_by": str(current_user["_id"])}
+                {"assigned_to": {"$in": allowed_ids}},
+                {"created_by": {"$in": allowed_ids}}
             ]
         }).sort("created_at", -1)
         
@@ -241,7 +248,8 @@ async def update_lead(lead_id: str, lead_update: LeadUpdate, current_user: dict 
     if not target_lead:
         raise HTTPException(status_code=404, detail="Lead not found")
         
-    if current_user["role"] not in ["Super Admin", "admin"] and target_lead.get("assigned_to") != str(current_user["_id"]) and target_lead.get("created_by") != str(current_user["_id"]):
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and target_lead.get("assigned_to") not in allowed_ids and target_lead.get("created_by") not in allowed_ids:
         raise HTTPException(status_code=403, detail="Not authorized to edit this lead")
 
     update_data = lead_update.model_dump(exclude_unset=True)
@@ -322,19 +330,20 @@ async def update_lead(lead_id: str, lead_update: LeadUpdate, current_user: dict 
 
 @router.delete("/{lead_id}")
 async def delete_lead(lead_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user["role"] not in ["Super Admin", "admin"]:
-        raise HTTPException(status_code=403, detail="Not authorized to delete leads")
-        
     try:
         obj_id = ObjectId(lead_id)
     except:
         raise HTTPException(status_code=400, detail="Invalid Lead ID")
-        
+
     target_lead = await leads_collection.find_one({"_id": obj_id})
     if not target_lead:
         raise HTTPException(status_code=404, detail="Lead not found")
         
-    await leads_collection.delete_one({"_id": obj_id})
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and target_lead.get("assigned_to") not in allowed_ids and target_lead.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this lead")
+        
+    await leads_collection.update_one({"_id": obj_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     
     await log_audit_action(
         audit_logs_collection, 

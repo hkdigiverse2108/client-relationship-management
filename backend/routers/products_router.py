@@ -47,7 +47,7 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
 
 @router.get("", response_model=List[ProductResponse])
 async def get_products(current_user: dict = Depends(get_current_user)):
-    cursor = products_collection.find().sort("created_at", -1)
+    cursor = products_collection.find({"is_deleted": {"$ne": True}}).sort("created_at", -1)
     products = []
     async for p in cursor:
         p["_id"] = str(p["_id"])
@@ -99,8 +99,8 @@ async def delete_product(obj_id: str, current_user: dict = Depends(get_current_u
     if not product:
          raise HTTPException(status_code=404, detail="Product not found")
          
-    result = await products_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await products_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
         
     await log_audit_action(

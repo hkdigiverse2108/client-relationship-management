@@ -31,7 +31,7 @@ async def create_quote(quote: QuoteCreate, current_user: dict = Depends(get_curr
 
 @router.get("", response_model=List[QuoteResponse])
 async def get_quotes(current_user: dict = Depends(get_current_user)):
-    cursor = quotes_collection.find()
+    cursor = quotes_collection.find({"is_deleted": {"$ne": True}})
     quotes = []
     async for q in cursor:
         q["_id"] = str(q["_id"])
@@ -79,8 +79,8 @@ async def update_quote(obj_id: str, quote: QuoteUpdate, current_user: dict = Dep
 async def delete_quote(obj_id: str, current_user: dict = Depends(get_current_user)):
     quote = await quotes_collection.find_one({"_id": ObjectId(obj_id)})
     
-    result = await quotes_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await quotes_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Quote not found")
         
     quote_number = quote.get("quote_number", "") if quote else obj_id

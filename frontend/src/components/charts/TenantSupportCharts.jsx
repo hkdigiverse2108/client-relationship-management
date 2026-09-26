@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-export const TenantSupportChart = ({ color, data, bgColor }) => {
+export const TenantSupportChart = ({ color, data, bgColor, name = 'Tickets', category = 'Day' }) => {
   const options = {
     chart: {
       width: 50,
@@ -42,7 +42,7 @@ export const TenantSupportChart = ({ color, data, bgColor }) => {
       }
     },
     xaxis: {
-      categories: ['Day'],
+      categories: [category],
       labels: { show: false },
       axisTicks: { show: false },
       axisBorder: { show: false }
@@ -52,5 +52,5 @@ export const TenantSupportChart = ({ color, data, bgColor }) => {
     tooltip: { enabled: true }
   };
 
-  return <ReactApexChart options={options} series={[{ name: 'Tickets', data: [data] }]} type="bar" height={115} width={50} />;
+  return <ReactApexChart options={options} series={[{ name: name, data: [data] }]} type="bar" height={115} width={50} />;
 };

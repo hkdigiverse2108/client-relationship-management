@@ -214,3 +214,14 @@ html[data-theme="dark"] .mini-sidebar.expand-menu #toggle_btn i,
 html[data-theme="dark"] #toggle_btn i {
   color: #ffffff !important;
 }
+
+/* Hide scrollbar for elements */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+
