@@ -5,7 +5,7 @@ from models import InvoiceCreate, InvoiceResponse
 from db import invoices_collection, client_history_collection, audit_logs_collection
 from history_logger import log_client_history
 from audit_logger import log_audit_action
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -39,9 +39,62 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
     created["_id"] = str(created["_id"])
     return created
 
+@router.get("/stats")
+async def get_invoice_stats(current_user: dict = Depends(get_current_user)):
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"created_by": {"$exists": False}}
+        ]
+        
+    cursor = invoices_collection.find(query)
+    
+    total_invoices = 0
+    partially_paid = 0
+    paid = 0
+    overdue = 0
+    unpaid = 0
+    revenue = 0.0
+    
+    async for i in cursor:
+        total_invoices += 1
+        status = i.get("status", "Draft")
+        amt = float(i.get("total_due", i.get("total_amount", 0)))
+        
+        if status == "Partially Paid":
+            partially_paid += 1
+            revenue += amt
+        elif status == "Paid":
+            paid += 1
+            revenue += amt
+        elif status == "Overdue":
+            overdue += 1
+            unpaid += 1
+        elif status in ["Sent", "Draft", "Pending"]:
+            unpaid += 1
+            
+    return {
+        "total_invoices": total_invoices,
+        "partially_paid": partially_paid,
+        "paid_invoices": paid,
+        "overdue_invoices": overdue,
+        "unpaid_invoices": unpaid,
+        "revenue": revenue
+    }
+
 @router.get("", response_model=List[InvoiceResponse])
 async def get_invoices(current_user: dict = Depends(get_current_user)):
-    cursor = invoices_collection.find({"is_deleted": {"$ne": True}})
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"created_by": {"$exists": False}}
+        ]
+        
+    cursor = invoices_collection.find(query)
     invoices = []
     async for i in cursor:
         i["_id"] = str(i["_id"])
@@ -57,6 +110,14 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
     if not data:
         raise HTTPException(status_code=400, detail="No fields provided")
     data["updated_at"] = datetime.utcnow()
+    
+    old_invoice = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
+    if not old_invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and old_invoice.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this invoice")
     
     result = await invoices_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
     if result.matched_count == 0:
@@ -87,6 +148,12 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
 @router.delete("/{obj_id}")
 async def delete_invoice(obj_id: str, current_user: dict = Depends(get_current_user)):
     invoice = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and invoice.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this invoice")
     
     result = await invoices_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     if result.matched_count == 0:

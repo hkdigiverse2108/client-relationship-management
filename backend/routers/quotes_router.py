@@ -4,7 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 from models import QuoteCreate, QuoteUpdate, QuoteResponse
 from db import quotes_collection, audit_logs_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from audit_logger import log_audit_action
 
 router = APIRouter(prefix="/quotes", tags=["quotes"])
@@ -31,7 +31,12 @@ async def create_quote(quote: QuoteCreate, current_user: dict = Depends(get_curr
 
 @router.get("", response_model=List[QuoteResponse])
 async def get_quotes(current_user: dict = Depends(get_current_user)):
-    cursor = quotes_collection.find({"is_deleted": {"$ne": True}})
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = quotes_collection.find(query)
     quotes = []
     async for q in cursor:
         q["_id"] = str(q["_id"])
@@ -43,6 +48,10 @@ async def get_quote(obj_id: str, current_user: dict = Depends(get_current_user))
     quote = await quotes_collection.find_one({"_id": ObjectId(obj_id)})
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and quote.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to view this quote")
     quote["_id"] = str(quote["_id"])
     return quote
 
@@ -53,6 +62,14 @@ async def update_quote(obj_id: str, quote: QuoteUpdate, current_user: dict = Dep
         raise HTTPException(status_code=400, detail="No fields to update")
         
     update_data["updated_at"] = datetime.utcnow()
+    
+    old_quote = await quotes_collection.find_one({"_id": ObjectId(obj_id)})
+    if not old_quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and old_quote.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this quote")
     
     result = await quotes_collection.update_one(
         {"_id": ObjectId(obj_id)},
@@ -78,6 +95,12 @@ async def update_quote(obj_id: str, quote: QuoteUpdate, current_user: dict = Dep
 @router.delete("/{obj_id}")
 async def delete_quote(obj_id: str, current_user: dict = Depends(get_current_user)):
     quote = await quotes_collection.find_one({"_id": ObjectId(obj_id)})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and quote.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this quote")
     
     result = await quotes_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     if result.matched_count == 0:

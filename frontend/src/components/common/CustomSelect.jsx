@@ -1,7 +1,8 @@
 import React from 'react';
 import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 
-const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti, className, isSearchable = true, ...props }) => {
+const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti, className, isSearchable = true, creatable = false, ...props }) => {
   
   // Custom styling to match Select2 and the template's Bootstrap theme perfectly
   const customStyles = {
@@ -120,18 +121,33 @@ const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti
           --custom-hover-bg: #2e3038;
         }
       `}</style>
-      <Select
-      className={`custom-react-select ${className || ''}`}
-      classNamePrefix="react-select"
-      options={parsedOptions}
-      value={value}
-      onChange={onChange}
-      placeholder={derivedPlaceholder}
-      isMulti={isMulti}
-      isSearchable={isSearchable}
-      styles={customStyles}
-      {...props}
-    />
+      {creatable ? (
+        <CreatableSelect
+          className={`custom-react-select ${className || ''}`}
+          classNamePrefix="react-select"
+          options={parsedOptions}
+          value={value}
+          onChange={onChange}
+          placeholder={derivedPlaceholder}
+          isMulti={isMulti}
+          isSearchable={isSearchable}
+          styles={customStyles}
+          {...props}
+        />
+      ) : (
+        <Select
+          className={`custom-react-select ${className || ''}`}
+          classNamePrefix="react-select"
+          options={parsedOptions}
+          value={value}
+          onChange={onChange}
+          placeholder={derivedPlaceholder}
+          isMulti={isMulti}
+          isSearchable={isSearchable}
+          styles={customStyles}
+          {...props}
+        />
+      )}
     </>
   );
 };

@@ -1,30 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
+import api from '../../api/axiosClient';
 
 const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
   const [formData, setFormData] = useState({
     quote_number: `QT-${Math.floor(1000 + Math.random() * 9000)}`,
     client_id: '',
     product_name: '',
-    unit_price: 0,
+    unit_price: '',
     quantity: 1,
     discount: 0,
     tax_percentage: 18,
     validity_days: 30,
-    status: 'Draft',
+    status: 'Sent',
     notes: '',
     date_sent: new Date().toISOString().split('T')[0]
   });
 
-  // Mock clients for the dropdown (since we don't have the API setup here)
-  const clients = [
-    { id: '1', name: 'Anthony Lewis' },
-    { id: '2', name: 'Brian Villalobos' },
-    { id: '3', name: 'Harvey Smith' }
-  ];
+  const [clients, setClients] = useState([]);
+  const [errors, setErrors] = useState({});
 
-  const clientOptions = clients.map(c => ({ value: c.id, label: c.name }));
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get('/clients');
+        setClients(Array.isArray(res) ? res : (res.data || []));
+      } catch (err) {
+        console.error("Failed to fetch clients:", err);
+      }
+    };
+    if (isOpen) fetchClients();
+    
+    if (isOpen) {
+      if (quote) {
+        setFormData({
+          ...quote,
+          date_sent: quote.date_sent ? new Date(quote.date_sent).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+        });
+      } else {
+        setFormData({
+          quote_number: `QT-${Math.floor(1000 + Math.random() * 9000)}`,
+          client_id: '',
+          product_name: '',
+          unit_price: '',
+          quantity: 1,
+          discount: 0,
+          tax_percentage: 18,
+          validity_days: 30,
+          status: 'Sent',
+          notes: '',
+          date_sent: new Date().toISOString().split('T')[0]
+        });
+      }
+      setErrors({});
+    }
+  }, [isOpen, quote]);
+
+  const getClientName = (c) => {
+    if (c.client_name) return c.client_name;
+    if (c.company_name) return c.company_name;
+    return 'Unknown Client';
+  };
+
+  const clientOptions = clients.map(c => ({ value: c._id, label: getClientName(c) }));
 
   const statusOptions = [
     { value: 'Draft', label: 'Draft' },
@@ -41,10 +80,12 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
       finalValue = value ? parseFloat(value) : 0;
     }
     setFormData(prev => ({ ...prev, [name]: finalValue }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleSelectChange = (name, selectedOption) => {
     setFormData(prev => ({ ...prev, [name]: selectedOption ? selectedOption.value : '' }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleDateChange = (name, date) => {
@@ -60,36 +101,62 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
   const tax_amount = sub_total > 0 ? (sub_total * formData.tax_percentage) / 100 : 0;
   const total_amount = sub_total + tax_amount;
 
+  const handleSave = () => {
+    const newErrors = {};
+    if (!formData.quote_number) newErrors.quote_number = 'Quote number is required';
+    if (!formData.client_id) newErrors.client_id = 'Client is required';
+    if (!formData.product_name) newErrors.product_name = 'Product name is required';
+    if (!formData.unit_price && formData.unit_price !== 0) newErrors.unit_price = 'Unit price is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    if (onSave) onSave({ ...formData, sub_total, tax_amount, total_amount });
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <style>
+        {`
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}
+      </style>
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content">
           <div className="modal-header border-bottom">
             <h5 className="modal-title">{quote ? "Edit Quotation" : "New Quotation"}</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+            <button type="button" className="btn-close" onClick={onClose}>✖</button>
           </div>
-          <div className="modal-body p-4 custom-scroll" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+          <div className="modal-body p-4 custom-scroll hide-scrollbar" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
             
             <div className="row mb-4">
               <div className="col-md-6 mb-3">
                 <label className="form-label fw-medium">Quote Number *</label>
                 <input 
                   type="text" 
-                  className="form-control bg-light" 
+                  className={`form-control bg-light ${errors.quote_number ? 'is-invalid' : ''}`} 
                   name="quote_number" 
                   value={formData.quote_number} 
                   readOnly 
                 />
+                {errors.quote_number && <div className="invalid-feedback">{errors.quote_number}</div>}
               </div>
               <div className="col-md-6 mb-3">
                 <label className="form-label fw-medium">Prospect Client *</label>
-                <CustomSelect 
-                  options={clientOptions} 
-                  value={clientOptions.find(o => o.value === formData.client_id)} 
-                  onChange={(option) => handleSelectChange('client_id', option)} 
-                />
+                <div className={errors.client_id ? 'is-invalid' : ''}>
+                  <CustomSelect 
+                    options={clientOptions} 
+                    value={clientOptions.find(o => o.value === formData.client_id) || null} 
+                    onChange={(option) => handleSelectChange('client_id', option)} 
+                    className={errors.client_id ? 'is-invalid custom-select-error' : ''}
+                  />
+                </div>
+                {errors.client_id && <div className="invalid-feedback d-block">{errors.client_id}</div>}
               </div>
             </div>
 
@@ -100,29 +167,29 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
                 <label className="form-label fw-medium">Product Name / Service *</label>
                 <input 
                   type="text" 
-                  className="form-control" 
+                  className={`form-control ${errors.product_name ? 'is-invalid' : ''}`} 
                   name="product_name" 
                   value={formData.product_name} 
                   onChange={handleChange} 
-                  required
                 />
+                {errors.product_name && <div className="invalid-feedback">{errors.product_name}</div>}
               </div>
               
               <div className="col-md-3 mb-3">
                 <label className="form-label fw-medium">Unit Price (₹) *</label>
                 <input 
                   type="number" 
-                  className="form-control" 
+                  className={`form-control ${errors.unit_price ? 'is-invalid' : ''}`} 
                   name="unit_price" 
                   value={formData.unit_price} 
                   onChange={handleChange} 
                   min="0"
-                  required
                 />
+                {errors.unit_price && <div className="invalid-feedback">{errors.unit_price}</div>}
               </div>
               
               <div className="col-md-3 mb-3">
-                <label className="form-label fw-medium">Quantity *</label>
+                <label className="form-label fw-medium">Quantity</label>
                 <input 
                   type="number" 
                   className="form-control" 
@@ -130,7 +197,6 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
                   value={formData.quantity} 
                   onChange={handleChange} 
                   min="1"
-                  required
                 />
               </div>
 
@@ -147,7 +213,7 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
               </div>
               
               <div className="col-md-6 mb-3">
-                <label className="form-label fw-medium">Tax (%) *</label>
+                <label className="form-label fw-medium">Tax (%)</label>
                 <input 
                   type="number" 
                   className="form-control" 
@@ -155,7 +221,6 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
                   value={formData.tax_percentage} 
                   onChange={handleChange} 
                   min="0"
-                  required
                 />
               </div>
 
@@ -194,7 +259,7 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
               </div>
               
               <div className="col-md-4 mb-3">
-                <label className="form-label fw-medium">Validity (Days) *</label>
+                <label className="form-label fw-medium">Validity (Days)</label>
                 <input 
                   type="number" 
                   className="form-control" 
@@ -202,7 +267,6 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
                   value={formData.validity_days} 
                   onChange={handleChange} 
                   min="1"
-                  required
                 />
               </div>
               
@@ -231,7 +295,7 @@ const QuoteModal = ({ isOpen, onClose, quote, onSave }) => {
           </div>
           <div className="modal-footer border-top">
             <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={onClose}>Save Quotation</button>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>Save Quotation</button>
           </div>
         </div>
       </div>

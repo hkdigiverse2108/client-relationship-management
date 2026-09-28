@@ -140,11 +140,49 @@ async def process_recurring_invoices():
             link="/invoices"
         )
 
+async def check_expired_quotes():
+    now_date = datetime.utcnow().date()
+    now_iso = now_date.isoformat()
+    
+    # We need to find quotes that are Sent or Draft, and have expired.
+    # Since we store date_sent and validity_days, we can calculate expiration in python.
+    # It's better to calculate in Python since validity_days is integer and date_sent is string.
+    cursor = db.quotes.find({"status": {"$in": ["Sent", "Draft"]}, "is_deleted": {"$ne": True}})
+    quotes = await cursor.to_list(length=500)
+    
+    for q in quotes:
+        if q.get("date_sent") and q.get("validity_days"):
+            try:
+                sent_dt = datetime.strptime(q["date_sent"], "%Y-%m-%d").date()
+                validity_days = int(q["validity_days"])
+                exp_dt = sent_dt + timedelta(days=validity_days)
+                
+                if now_date > exp_dt:
+                    # Mark as expired
+                    await db.quotes.update_one(
+                        {"_id": q["_id"]},
+                        {"$set": {"status": "Expired"}}
+                    )
+                    
+                    # Notify
+                    user_id = q.get("created_by", "admin")
+                    await create_notification(
+                        user_id=user_id,
+                        title="Quote Expired",
+                        message=f"Quote '{q.get('quote_number')}' has expired.",
+                        type="warning",
+                        link="/quotes"
+                    )
+            except Exception as e:
+                print(f"Error checking quote expiration for {q.get('_id')}: {e}")
+
 def start_scheduler():
     # Run the check every 5 minutes for deadlines
     scheduler.add_job(check_overdue_deadlines, IntervalTrigger(minutes=5), id="overdue_check", replace_existing=True)
     # Run recurring invoice check every 24 hours (daily)
     scheduler.add_job(process_recurring_invoices, IntervalTrigger(hours=24), id="recurring_invoices", replace_existing=True)
+    # Check expired quotes every 24 hours
+    scheduler.add_job(check_expired_quotes, IntervalTrigger(hours=24), id="expired_quotes", replace_existing=True)
     scheduler.start()
 
 def stop_scheduler():

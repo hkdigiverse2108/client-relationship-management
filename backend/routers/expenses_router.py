@@ -6,7 +6,7 @@ import math
 
 from models import ExpenseCreate, ExpenseUpdate, ExpenseResponse
 from db import expenses_collection, ledger_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/api/v1/expenses", tags=["Expenses"])
 
@@ -27,6 +27,10 @@ async def list_expenses(
             query["date"]["$gte"] = start_date
         if end_date:
             query["date"]["$lte"] = end_date
+
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
 
     cursor = expenses_collection.find(query).sort("date", -1)
     expenses = await cursor.to_list(length=1000)
@@ -79,6 +83,10 @@ async def update_expense(expense_id: str, expense: ExpenseUpdate, current_user: 
     if not existing_expense:
         raise HTTPException(status_code=404, detail="Expense not found")
         
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and existing_expense.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this expense")
+        
     old_status = existing_expense.get("status", "Pending")
     new_status = data.get("status", old_status)
 
@@ -128,6 +136,14 @@ async def update_expense(expense_id: str, expense: ExpenseUpdate, current_user: 
 
 @router.delete("/{expense_id}")
 async def delete_expense(expense_id: str, current_user: dict = Depends(get_current_user)):
+    expense = await expenses_collection.find_one({"_id": ObjectId(expense_id)})
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and expense.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this expense")
+        
     # Delete the expense
     result = await expenses_collection.update_one({"_id": ObjectId(expense_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     if result.matched_count == 0:

@@ -5,7 +5,7 @@ from models import PaymentCreate, PaymentResponse, PaymentUpdate, LedgerEntryCre
 from db import payments_collection, client_history_collection, audit_logs_collection, ledger_collection
 from history_logger import log_client_history
 from audit_logger import log_audit_action
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -58,7 +58,12 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
 
 @router.get("", response_model=List[PaymentResponse])
 async def get_payments(current_user: dict = Depends(get_current_user)):
-    cursor = payments_collection.find({"is_deleted": {"$ne": True}})
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = payments_collection.find(query)
     payments = []
     async for p in cursor:
         p["_id"] = str(p["_id"])
@@ -73,6 +78,14 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
     if not data:
         raise HTTPException(status_code=400, detail="No fields provided")
     data["updated_at"] = datetime.utcnow()
+    
+    old_payment = await payments_collection.find_one({"_id": ObjectId(obj_id)})
+    if not old_payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and old_payment.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this payment")
     
     result = await payments_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
     if result.matched_count == 0:
@@ -127,6 +140,12 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
 @router.delete("/{obj_id}")
 async def delete_payment(obj_id: str, current_user: dict = Depends(get_current_user)):
     payment = await payments_collection.find_one({"_id": ObjectId(obj_id)})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None and payment.get("created_by") not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this payment")
     
     result = await payments_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}})
     if result.matched_count == 0:
