@@ -346,6 +346,16 @@ async def delete_deal(obj_id: str, current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Deal not found")
         
     title = deal.get("title", "") if deal else obj_id
+    
+    if deal.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            deal["client_id"],
+            current_user,
+            "Deal Deleted",
+            f"Deal '{title}' was deleted."
+        )
+
     await log_audit_action(
         audit_logs_collection,
         current_user,

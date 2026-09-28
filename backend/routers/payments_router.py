@@ -94,12 +94,18 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
     updated = await payments_collection.find_one({"_id": ObjectId(obj_id)})
     
     if updated.get("client_id"):
+        changes = []
+        for k, v in data.items():
+            if k not in ["updated_at", "updated_by"] and old_payment.get(k) != v:
+                changes.append(f"{k} changed from '{old_payment.get(k, '')}' to '{v}'")
+        change_str = " Changes: " + ", ".join(changes) if changes else ""
+        
         await log_client_history(
             client_history_collection,
             updated["client_id"],
             current_user,
             "Payment Updated",
-            f"Payment details were updated."
+            f"Payment {updated.get('payment_id', '')} was updated.{change_str}"
         )
         
     await log_audit_action(
@@ -133,6 +139,23 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
             ledger_entry["created_by"] = current_user["_id"]
             ledger_entry["created_at"] = datetime.utcnow()
             await ledger_collection.insert_one(ledger_entry)
+            
+    # Sync status back to Invoice if it is linked
+    if "status" in data and updated.get("invoice_id"):
+        from db import invoices_collection
+        inv_status = "Sent" # Default fallback for Pending/Failed
+        if data["status"] == "Completed":
+            inv_status = "Paid"
+        elif data["status"] == "Partial":
+            inv_status = "Partially Paid"
+            
+        try:
+            await invoices_collection.update_one(
+                {"_id": ObjectId(updated["invoice_id"])},
+                {"$set": {"status": inv_status, "updated_at": datetime.utcnow()}}
+            )
+        except Exception as e:
+            print("Failed to sync invoice status:", e)
 
     updated["_id"] = str(updated["_id"])
     return updated
@@ -152,6 +175,16 @@ async def delete_payment(obj_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Payment not found")
         
     amount = payment.get("amount_received", 0) if payment else "unknown"
+    
+    if payment.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            payment["client_id"],
+            current_user,
+            "Payment Deleted",
+            f"Payment of {amount} was deleted."
+        )
+
     await log_audit_action(
         audit_logs_collection,
         current_user,

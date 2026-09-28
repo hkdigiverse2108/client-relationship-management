@@ -36,6 +36,33 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
         f"Created invoice '{data.get('invoice_number', '')}'"
     )
         
+    # Auto-create pending payment for this invoice
+    from db import payments_collection
+    
+    payment_status = "Pending"
+    if data.get("status") == "Paid":
+        payment_status = "Completed"
+    elif data.get("status") == "Partially Paid":
+        payment_status = "Partial"
+
+    import random
+    payment_entry = {
+        "payment_id": f"PAY-{random.randint(1000, 9999)}",
+        "invoice_id": str(result.inserted_id),
+        "client_id": data.get("client_id"),
+        "amount_received": data.get("total_due", data.get("total_amount", 0)),
+        "payment_date": datetime.utcnow().strftime('%Y-%m-%d'),
+        "payment_method": "Auto-generated",
+        "status": payment_status,
+        "created_by": current_user["_id"],
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "reference": data.get("invoice_number", ""),
+        "transaction_reference": data.get("invoice_number", ""),
+        "source_type": "Invoice"
+    }
+    await payments_collection.insert_one(payment_entry)
+
     created["_id"] = str(created["_id"])
     return created
 
@@ -126,12 +153,21 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
     updated = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
     
     if updated.get("client_id"):
+        changes = []
+        for k, v in data.items():
+            if k not in ["updated_at", "updated_by"] and old_invoice.get(k) != v:
+                if isinstance(v, list) or isinstance(v, dict):
+                    changes.append(f"{k} was updated")
+                else:
+                    changes.append(f"{k} changed from '{old_invoice.get(k, '')}' to '{v}'")
+        change_str = " Changes: " + ", ".join(changes) if changes else ""
+
         await log_client_history(
             client_history_collection,
             updated["client_id"],
             current_user,
             "Invoice Updated",
-            f"Invoice {updated.get('invoice_number', '')} was updated."
+            f"Invoice {updated.get('invoice_number', '')} was updated.{change_str}"
         )
         
     await log_audit_action(
@@ -142,6 +178,20 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
         f"Updated invoice '{updated.get('invoice_number', '')}'"
     )
         
+    # Sync status to Payments
+    if "status" in data:
+        from db import payments_collection
+        payment_status = "Pending"
+        if data["status"] == "Paid":
+            payment_status = "Completed"
+        elif data["status"] == "Partially Paid":
+            payment_status = "Partial"
+            
+        await payments_collection.update_many(
+            {"invoice_id": obj_id},
+            {"$set": {"status": payment_status, "updated_at": datetime.utcnow()}}
+        )
+
     updated["_id"] = str(updated["_id"])
     return updated
 
@@ -160,6 +210,16 @@ async def delete_invoice(obj_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Invoice not found")
         
     invoice_number = invoice.get("invoice_number", "") if invoice else obj_id
+    
+    if invoice.get("client_id"):
+        await log_client_history(
+            client_history_collection,
+            invoice["client_id"],
+            current_user,
+            "Invoice Deleted",
+            f"Invoice {invoice_number} was deleted."
+        )
+
     await log_audit_action(
         audit_logs_collection,
         current_user,

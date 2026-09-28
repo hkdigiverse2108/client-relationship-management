@@ -13,6 +13,24 @@ import toast from 'react-hot-toast';
 const InlineStatusEditor = ({ row, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
 
+  let badgeClass = 'badge-soft-secondary';
+  if (row.status === 'Paid') badgeClass = 'badge-soft-success';
+  else if (row.status === 'Partially Paid') badgeClass = 'badge-soft-purple';
+  else if (row.status === 'Sent') badgeClass = 'badge-soft-info';
+  else if (row.status === 'Overdue') badgeClass = 'badge-soft-danger';
+  else if (row.status === 'Draft') badgeClass = 'badge-soft-warning';
+
+  const badge = (
+    <span 
+      className={`badge ${badgeClass} d-inline-flex align-items-center`} 
+      onClick={() => setIsEditing(true)}
+      style={{ cursor: 'pointer' }}
+      title="Click to change status"
+    >
+      <i className="ti ti-point-filled me-1"></i>{row.status}
+    </span>
+  );
+
   if (isEditing) {
     const statusOptions = [
       { value: 'Draft', label: 'Draft' },
@@ -23,49 +41,37 @@ const InlineStatusEditor = ({ row, onUpdate }) => {
     ];
 
     return (
-      <div style={{ minWidth: '150px' }}>
-        <CustomSelect 
-          options={statusOptions}
-          value={statusOptions.find(o => o.value === row.status)}
-          onChange={(opt) => {
-            if(opt && opt.value !== row.status) {
-               onUpdate(opt.value);
-            }
-            setIsEditing(false);
-          }}
-          menuPortalTarget={document.body}
-          menuPosition="fixed"
-          autoFocus
-          defaultMenuIsOpen
-          onBlur={() => setIsEditing(false)}
-        />
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div style={{ visibility: 'hidden' }}>{badge}</div>
+        <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: 0, zIndex: 1050, width: '150px' }}>
+          <CustomSelect 
+            options={statusOptions}
+            value={statusOptions.find(o => o.value === row.status)}
+            onChange={(opt) => {
+              if(opt && opt.value !== row.status) {
+                 onUpdate(opt.value);
+              }
+              setIsEditing(false);
+            }}
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
+            autoFocus
+            defaultMenuIsOpen
+            onBlur={() => setIsEditing(false)}
+          />
+        </div>
       </div>
     );
   }
 
-  let badgeClass = 'badge-soft-secondary';
-  if (row.status === 'Paid') badgeClass = 'badge-soft-success';
-  else if (row.status === 'Partially Paid') badgeClass = 'badge-soft-purple';
-  else if (row.status === 'Sent') badgeClass = 'badge-soft-info';
-  else if (row.status === 'Overdue') badgeClass = 'badge-soft-danger';
-  else if (row.status === 'Draft') badgeClass = 'badge-soft-warning';
-
-  return (
-    <span 
-      className={`badge ${badgeClass} d-inline-flex align-items-center`} 
-      onClick={() => setIsEditing(true)}
-      style={{ cursor: 'pointer' }}
-      title="Click to change status"
-    >
-      <i className="ti ti-point-filled me-1"></i>{row.status}
-    </span>
-  );
+  return badge;
 };
 
 const Invoices = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState(null);
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null });
+  const [confirmPaidModal, setConfirmPaidModal] = useState({ isOpen: false, row: null });
   const [stats, setStats] = useState({
     total_invoices: 0,
     partially_paid: 0,
@@ -218,10 +224,27 @@ const Invoices = () => {
                 <span style="color:#6c757d;margin-right:6px">Amount In Words:</span>
                 <span style="font-weight:700;color:#1a1a1a">${totalDue} Rupees Only</span>
               </div>
-              <div>
-                <div style="font-size:10px;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Terms &amp; Conditions</div>
-                <p style="font-size:11px;color:#555;line-height:1.8;white-space:pre-line;margin:0">${(row.notes||'1. Payment is due within 3 days of the invoice date.\n2. Late payments may incur additional charges.\n3. All disputes are subject to Gujarat Jurisdiction.').replace(/\n/g,'<br/>')}</p>
-                <div style="font-size:12px;font-weight:700;color:#1a1a1a;margin-top:12px">Development First 70% Advance I Mentioned</div>
+              <!-- BANK DETAILS -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px; margin-bottom: 28px;">
+                <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Bank Details</div>
+                <div style="font-size:12px; color:#1a1a1a; display: flex; flex-wrap: wrap; gap: 40px;">
+                  <div><span style="color:#94a3b8; margin-right:4px;">Bank:</span> <strong>${row.bank_name || 'Axis Bankk'}</strong></div>
+                  <div><span style="color:#94a3b8; margin-right:4px;">A/c:</span> <strong>${row.bank_ac || '9240200573774150'}</strong></div>
+                  <div><span style="color:#94a3b8; margin-right:4px;">IFSC:</span> <strong>${row.bank_ifsc || 'UTIB00028912'}</strong></div>
+                </div>
+              </div>
+
+              <!-- TERMS AND SIGNATURE -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="flex: 1; padding-right: 20px;">
+                  <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Terms &amp; Conditions</div>
+                  <p style="font-size:11px;color:#555;line-height:1.8;white-space:pre-line;margin:0">${(row.notes||'1. Payment is due within 3 days of the invoice date.\n2. Late payments may incur additional charges.\n3. All disputes are subject to Gujarat Jurisdiction.').replace(/\n/g,'<br/>')}</p>
+                </div>
+                
+                <div style="width: 200px; text-align: center;">
+                  ${row.signature_url ? `<img src="${row.signature_url}" style="max-height: 60px; max-width: 100%; margin-bottom: 5px;" alt="Signature" />` : `<div style="height: 60px;"></div>`}
+                  <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 11px; font-weight: 700; color: #1a1a1a;">Authorized Signatory</div>
+                </div>
               </div>
             </div>
           </div>
@@ -275,18 +298,18 @@ const Invoices = () => {
 
         return (
           <div className="d-flex align-items-center">
-            {row.client_profile_photo ? (
-              <Link to="/client-details" state={{ client: { _id: row.client_id, client_name: row.name } }} className="avatar avatar-md me-2 text-decoration-none">
-                <img src={row.client_profile_photo} className="rounded-circle" alt="user" />
+            {(row.avatar && (row.avatar.startsWith('/') || row.avatar.startsWith('http'))) ? (
+              <Link to="/client-details" state={{ client: row.fullClient }} className="avatar avatar-md me-2 text-decoration-none">
+                <img src={row.avatar} className="rounded-circle" alt="user" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </Link>
             ) : (
-              <Link to="/client-details" state={{ client: { _id: row.client_id, client_name: row.name } }} className="avatar avatar-md me-2 bg-primary text-white d-flex align-items-center justify-content-center rounded-circle fw-bold fs-14 text-decoration-none">
-                {getInitials(row.name)}
+              <Link to="/client-details" state={{ client: row.fullClient }} className="avatar avatar-md me-2 text-white bg-primary d-flex align-items-center justify-content-center rounded-circle fw-bold fs-14 text-decoration-none">
+                {row.avatar}
               </Link>
             )}
             <div>
               <h6 className="fw-medium mb-0">
-                <Link to="/client-details" state={{ client: { _id: row.client_id, client_name: row.name } }}>
+                <Link to="/client-details" state={{ client: row.fullClient }}>
                   {row.name}
                 </Link>
               </h6>
@@ -325,7 +348,7 @@ const Invoices = () => {
             to="#" 
             onClick={(e) => { 
               e.preventDefault(); 
-              if (row.status !== 'Paid') handleMarkAsPaid(row); 
+              if (row.status !== 'Paid') setConfirmPaidModal({ isOpen: true, row: row }); 
             }} 
             className={`me-2 ${row.status === 'Paid' ? 'invisible' : 'text-success'}`} 
             style={{ visibility: row.status === 'Paid' ? 'hidden' : 'visible' }}
@@ -363,21 +386,47 @@ const Invoices = () => {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/invoices');
+      const [res, clientsRes] = await Promise.all([
+        api.get('/invoices'),
+        api.get('/clients')
+      ]);
+
       const dataArr = Array.isArray(res) ? res : (res.data || []);
-      const formatted = dataArr.map(inv => ({
-        ...inv,
-        id: inv._id,
-        invoiceId: inv.invoice_number || `INV-${inv._id.substring(0,4)}`,
-        avatar: '/assets/img/users/user-32.jpg',
-        name: inv.client_name || 'Unknown Client',
-        email: inv.client_email || 'No Email',
-        createdOn: new Date(inv.issue_date || inv.created_at).toLocaleDateString(),
-        total: `₹${inv.total_due || inv.rounded_total || inv.total_amount || 0}`,
-        amountDue: inv.status === 'Paid' ? '₹0' : `₹${(inv.total_due || inv.rounded_total || inv.total_amount || 0) - (inv.amount_paid || 0)}`,
-        dueDate: new Date(inv.due_date || inv.created_at).toLocaleDateString(),
-        status: inv.status || 'Pending'
-      }));
+      const clientsData = Array.isArray(clientsRes) ? clientsRes : (clientsRes.data || []);
+      
+      const clientsMap = {};
+      clientsData.forEach(c => {
+        clientsMap[c._id] = c;
+      });
+
+      const getInitials = (name) => {
+        if (!name) return 'UN';
+        const parts = name.trim().split(' ').filter(p => p.length > 0);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return 'UN';
+      };
+
+      const formatted = dataArr.map(inv => {
+        const client = clientsMap[inv.client_id];
+        const clientName = inv.client_name || (client ? (client.client_name || client.company_name) : 'Unknown Client');
+        const avatar = client && client.client_profile_photo ? client.client_profile_photo : getInitials(clientName);
+
+        return {
+          ...inv,
+          id: inv._id,
+          invoiceId: inv.invoice_number || `INV-${inv._id.substring(0,4)}`,
+          avatar: avatar,
+          name: clientName,
+          fullClient: client || { _id: inv.client_id, client_name: clientName },
+          email: inv.client_email || 'No Email',
+          createdOn: new Date(inv.issue_date || inv.created_at).toLocaleDateString(),
+          total: `₹${inv.total_due || inv.rounded_total || inv.total_amount || 0}`,
+          amountDue: inv.status === 'Paid' ? '₹0' : `₹${(inv.total_due || inv.rounded_total || inv.total_amount || 0) - (inv.amount_paid || 0)}`,
+          dueDate: new Date(inv.due_date || inv.created_at).toLocaleDateString(),
+          status: inv.status || 'Pending'
+        };
+      });
       setInvoices(formatted);
       
       try {
@@ -434,10 +483,12 @@ const Invoices = () => {
     }
   };
 
-  const handleMarkAsPaid = async (row) => {
+  const executeMarkAsPaid = async () => {
+    if (!confirmPaidModal.row) return;
     try {
-      await api.put(`/invoices/${row._id}`, { status: 'Paid' });
+      await api.put(`/invoices/${confirmPaidModal.row._id}`, { status: 'Paid' });
       toast.success('Invoice marked as Paid');
+      setConfirmPaidModal({ isOpen: false, row: null });
       fetchInvoices();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -649,6 +700,29 @@ const Invoices = () => {
               <div className="modal-footer justify-content-center border-0 pt-0">
                 <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null })}>Cancel</button>
                 <button className="btn btn-danger px-4" onClick={executeDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmPaidModal.isOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Mark Invoice as Paid</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmPaidModal({ isOpen: false, row: null })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className="ti ti-check text-success mb-3" style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">Do you want to mark invoice <strong>{confirmPaidModal.row?.invoiceId}</strong> as Paid?</p>
+                <p className="text-muted small mt-2">This will automatically generate a completed payment entry for {confirmPaidModal.row?.name}.</p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmPaidModal({ isOpen: false, row: null })}>Cancel</button>
+                <button className="btn btn-success px-4" onClick={executeMarkAsPaid}>Confirm</button>
               </div>
             </div>
           </div>

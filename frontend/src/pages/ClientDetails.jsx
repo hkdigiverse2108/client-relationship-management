@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/common/PageHeader';
+import Footer from '../components/common/Footer';
 
 import ClientProjects from '../components/clients/ClientProjects';
 import ClientTasks from '../components/clients/ClientTasks';
@@ -33,12 +34,25 @@ const ClientDetails = () => {
 
   if (!client) {
     return (
-      <div className="page-wrapper text-center p-5 mt-5">
-        <h4>No Client Data Found</h4>
-        <Link to="/clients" className="btn btn-primary mt-3">Back to Clients</Link>
-      </div>
+      <>
+        <style>{`#global-layout-footer { display: none !important; }`}</style>
+        <div className="page-wrapper d-flex flex-column" style={{ minHeight: '100vh' }}>
+          <div className="content flex-grow-1 d-flex flex-column align-items-center justify-content-center">
+            <div className="text-center">
+              <i className="ti ti-users-off text-muted mb-3" style={{ fontSize: '56px' }}></i>
+              <h4 className="mb-2">No Client Data Found</h4>
+              <p className="text-muted mb-4">Please navigate from the Clients page to view client details.</p>
+              <Link to="/clients" className="btn btn-primary"><i className="ti ti-arrow-left me-2"></i>Back to Clients</Link>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
+
+
+
+
 
   const fullAddress = [client.city, client.state, client.country, client.pincode].filter(Boolean).join(', ') || '-';
 
@@ -314,7 +328,7 @@ const ClientDetails = () => {
                 </a>
             </li>
             <li>
-                <a href="#" onClick={(e) => e.preventDefault()}
+                <a href="#" onClick={(e) => { e.preventDefault(); document.dispatchEvent(new CustomEvent('openClientInvoiceModal')); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-file-invoice"></i></span>
@@ -325,7 +339,7 @@ const ClientDetails = () => {
                 </a>
             </li>
             <li>
-                <a href="#" onClick={(e) => e.preventDefault()}
+                <a href="#" onClick={(e) => { e.preventDefault(); document.dispatchEvent(new CustomEvent('openClientPaymentModal')); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-cash"></i></span>
@@ -353,12 +367,8 @@ const ClientDetails = () => {
 					</div>
 				</div>
 			</div>
-			<div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-				<p className="mb-0">2014 - 2026 &copy; SmartHR.</p>
-				<p>Designed &amp; Developed By <a href="#" className="text-primary">Dreams</a></p>
-			</div>
+			
 		</div>
-		
     </>
   );
 };

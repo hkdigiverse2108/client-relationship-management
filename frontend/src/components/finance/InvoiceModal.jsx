@@ -3,7 +3,7 @@ import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
 import api from '../../api/axiosClient';
 
-const InvoiceModal = ({ isOpen, onClose, onSave, editData }) => {
+const InvoiceModal = ({ isOpen, onClose, onSave, editData, fixedClientId }) => {
   const defaultFormData = {
     invoice_number: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
     client_id: '',
@@ -60,7 +60,9 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editData }) => {
       if (editData) {
         setFormData({ ...defaultFormData, ...editData });
       } else {
-        setFormData(defaultFormData);
+        const newData = { ...defaultFormData };
+        if (fixedClientId) newData.client_id = fixedClientId;
+        setFormData(newData);
       }
       setErrors({});
     }

@@ -251,8 +251,12 @@ const Quotes = () => {
       name: 'Client',
       cell: row => (
         <div className="d-flex align-items-center file-name-icon">
-          <Link to="/client-details" state={{ client: row.clientObj }} className="avatar avatar-md border avatar-rounded me-2">
-            <img src={row.avatar || '/assets/img/users/user-32.jpg'} className="img-fluid" alt="img" />
+          <Link to="/client-details" state={{ client: row.clientObj }} className={`avatar avatar-md border-0 me-2 d-flex align-items-center justify-content-center text-decoration-none ${(row.avatar && (row.avatar.startsWith('/') || row.avatar.startsWith('http'))) ? '' : 'bg-primary'}`} style={{ borderRadius: '50%' }}>
+            {(row.avatar && (row.avatar.startsWith('/') || row.avatar.startsWith('http'))) ? (
+              <img src={row.avatar} className="img-fluid rounded-circle" alt="img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span className="text-white fw-bold" style={{ fontSize: '14px' }}>{row.avatar}</span>
+            )}
           </Link>
           <div>
             <h6 className="fw-medium"><Link to="/client-details" state={{ client: row.clientObj }}>{row.clientName || 'Unknown Client'}</Link></h6>
@@ -304,19 +308,32 @@ const Quotes = () => {
       });
       setClientsOptionsList(cOptions);
       
+      const getInitials = (name) => {
+        if (!name) return 'UN';
+        const parts = name.split(' ').filter(p => p.length > 0);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return 'UN';
+      };
+
       let tot = 0, acc = 0, pen = 0, rej = 0;
       const formatted = dataArr.map(q => {
         tot++;
         if (q.status === 'Accepted') acc++;
         else if (q.status === 'Rejected') rej++;
         else pen++;
+        
+        const clientName = clientsMap[q.client_id]?.name || 'Unknown Client';
+        const clientObj = clientsMap[q.client_id]?.obj || { _id: q.client_id, client_name: clientName };
+        const avatar = clientObj && clientObj.client_profile_photo ? clientObj.client_profile_photo : getInitials(clientName);
 
         return {
           ...q,
           id: q._id,
           quoteNo: q.quote_number || `QT-${q._id.substring(0,4)}`,
-          clientName: clientsMap[q.client_id]?.name || 'Unknown Client',
-          clientObj: clientsMap[q.client_id]?.obj || null,
+          clientName: clientName,
+          clientObj: clientObj,
+          avatar: avatar,
           clientEmail: '',
           date: q.date_sent ? new Date(q.date_sent).toLocaleDateString() : 'N/A',
           amount: `₹${q.total_amount || 0}`,

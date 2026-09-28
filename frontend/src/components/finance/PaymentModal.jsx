@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
+import api from '../../api/axiosClient';
 
 const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
   const [formData, setFormData] = useState({
     payment_id: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
     client_id: '',
     invoice_id: '',
-    amount_received: 0,
+    amount_received: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'Bank NEFT/RTGS',
     status: 'Completed',
@@ -15,27 +16,60 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
     notes: ''
   });
 
-  // Mock data for dropdowns
-  const clients = [
-    { id: '1', name: 'Anthony Lewis' },
-    { id: '2', name: 'Brian Villalobos' },
-    { id: '3', name: 'Harvey Smith' }
-  ];
+  const [clients, setClients] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [errors, setErrors] = useState({});
 
-  const invoices = [
-    { id: 'INV-001', client_id: '1', invoice_number: 'INV-1454', total_amount: 5000 },
-    { id: 'INV-002', client_id: '1', invoice_number: 'INV-1455', total_amount: 1500 },
-    { id: 'INV-003', client_id: '2', invoice_number: 'INV-1456', total_amount: 3200 },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [clientsRes, invoicesRes] = await Promise.all([
+          api.get('/clients'),
+          api.get('/invoices')
+        ]);
+        setClients(Array.isArray(clientsRes) ? clientsRes : (clientsRes.data || []));
+        setInvoices(Array.isArray(invoicesRes) ? invoicesRes : (invoicesRes.data || []));
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+      }
+    };
+    if (isOpen) fetchData();
 
+    if (isOpen) {
+      if (payment) {
+        setFormData({ ...payment });
+      } else {
+        setFormData({
+          payment_id: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
+          client_id: '',
+          invoice_id: '',
+          amount_received: '',
+          payment_date: new Date().toISOString().split('T')[0],
+          payment_method: 'Bank NEFT/RTGS',
+          status: 'Completed',
+          transaction_reference: '',
+          notes: ''
+        });
+      }
+      setErrors({});
+    }
+  }, [isOpen, payment]);
+
+  const getClientName = (c) => {
+    if (c.client_name) return c.client_name;
+    if (c.company_name) return c.company_name;
+    return 'Unknown Client';
+  };
+
+  const clientOptions = clients.map(c => ({ value: c._id, label: getClientName(c) }));
+  
   const availableInvoices = formData.client_id 
     ? invoices.filter(inv => inv.client_id === formData.client_id) 
     : invoices;
 
-  const clientOptions = clients.map(c => ({ value: c.id, label: c.name }));
   const invoiceOptions = availableInvoices.map(inv => ({ 
-    value: inv.id, 
-    label: `${inv.invoice_number} - Rs. ${inv.total_amount}` 
+    value: inv._id, 
+    label: `${inv.invoice_number || 'INV'} - ₹${inv.total_due || inv.total_amount}` 
   }));
 
   const paymentMethodOptions = [
@@ -53,12 +87,12 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
     { value: 'Failed', label: 'Failed' }
   ];
 
-  // When invoice changes, auto-fill amount if the amount is currently 0
+  // When invoice changes, auto-fill amount if the amount is empty
   useEffect(() => {
-    if (formData.invoice_id && formData.amount_received === 0) {
-      const selectedInv = invoices.find(i => i.id === formData.invoice_id);
-      if (selectedInv && selectedInv.total_amount) {
-        setFormData(prev => ({ ...prev, amount_received: selectedInv.total_amount }));
+    if (formData.invoice_id && formData.amount_received === '') {
+      const selectedInv = invoices.find(i => i._id === formData.invoice_id);
+      if (selectedInv && (selectedInv.total_due || selectedInv.total_amount)) {
+        setFormData(prev => ({ ...prev, amount_received: selectedInv.total_due || selectedInv.total_amount }));
       }
     }
   }, [formData.invoice_id]);
@@ -67,13 +101,15 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
     const { name, value, type } = e.target;
     let finalValue = value;
     if (type === 'number') {
-      finalValue = value ? parseFloat(value) : 0;
+      finalValue = value === '' ? '' : parseFloat(value);
     }
     setFormData(prev => ({ ...prev, [name]: finalValue }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleSelectChange = (name, selectedOption) => {
     setFormData(prev => ({ ...prev, [name]: selectedOption ? selectedOption.value : '' }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleDateChange = (name, date) => {
@@ -81,6 +117,23 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
       const offset = date.getTimezoneOffset();
       const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
       setFormData(prev => ({ ...prev, [name]: adjustedDate.toISOString().split('T')[0] }));
+      if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.payment_id) newErrors.payment_id = 'Payment ID is required';
+    if (!formData.client_id) newErrors.client_id = 'Client is required';
+    if (formData.amount_received === '' || formData.amount_received === null) newErrors.amount_received = 'Amount Received is required';
+    if (!formData.payment_method) newErrors.payment_method = 'Payment Method is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validate()) {
+      onSave(formData);
     }
   };
 
@@ -92,7 +145,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
         <div className="modal-content">
           <div className="modal-header border-bottom">
             <h5 className="modal-title">{payment ? "Edit Payment Log" : "Log Offline Payment"}</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+            <button type="button" className="btn-close" onClick={onClose}>✖</button>
           </div>
           <div className="modal-body p-4 custom-scroll" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
             
@@ -109,12 +162,15 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
               </div>
               
               <div className="col-md-6 mb-3">
-                <label className="form-label fw-medium">Billed Client *</label>
-                <CustomSelect 
-                  options={clientOptions} 
-                  value={clientOptions.find(o => o.value === formData.client_id)} 
-                  onChange={(option) => handleSelectChange('client_id', option)} 
-                />
+                <label className={`form-label fw-medium ${errors.client_id ? 'text-danger' : ''}`}>Billed Client *</label>
+                <div style={errors.client_id ? { border: '1px solid #dc3545', borderRadius: '4px' } : {}}>
+                  <CustomSelect 
+                    options={clientOptions} 
+                    value={clientOptions.find(o => o.value === formData.client_id)} 
+                    onChange={(option) => handleSelectChange('client_id', option)} 
+                  />
+                </div>
+                {errors.client_id && <div className="text-danger mt-1 fs-12">{errors.client_id}</div>}
               </div>
 
               <div className="col-md-6 mb-3">
@@ -128,16 +184,16 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
               </div>
 
               <div className="col-md-6 mb-3">
-                <label className="form-label fw-medium">Amount Received (₹) *</label>
+                <label className={`form-label fw-medium ${errors.amount_received ? 'text-danger' : ''}`}>Amount Received (₹) *</label>
                 <input 
                   type="number" 
-                  className="form-control" 
+                  className={`form-control ${errors.amount_received ? 'is-invalid' : ''}`} 
                   name="amount_received" 
                   value={formData.amount_received} 
                   onChange={handleChange} 
                   min="0"
-                  required
                 />
+                {errors.amount_received && <div className="invalid-feedback">{errors.amount_received}</div>}
               </div>
             </div>
 
@@ -157,12 +213,15 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
               </div>
               
               <div className="col-md-4 mb-3">
-                <label className="form-label fw-medium">Payment Method *</label>
-                <CustomSelect 
-                  options={paymentMethodOptions} 
-                  value={paymentMethodOptions.find(o => o.value === formData.payment_method)} 
-                  onChange={(option) => handleSelectChange('payment_method', option)} 
-                />
+                <label className={`form-label fw-medium ${errors.payment_method ? 'text-danger' : ''}`}>Payment Method *</label>
+                <div style={errors.payment_method ? { border: '1px solid #dc3545', borderRadius: '4px' } : {}}>
+                  <CustomSelect 
+                    options={paymentMethodOptions} 
+                    value={paymentMethodOptions.find(o => o.value === formData.payment_method)} 
+                    onChange={(option) => handleSelectChange('payment_method', option)} 
+                  />
+                </div>
+                {errors.payment_method && <div className="text-danger mt-1 fs-12">{errors.payment_method}</div>}
               </div>
 
               <div className="col-md-4 mb-3">
@@ -175,7 +234,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
               </div>
 
               <div className="col-md-12 mb-3">
-                <label className="form-label fw-medium">Reference / Transaction ID *</label>
+                <label className="form-label fw-medium">Reference / Transaction ID</label>
                 <input 
                   type="text" 
                   className="form-control" 
@@ -183,7 +242,6 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
                   value={formData.transaction_reference} 
                   onChange={handleChange} 
                   placeholder="e.g. UTR Number, Cheque Number"
-                  required
                 />
               </div>
 
@@ -203,7 +261,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
           </div>
           <div className="modal-footer border-top">
             <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={onClose}>Save Payment</button>
+            <button type="button" className="btn btn-primary" onClick={handleSubmit}>Save Payment</button>
           </div>
         </div>
       </div>
