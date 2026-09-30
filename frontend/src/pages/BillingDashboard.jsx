@@ -1,89 +1,194 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import ReactApexChart from 'react-apexcharts';
 import CustomDataTable from '../components/common/CustomDataTable';
 import InvoiceModal from '../components/finance/InvoiceModal';
+import api from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const BillingDashboard = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isGstInclusive, setIsGstInclusive] = useState(true);
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+  
+  const [invoices, setInvoices] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [metrics, setMetrics] = useState({
+    totalRevenue: 0,
+    pendingReceivables: 0,
+    overdueInvoices: 0,
+    totalExpenses: 0,
+  });
+
+  const [chartData, setChartData] = useState({
+    incomeData: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    expenseData: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    sourceData: [0, 0, 0, 0] // Projects, E-Commerce, Retainers, Other
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await api.get('/finance/dashboard/metrics');
+        const data = Array.isArray(res) ? res[0] : (res.data || res);
+
+        if (data.metrics) {
+          setMetrics({
+            totalRevenue: data.metrics.revenue,
+            pendingReceivables: data.metrics.pending,
+            overdueInvoices: data.metrics.overdue,
+            totalExpenses: data.metrics.expenses,
+            revenueGrowth: data.metrics.revenue_growth,
+            pendingGrowth: data.metrics.pending_growth,
+            overdueGrowth: data.metrics.overdue_growth,
+            expensesGrowth: data.metrics.expenses_growth
+          });
+        }
+
+        if (data.cashFlow) {
+          const incData = data.cashFlow.map(c => c.income || 0);
+          const expData = data.cashFlow.map(c => c.expense || 0);
+          const labels = data.cashFlow.map(c => c.name);
+          setChartData(prev => ({ ...prev, incomeData: incData, expenseData: expData, cashFlowLabels: labels }));
+        }
+
+        if (data.sourceBreakdown) {
+          const sources = data.sourceBreakdown.map(s => s.value);
+          const sourceLabels = data.sourceBreakdown.map(s => s.name);
+          const sourceColors = data.sourceBreakdown.map(s => s.color);
+          setChartData(prev => ({ ...prev, sourceData: sources.length ? sources : [0], sourceLabels: sourceLabels.length ? sourceLabels : ['None'], sourceColors: sourceColors.length ? sourceColors : ['#ccc'] }));
+        }
+
+        if (data.recentTransactions) {
+          setPayments(data.recentTransactions);
+        }
+
+      } catch (err) {
+        console.error("Error fetching finance data:", err);
+      }
+    };
+    fetchData();
+  }, [updateTrigger]);
+
+  const handleSaveInvoice = async (formData) => {
+    try {
+      const totalBeforeTax = formData.line_items.reduce((sum, item) => sum + Number(item.amount), 0) - Number(formData.additional_discount || 0);
+      let taxAmount = 0;
+      if (formData.tax_type === 'CGST + SGST') {
+        taxAmount = (totalBeforeTax * formData.cgst_percent / 100) + (totalBeforeTax * formData.sgst_percent / 100);
+      } else if (formData.tax_type === 'IGST') {
+        taxAmount = totalBeforeTax * formData.igst_percent / 100;
+      }
+      const rawTotal = totalBeforeTax + taxAmount;
+      const roundedTotal = Math.round(rawTotal);
+      const roundOff = roundedTotal - rawTotal;
+
+      const payload = {
+        ...formData,
+        total_amount: totalBeforeTax,
+        total_tax_amount: taxAmount,
+        rounded_total: roundedTotal,
+        calculated_round_off: roundOff,
+        total_due: roundedTotal,
+        status: formData.status || 'Draft'
+      };
+      
+      await api.post('/invoices', payload);
+      toast.success('Invoice created successfully!');
+      setIsInvoiceModalOpen(false);
+      setUpdateTrigger(prev => prev + 1); // Refresh data
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to save invoice');
+    }
+  };
+
+  const formatCurrency = (val) => {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val || 0);
+  };
+
   // Cash Flow Trend Options (from InvoiceReport Expense chart style)
   const cashFlowOptions = {
     series: [
-      { name: 'Income', data: [400, 200, 450, 300, 480, 250] },
-      { name: 'Expense', data: [200, 150, 250, 150, 220, 180] }
+      { name: 'Income', data: chartData.incomeData },
+      { name: 'Expense', data: chartData.expenseData }
     ],
     chart: { height: 260, type: 'area', toolbar: { show: false } },
     colors: ['#22c55e', '#ef4444'],
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     stroke: { curve: 'straight', width: 2 },
-    xaxis: { categories: ['January', 'February', 'March', 'April', 'May', 'June'] },
-    yaxis: { labels: { formatter: (val) => '$' + val + 'k' } },
+    xaxis: { categories: chartData.cashFlowLabels || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] },
+    yaxis: { labels: { formatter: (val) => '₹' + (val/1000).toFixed(1) + 'k' } },
     legend: { position: 'bottom' }
   };
 
-  // Revenue By Source Options (New Trending Donut Chart)
-  const revenueSourceOptions = {
-    series: [45, 25, 20, 10],
-    chart: { type: 'donut', height: 260 },
-    labels: ['Projects', 'E-Commerce', 'Retainers', 'Other'],
-    colors: ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'],
-    plotOptions: {
-      pie: {
-        donut: {
-          size: '65%',
-          labels: {
-            show: true,
-            name: { show: true, fontSize: '14px', color: '#64748b' },
-            value: { show: true, fontSize: '24px', fontWeight: 'bold', color: '#0f172a', formatter: (val) => val + '%' },
-            total: { show: true, showAlways: true, label: 'Projects', fontSize: '14px', color: '#64748b', formatter: function (w) { return "45%"; } }
+    // Revenue By Source Options (New Trending Donut Chart)
+    const revenueSourceOptions = {
+      series: chartData.sourceData,
+      chart: { type: 'donut', height: 260 },
+      labels: chartData.sourceLabels || ['Projects', 'E-Commerce', 'Retainers', 'Other'],
+      colors: chartData.sourceColors || ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'],
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '65%',
+            labels: {
+              show: true,
+              name: { show: true, fontSize: '14px', color: '#64748b' },
+              value: { show: true, fontSize: '13px', fontWeight: 'bold', color: '#0f172a', formatter: (val) => formatCurrency(val) },
+              total: { 
+                show: true, 
+                showAlways: true, 
+                label: 'Total', 
+                fontSize: '14px', 
+                color: '#64748b', 
+                formatter: function (w) { 
+                  const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                  return formatCurrency(total);
+                } 
+              }
+            }
           }
         }
+      },
+      dataLabels: { enabled: false },
+      legend: { position: 'right', offsetY: 0, height: 200, horizontalAlign: 'left' },
+      tooltip: { 
+        enabled: true, 
+        y: { 
+          formatter: function(val, opts) {
+            const total = opts.globals.seriesTotals.reduce((a, b) => a + b, 0);
+            const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+            return formatCurrency(val) + " (" + percent + "%)";
+          }
+        } 
       }
-    },
-    dataLabels: { enabled: false },
-    legend: { position: 'right', offsetY: 0, height: 200, horizontalAlign: 'left' },
-    tooltip: { enabled: true, y: { formatter: (val) => val + '%' } }
-  };
+    };
 
   // Recent Transactions Data
   const columns = [
     { name: 'Transaction ID', selector: row => row.id, sortable: true, minWidth: '150px' },
-    { name: 'Date', selector: row => row.date, sortable: true, minWidth: '120px' },
-    { name: 'Client / Source', selector: row => row.client, sortable: true, minWidth: '200px' },
-    { name: 'Amount', selector: row => row.amount, sortable: true, minWidth: '120px', cell: row => <span className="fw-medium">${row.amount}</span> },
+    { name: 'Date', selector: row => row.date, sortable: true, minWidth: '120px', cell: row => row.date ? new Date(row.date).toLocaleDateString() : '-' },
+    { name: 'Client / Source', selector: row => row.client || row.source || '-', sortable: true, minWidth: '200px' },
+    { name: 'Amount', selector: row => row.amount, sortable: true, minWidth: '120px', cell: row => <span className="fw-medium">{formatCurrency(row.amount)}</span> },
     { 
       name: 'Status', 
       selector: row => row.status, 
       minWidth: '120px',
       cell: row => {
         let badgeClass = 'bg-light text-dark';
-        if (row.status === 'Completed') badgeClass = 'bg-success-transparent text-success';
+        if (row.status === 'Completed' || row.status === 'Credit') badgeClass = 'bg-success-transparent text-success';
         if (row.status === 'Pending') badgeClass = 'bg-warning-transparent text-warning';
-        if (row.status === 'Failed') badgeClass = 'bg-danger-transparent text-danger';
+        if (row.status === 'Failed' || row.status === 'Debit') badgeClass = 'bg-danger-transparent text-danger';
         return <span className={`badge ${badgeClass}`}>{row.status}</span>;
       }
-    },
-    {
-      name: 'Action',
-      cell: row => (
-        <a href="#" onClick={(e) => e.preventDefault()} className="btn btn-icon btn-sm btn-light rounded-circle">
-          <i className="ti ti-eye"></i>
-        </a>
-      ),
-      minWidth: '80px',
-      center: true
     }
   ];
 
-  const transactionsData = [
-    { id: 'TRX-1092', date: '15 Sep 2026', client: 'Acme Corp', amount: '2,400.00', status: 'Completed' },
-    { id: 'TRX-1093', date: '14 Sep 2026', client: 'Global Tech', amount: '1,150.00', status: 'Pending' },
-    { id: 'TRX-1094', date: '12 Sep 2026', client: 'Stark Industries', amount: '450.00', status: 'Completed' },
-    { id: 'TRX-1095', date: '10 Sep 2026', client: 'Wayne Enterprises', amount: '3,200.00', status: 'Failed' },
-    { id: 'TRX-1096', date: '09 Sep 2026', client: 'Umbrella Corp', amount: '890.00', status: 'Completed' },
-  ];
+  const transactionsData = [...payments];
 
   return (
     <>
@@ -132,15 +237,21 @@ const BillingDashboard = () => {
                     <div className="card-body">
                       <div className="overflow-hidden d-flex mb-2 align-items-center">
                         <span className="me-3 avatar avatar-lg bg-primary-transparent rounded">
-                          <i className="ti ti-currency-dollar fs-24 text-primary"></i>
+                          <i className="ti ti-currency-rupee fs-24 text-primary"></i>
                         </span>
                         <div>
                           <p className="fs-14 fw-normal mb-1 text-truncate">Total Revenue (YTD)</p>
-                          <h4 className="mb-0 fw-bold">$1,245,000</h4>
+                          <h4 className="mb-0 fw-bold">{formatCurrency(metrics.totalRevenue)}</h4>
                         </div>
                       </div>
                       <div>
-                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0"><span className="text-success fs-12 d-flex align-items-center me-1"><i className="ti ti-arrow-wave-right-up me-1"></i>+15.2%</span>from last year</p>
+                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0">
+                          <span className={`${metrics.revenueGrowth >= 0 ? "text-success" : "text-danger"} fs-12 d-flex align-items-center me-1`}>
+                            <i className={`ti ${metrics.revenueGrowth >= 0 ? "ti-arrow-wave-right-up" : "ti-arrow-wave-right-down"} me-1`}></i>
+                            {metrics.revenueGrowth > 0 ? "+" : ""}{metrics.revenueGrowth || 0}%
+                          </span>
+                          from last year
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -156,11 +267,17 @@ const BillingDashboard = () => {
                         </span>
                         <div>
                           <p className="fs-14 fw-normal mb-1 text-truncate">Pending Receivables</p>
-                          <h4 className="mb-0 fw-bold">$45,200</h4>
+                          <h4 className="mb-0 fw-bold">{formatCurrency(metrics.pendingReceivables)}</h4>
                         </div>
                       </div>
                       <div>
-                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0"><span className="text-danger fs-12 d-flex align-items-center me-1"><i className="ti ti-arrow-wave-right-down me-1"></i>-2.1%</span>from last month</p>
+                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0">
+                          <span className={`${metrics.pendingGrowth >= 0 ? "text-success" : "text-danger"} fs-12 d-flex align-items-center me-1`}>
+                            <i className={`ti ${metrics.pendingGrowth >= 0 ? "ti-arrow-wave-right-up" : "ti-arrow-wave-right-down"} me-1`}></i>
+                            {metrics.pendingGrowth > 0 ? "+" : ""}{metrics.pendingGrowth || 0}%
+                          </span>
+                          from last month
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -176,11 +293,17 @@ const BillingDashboard = () => {
                         </span>
                         <div>
                           <p className="fs-14 fw-normal mb-1 text-truncate">Overdue Invoices</p>
-                          <h4 className="mb-0 fw-bold">$12,400</h4>
+                          <h4 className="mb-0 fw-bold">{formatCurrency(metrics.overdueInvoices)}</h4>
                         </div>
                       </div>
                       <div>
-                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0"><span className="text-danger fs-12 d-flex align-items-center me-1"><i className="ti ti-arrow-wave-right-down me-1"></i>+5.4%</span>from last month</p>
+                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0">
+                          <span className={`${metrics.overdueGrowth > 0 ? "text-danger" : "text-success"} fs-12 d-flex align-items-center me-1`}>
+                            <i className={`ti ${metrics.overdueGrowth > 0 ? "ti-arrow-wave-right-up" : "ti-arrow-wave-right-down"} me-1`}></i>
+                            {metrics.overdueGrowth > 0 ? "+" : ""}{metrics.overdueGrowth || 0}%
+                          </span>
+                          from last month
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -192,15 +315,21 @@ const BillingDashboard = () => {
                     <div className="card-body">
                       <div className="overflow-hidden d-flex mb-2 align-items-center">
                         <span className="me-3 avatar avatar-lg bg-info-transparent rounded">
-                          <i className="ti ti-receipt-2 fs-24 text-info"></i>
+                          <i className="ti ti-receipt-rupee fs-24 text-info"></i>
                         </span>
                         <div>
                           <p className="fs-14 fw-normal mb-1 text-truncate">Total Expenses</p>
-                          <h4 className="mb-0 fw-bold">$385,000</h4>
+                          <h4 className="mb-0 fw-bold">{formatCurrency(metrics.totalExpenses)}</h4>
                         </div>
                       </div>
                       <div>
-                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0"><span className="text-success fs-12 d-flex align-items-center me-1"><i className="ti ti-arrow-wave-right-up me-1"></i>-8.3%</span>from last year</p>
+                        <p className="fs-12 fw-normal d-flex align-items-center text-truncate mb-0">
+                          <span className={`${metrics.expensesGrowth > 0 ? "text-danger" : "text-success"} fs-12 d-flex align-items-center me-1`}>
+                            <i className={`ti ${metrics.expensesGrowth > 0 ? "ti-arrow-wave-right-up" : "ti-arrow-wave-right-down"} me-1`}></i>
+                            {metrics.expensesGrowth > 0 ? "+" : ""}{metrics.expensesGrowth || 0}%
+                          </span>
+                          from last year
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -242,13 +371,18 @@ const BillingDashboard = () => {
               <div className="card flex-fill mb-4">
                 <div className="card-header d-flex align-items-center justify-content-between flex-wrap border-bottom">
                   <h5 className="card-title mb-0">Recent Transactions</h5>
-                  <a href="#" onClick={(e) => e.preventDefault()} className="btn btn-light btn-sm d-flex align-items-center">
+                  <Link to="/ledger" className="btn btn-light btn-sm d-flex align-items-center">
                     <i className="ti ti-list-details me-1"></i>View All Ledger
-                  </a>
+                  </Link>
                 </div>
                 <div className="card-body p-0">
                   <div className="custom-datatable-filter table-responsive">
-                    <CustomDataTable columns={columns} data={transactionsData} />
+                    <CustomDataTable 
+                      columns={columns} 
+                      data={transactionsData} 
+                      showPagination={false} 
+                      showToolbar={false} 
+                    />
                   </div>
                 </div>
               </div>
@@ -259,7 +393,11 @@ const BillingDashboard = () => {
       </div>
 
       {/* Invoice Modal */}
-      <InvoiceModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} />
+      <InvoiceModal 
+        isOpen={isInvoiceModalOpen} 
+        onClose={() => setIsInvoiceModalOpen(false)} 
+        onSave={handleSaveInvoice}
+      />
     </>
   );
 };

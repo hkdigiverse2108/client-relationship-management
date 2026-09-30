@@ -42,7 +42,7 @@ async def create_payment(payment: PaymentCreate, current_user: dict = Depends(ge
             "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
             "date": data.get("payment_date", datetime.utcnow().strftime('%Y-%m-%d')),
             "description": f"Payment Received via {data.get('payment_method', 'Unknown')}",
-            "reference_id": str(result.inserted_id),
+            "reference_id": created.get("payment_id", str(result.inserted_id)),
             "client_id": data.get("client_id"),
             "type": "Credit",
             "amount": data.get("amount_received", 0),
@@ -123,7 +123,7 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
             "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
             "date": updated.get("payment_date", datetime.utcnow().strftime('%Y-%m-%d')),
             "description": f"Payment Received via {updated.get('payment_method', 'Unknown')}",
-            "reference_id": str(updated["_id"]),
+            "reference_id": updated.get("payment_id", str(updated["_id"])),
             "client_id": updated.get("client_id"),
             "type": "Credit",
             "amount": updated.get("amount_received", 0),
@@ -132,7 +132,7 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
         }
         
         # Check if ledger entry exists
-        existing = await ledger_collection.find_one({"reference_id": str(updated["_id"])})
+        existing = await ledger_collection.find_one({"reference_id": updated.get("payment_id", str(updated["_id"]))})
         if existing:
             await ledger_collection.update_one({"_id": existing["_id"]}, {"$set": ledger_entry})
         else:

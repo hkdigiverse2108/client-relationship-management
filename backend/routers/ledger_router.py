@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from models import LedgerEntryResponse
 from db import ledger_collection, clients_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/v1/ledger", tags=["General Ledger"])
@@ -10,7 +10,12 @@ router = APIRouter(prefix="/api/v1/ledger", tags=["General Ledger"])
 @router.get("", response_model=List[dict])
 async def get_ledger(current_user: dict = Depends(get_current_user)):
     """Fetch all ledger entries, enriched with client details."""
-    cursor = ledger_collection.find().sort("date", -1)
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = ledger_collection.find(query).sort("date", -1)
     entries = await cursor.to_list(length=1000)
     
     # Enrich with client details
@@ -31,7 +36,15 @@ async def get_ledger(current_user: dict = Depends(get_current_user)):
 @router.get("/metrics")
 async def get_ledger_metrics(current_user: dict = Depends(get_current_user)):
     """Get metrics for the Ledger dashboard cards."""
+    query = {"is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+
     pipeline = [
+        {
+            "$match": query
+        },
         {
             "$group": {
                 "_id": "$type",
@@ -47,7 +60,7 @@ async def get_ledger_metrics(current_user: dict = Depends(get_current_user)):
         "total_inflow": 0.0,
         "total_outflow": 0.0,
         "net_balance": 0.0,
-        "total_entries": await ledger_collection.count_documents({})
+        "total_entries": await ledger_collection.count_documents(query)
     }
     
     for row in results:

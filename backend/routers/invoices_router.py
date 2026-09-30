@@ -84,12 +84,17 @@ async def get_invoice_stats(current_user: dict = Depends(get_current_user)):
     overdue = 0
     unpaid = 0
     revenue = 0.0
+    today_str = datetime.now().strftime("%Y-%m-%d")
     
     async for i in cursor:
         total_invoices += 1
         status = i.get("status", "Draft")
         amt = float(i.get("total_due", i.get("total_amount", 0)))
         
+        # Dynamic overdue check
+        if status in ["Sent", "Partially Paid", "Draft", "Pending"] and i.get("due_date", "") < today_str:
+            status = "Overdue"
+            
         if status == "Partially Paid":
             partially_paid += 1
             revenue += amt
@@ -121,10 +126,18 @@ async def get_invoices(current_user: dict = Depends(get_current_user)):
             {"created_by": {"$exists": False}}
         ]
         
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
     cursor = invoices_collection.find(query)
     invoices = []
     async for i in cursor:
         i["_id"] = str(i["_id"])
+        
+        # Dynamic overdue check
+        status = i.get("status", "Draft")
+        if status in ["Sent", "Partially Paid", "Draft", "Pending"] and i.get("due_date", "") < today_str:
+            i["status"] = "Overdue"
+            
         invoices.append(i)
     return invoices
 

@@ -1,10 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import ClientStatCard from '../components/common/ClientStatCard';
 import CustomDataTable from '../components/common/CustomDataTable';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import CustomSelect from '../components/common/CustomSelect';
+import api from '../api/axiosClient';
+import toast from 'react-hot-toast';
+import { pdf } from '@react-pdf/renderer';
+import LedgerPDF from '../components/finance/LedgerPDF';
+
+const formatCurrency = (amount) => {
+  if (amount === undefined || amount === null || amount === '') return '-';
+  return 'Rs. ' + Number(amount).toLocaleString('en-IN');
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return dateString;
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 const Ledger = () => {
   const [searchQuery_ledger, setSearchQuery_ledger] = useState('');
@@ -15,6 +31,39 @@ const Ledger = () => {
   const [activeTab, setActiveTab] = useState('chronological');
   const [expandedClients, setExpandedClients] = useState({});
 
+  const [ledgerData, setLedgerData] = useState([]);
+  const [metrics, setMetrics] = useState({
+    net_balance: 0,
+    total_inflow: 0,
+    total_outflow: 0,
+    total_entries: 0
+  });
+
+  useEffect(() => {
+    fetchLedgerData();
+    fetchMetrics();
+  }, []);
+
+  const fetchLedgerData = async () => {
+    try {
+      const res = await api.get('/ledger');
+      setLedgerData(Array.isArray(res) ? res : res.data || []);
+    } catch (err) {
+      toast.error('Failed to load ledger data');
+    }
+  };
+
+  const fetchMetrics = async () => {
+    try {
+      const res = await api.get('/ledger/metrics');
+      if (res) {
+        setMetrics(res.data || res);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const typeOptions = [
     { value: '', label: 'All Types' },
     { value: 'Credit', label: 'Credit (Inflow)' },
@@ -22,20 +71,20 @@ const Ledger = () => {
   ];
 
   const columns = [
-    { name: 'Date', selector: row => row.date, sortable: true },
     { 
       name: 'Entry ID', 
-      selector: row => row.entryId, 
-      cell: row => <Link to="#" onClick={(e) => e.preventDefault()} className="text-primary fw-medium">{row.entryId}</Link>,
+      selector: row => row.entry_id, 
+      cell: row => <span className="text-primary fw-medium">{row.entry_id}</span>,
       sortable: true 
     },
+    { name: 'Date', selector: row => row.date, cell: row => formatDate(row.date), sortable: true },
     { name: 'Description', selector: row => row.description, sortable: true },
-    { name: 'Client', selector: row => row.client, sortable: true },
+    { name: 'Client', selector: row => row.client_name || 'Internal / Unassigned', sortable: true },
     { 
       name: 'Type', 
       selector: row => row.type, 
       cell: row => {
-        let badgeClass = row.type === 'Credit' ? 'badge-success' : 'badge-danger';
+        let badgeClass = (row.type || '').toLowerCase() === 'credit' ? 'badge-success' : 'badge-danger';
         return (
           <span className={`badge ${badgeClass} d-inline-flex align-items-center badge-xs`}>
             {row.type}
@@ -48,11 +97,11 @@ const Ledger = () => {
       name: 'Amount', 
       selector: row => row.amount, 
       cell: row => {
-        let textClass = row.type === 'Credit' ? 'text-success' : 'text-danger';
-        let prefix = row.type === 'Credit' ? '+' : '-';
+        let textClass = (row.type || '').toLowerCase() === 'credit' ? 'text-success' : 'text-danger';
+        let prefix = (row.type || '').toLowerCase() === 'credit' ? '+' : '-';
         return (
           <span className={`fw-bold ${textClass}`}>
-            {prefix} {row.amount}
+            {prefix} {formatCurrency(row.amount)}
           </span>
         );
       },
@@ -66,37 +115,119 @@ const Ledger = () => {
     }
   ];
 
-  const ledgerList = [
-    { date: '14 Jan 2024', entryId: 'LED-001', description: 'Payment Received', client: 'Anthony Lewis', clientId: 'c1', type: 'Credit', amount: '5,000', amountNum: 5000, referenceId: 'REF-001', status: 'Settled' },
-    { date: '16 Jan 2024', entryId: 'LED-002', description: 'Server Hosting Fee', client: 'Internal / Unassigned', clientId: 'c0', type: 'Debit', amount: '1,200', amountNum: 1200, referenceId: 'REF-002', status: 'Settled' },
-    { date: '21 Jan 2024', entryId: 'LED-003', description: 'Advance Payment', client: 'Brian Villalobos', clientId: 'c2', type: 'Credit', amount: '3,200', amountNum: 3200, referenceId: 'REF-003', status: 'Settled' },
-    { date: '22 Jan 2024', entryId: 'LED-004', description: 'Refund', client: 'Anthony Lewis', clientId: 'c1', type: 'Debit', amount: '500', amountNum: 500, referenceId: 'REF-004', status: 'Settled' },
-  ];
+  // Filtering
+  const filteredLedger = ledgerData.filter(entry => {
+    if (typeFilter && (entry.type || '').toLowerCase() !== typeFilter.toLowerCase()) return false;
+    
+    if (dateRange[0]) {
+      const entryDate = new Date(entry.date);
+      if (entryDate < dateRange[0]) return false;
+    }
+    if (dateRange[1]) {
+      const entryDate = new Date(entry.date);
+      if (entryDate > dateRange[1]) return false;
+    }
+    
+    return true;
+  });
 
   // Grouped logic
   const toggleClientExpand = (clientId) => {
     setExpandedClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
   };
 
-  const clientGroups = ledgerList.reduce((acc, entry) => {
-    const clientId = entry.clientId;
+  const openLedgerPreview = async () => {
+    try {
+      const blob = await pdf(<LedgerPDF data={filteredLedger} metrics={metrics} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>General Ledger Preview</title>
+          <style>
+            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #525659; }
+            .action-bar { background: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex-shrink: 0; }
+            .btn-download { background: #718d52; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+            .btn-download:hover { background: #5e7a44; }
+            iframe { flex: 1; border: none; width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <div class="action-bar">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="color:#718d52;font-weight:900;font-size:1.8rem;letter-spacing:-2px;line-height:1">HK</span>
+              <div><h5 style="font-size:15px;font-weight:700;color:#1a1a1a;margin:0">General Ledger</h5><p style="font-size:12px;color:#6c757d;margin:0">Harikrushn DigiVerse LLP</p></div>
+            </div>
+            <a href="${url}" download="General_Ledger_${new Date().getTime()}.pdf" class="btn-download">⬇ Download PDF</a>
+          </div>
+          <iframe src="${url}#toolbar=0"></iframe>
+        </body>
+        </html>
+      `;
+
+      const previewWindow = window.open('', '_blank');
+      previewWindow.document.write(htmlContent);
+      previewWindow.document.close();
+      
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
+  const exportToExcel = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Date,Entry ID,Client,Description,Reference,Type,Amount\n";
+
+    filteredLedger.forEach(row => {
+      const rowArr = [
+        formatDate(row.date),
+        row.entry_id,
+        `"${row.client_name || 'Internal / Unassigned'}"`,
+        `"${(row.description || '-').replace(/"/g, '""')}"`,
+        `"${row.reference_id || '-'}"`,
+        row.type,
+        row.amount
+      ];
+      csvContent += rowArr.join(",") + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `General_Ledger_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const clientGroups = filteredLedger.reduce((acc, entry) => {
+    const clientId = entry.client_id || 'unassigned';
     if (!acc[clientId]) {
       acc[clientId] = {
         id: clientId,
-        name: entry.client,
+        name: entry.client_name || 'Internal / Unassigned',
         entries: [],
         total_credit: 0,
         total_debit: 0
       };
     }
     acc[clientId].entries.push(entry);
-    if (entry.type === 'Credit') {
-      acc[clientId].total_credit += entry.amountNum;
+    const amt = Number(entry.amount) || 0;
+    if ((entry.type || '').toLowerCase() === 'credit') {
+      acc[clientId].total_credit += amt;
     } else {
-      acc[clientId].total_debit += entry.amountNum;
+      acc[clientId].total_debit += amt;
     }
     return acc;
   }, {});
+
+  const clearFilters = () => {
+    setDateRange([null, null]);
+    setTypeFilter('');
+  };
 
   return (
     <div className="page-wrapper">
@@ -110,52 +241,58 @@ const Ledger = () => {
           ]}
         >
           <div className="mb-2">
-            <button className="btn btn-primary d-flex align-items-center">
-              <i className="ti ti-download me-2"></i>Export PDF Ledger
-            </button>
+            <div className="dropdown">
+              <a href="#" className="dropdown-toggle btn btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
+                <i className="ti ti-file-export me-1"></i>Export
+              </a>
+              <ul className="dropdown-menu dropdown-menu-end p-3">
+                <li><a className="dropdown-item rounded-1" href="#" onClick={(e) => { e.preventDefault(); openLedgerPreview(); }}><i className="ti ti-file-type-pdf me-1"></i>Export as PDF</a></li>
+                <li><a className="dropdown-item rounded-1" href="#" onClick={(e) => { e.preventDefault(); exportToExcel(); }}><i className="ti ti-file-type-xls me-1"></i>Export as Excel</a></li>
+              </ul>
+            </div>
           </div>
         </PageHeader>
 
         <div className="row">
           <ClientStatCard 
             title="Net Balance" 
-            value="₹ 250,500" 
+            value={formatCurrency(metrics.net_balance)} 
             icon="ti ti-currency-dollar"
             iconBgClass="bg-primary-transparent"
             iconColorClass="text-primary"
-            percentage="+12.5%" 
-            badgeClass="badge-success" 
-            badgeIcon="ti ti-trending-up"
+            percentage="" 
+            badgeClass="" 
+            badgeIcon=""
           />
           <ClientStatCard 
             title="Total Inflow (Credits)" 
-            value="₹ 320,000" 
+            value={formatCurrency(metrics.total_inflow)} 
             icon="ti ti-trending-up"
             iconBgClass="bg-success-transparent"
             iconColorClass="text-success"
-            percentage="+15.0%" 
-            badgeClass="badge-success" 
-            badgeIcon="ti ti-trending-up"
+            percentage="" 
+            badgeClass="" 
+            badgeIcon=""
           />
           <ClientStatCard 
             title="Total Outflow (Debits)" 
-            value="₹ 69,500" 
+            value={formatCurrency(metrics.total_outflow)} 
             icon="ti ti-trending-down"
             iconBgClass="bg-danger-transparent"
             iconColorClass="text-danger"
-            percentage="-5.0%" 
-            badgeClass="badge-danger" 
-            badgeIcon="ti ti-trending-down"
+            percentage="" 
+            badgeClass="" 
+            badgeIcon=""
           />
           <ClientStatCard 
             title="Total Ledger Entries" 
-            value="1,245" 
+            value={metrics.total_entries} 
             icon="ti ti-list"
             iconBgClass="bg-purple-transparent"
             iconColorClass="text-purple"
-            percentage="+2.1%" 
-            badgeClass="badge-success" 
-            badgeIcon="ti ti-trending-up"
+            percentage="" 
+            badgeClass="" 
+            badgeIcon=""
           />
         </div>
 
@@ -189,18 +326,25 @@ const Ledger = () => {
                     startDate={dateRange[0]}
                     endDate={dateRange[1]}
                     isRange={true}
-                    placeholderText=""
+                    placeholderText="Select Date"
                     className="form-control"
                   />
                 </div>
               </div>
-              <div style={{ minWidth: '150px' }}>
+              <div className="" style={{ minWidth: '150px' }}>
                 <CustomSelect 
                   options={typeOptions}
                   value={typeOptions.find(o => o.value === typeFilter) || typeOptions[0]}
                   onChange={(option) => setTypeFilter(option ? option.value : '')}
                 />
               </div>
+              {(dateRange[0] || dateRange[1] || typeFilter) && (
+                <div>
+                  <button onClick={clearFilters} className="btn btn-outline-danger d-inline-flex align-items-center">
+                    <i className="ti ti-x me-1"></i>Clear
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
@@ -208,7 +352,7 @@ const Ledger = () => {
             {activeTab === 'chronological' ? (
               <CustomDataTable 
                 columns={columns}
-                data={ledgerList}
+                data={filteredLedger}
                 searchQuery={searchQuery_ledger}
                 onSearch={(e) => setSearchQuery_ledger(e.target.value)}
               />
@@ -231,8 +375,8 @@ const Ledger = () => {
                               <span className="flex-grow-1 fw-bold text-dark" style={{ minWidth: '150px' }}>{group.name}</span>
                               <span className="badge bg-white text-dark border">{group.entries.length} Entries</span>
                               <div className="d-flex gap-3 flex-wrap">
-                                <span className="text-success fw-bold"><i className="ti ti-arrow-up-right me-1"></i>Inflow: ₹{group.total_credit.toLocaleString()}</span>
-                                {group.total_debit > 0 && <span className="text-danger fw-bold"><i className="ti ti-arrow-down-right me-1"></i>Outflow: ₹{group.total_debit.toLocaleString()}</span>}
+                                <span className="text-success fw-bold"><i className="ti ti-arrow-up-right me-1"></i>Inflow: {formatCurrency(group.total_credit)}</span>
+                                {group.total_debit > 0 && <span className="text-danger fw-bold"><i className="ti ti-arrow-down-right me-1"></i>Outflow: {formatCurrency(group.total_debit)}</span>}
                               </div>
                             </div>
                           </button>
@@ -244,8 +388,8 @@ const Ledger = () => {
                                 <table className="table table-hover mb-0">
                                   <thead className="thead-light">
                                     <tr>
-                                      <th className="ps-4">Date</th>
-                                      <th>Entry ID</th>
+                                      <th className="ps-4">Entry ID</th>
+                                      <th>Date</th>
                                       <th>Description</th>
                                       <th>Reference</th>
                                       <th>Type</th>
@@ -254,28 +398,21 @@ const Ledger = () => {
                                   </thead>
                                   <tbody>
                                     {group.entries.map(entry => (
-                                      <tr key={entry.entryId}>
-                                        <td className="ps-4">{entry.date}</td>
-                                        <td><span className="text-primary fw-medium">{entry.entryId}</span></td>
+                                      <tr key={entry._id}>
+                                        <td className="ps-4"><span className="text-primary fw-medium">{entry.entry_id}</span></td>
+                                        <td>{formatDate(entry.date)}</td>
                                         <td>{entry.description}</td>
-                                        <td><span className="text-muted">{entry.referenceId || '-'}</span></td>
+                                        <td>{entry.reference_id || '-'}</td>
                                         <td>
-                                          <span className={`badge badge-xs ${entry.type === 'Credit' ? 'badge-success' : 'badge-danger'}`}>
+                                          <span className={`badge ${(entry.type || '').toLowerCase() === 'credit' ? 'badge-success' : 'badge-danger'} badge-xs`}>
                                             {entry.type}
                                           </span>
                                         </td>
-                                        <td className={`text-end pe-4 fw-bold ${entry.type === 'Credit' ? 'text-success' : 'text-danger'}`}>
-                                          {entry.type === 'Credit' ? '+' : '-'} ₹{entry.amountNum.toLocaleString()}
+                                        <td className="text-end pe-4 fw-bold ${(entry.type || '').toLowerCase() === 'credit' ? 'text-success' : 'text-danger'}">
+                                          {(entry.type || '').toLowerCase() === 'credit' ? '+' : '-'} {formatCurrency(entry.amount)}
                                         </td>
                                       </tr>
                                     ))}
-                                    {/* Group Total Row */}
-                                    <tr className="bg-light">
-                                      <td colSpan="5" className="text-end fw-bold text-dark">Net Position for {group.name}:</td>
-                                      <td className={`text-end pe-4 fw-bold ${(group.total_credit - group.total_debit) >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        ₹{(group.total_credit - group.total_debit).toLocaleString()}
-                                      </td>
-                                    </tr>
                                   </tbody>
                                 </table>
                               </div>

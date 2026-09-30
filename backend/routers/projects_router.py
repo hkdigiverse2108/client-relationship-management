@@ -85,7 +85,7 @@ async def get_project_analytics(current_user: dict = Depends(get_current_user)):
     # Wait, the correct way is: we just sum all payments where `project_id` matches, or if that's not supported, we sum total value of projects.
     # Actually, we can just aggregate all payments in the DB to get total_received if we assume CRM level tracking, 
     # OR we sum all payments. Let's sum all payments for now to get a true total received.
-    cursor_pay = payments_collection.find()
+    cursor_pay = payments_collection.find({"is_deleted": {"$ne": True}})
     total_received = 0
     async for pay in cursor_pay:
         total_received += float(pay.get("amount_received") or 0)

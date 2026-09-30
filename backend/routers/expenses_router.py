@@ -57,7 +57,7 @@ async def create_expense(expense: ExpenseCreate, current_user: dict = Depends(ge
             "entry_id": f"LEDG-EXP-{int(datetime.utcnow().timestamp())}",
             "date": data.get("date", datetime.utcnow().strftime('%Y-%m-%d')),
             "description": f"Expense: {data.get('category')} - {data.get('merchant')}",
-            "reference_id": created["_id"],
+            "reference_id": created.get("expense_id", created["_id"]),
             "client_id": "", # Expenses typically don't have clients in this context
             "type": "Debit", # Outflow
             "amount": data.get("amount", 0),
@@ -105,7 +105,7 @@ async def update_expense(expense_id: str, expense: ExpenseUpdate, current_user: 
             "entry_id": f"LEDG-EXP-{int(datetime.utcnow().timestamp())}",
             "date": data.get("date", existing_expense.get("date")),
             "description": f"Expense: {data.get('category', existing_expense.get('category'))} - {data.get('merchant', existing_expense.get('merchant'))}",
-            "reference_id": expense_id,
+            "reference_id": existing_expense.get("expense_id", expense_id),
             "client_id": "",
             "type": "Debit",
             "amount": data.get("amount", existing_expense.get("amount", 0)),
@@ -117,11 +117,11 @@ async def update_expense(expense_id: str, expense: ExpenseUpdate, current_user: 
         await ledger_collection.insert_one(ledger_entry)
     elif old_status == "Cleared" and new_status != "Cleared":
         # Status reverted from Cleared, remove from ledger
-        await ledger_collection.delete_many({"reference_id": expense_id, "type": "Debit"})
+        await ledger_collection.delete_many({"reference_id": existing_expense.get("expense_id", expense_id), "type": "Debit"})
     elif old_status == "Cleared" and new_status == "Cleared":
         # Status remained Cleared, update the existing ledger entry
         await ledger_collection.update_one(
-            {"reference_id": expense_id, "type": "Debit"},
+            {"reference_id": existing_expense.get("expense_id", expense_id), "type": "Debit"},
             {"$set": {
                 "date": data.get("date", existing_expense.get("date")),
                 "description": f"Expense: {data.get('category', existing_expense.get('category'))} - {data.get('merchant', existing_expense.get('merchant'))}",

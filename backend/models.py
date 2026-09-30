@@ -1082,3 +1082,32 @@ class ClientStatsResponse(BaseModel):
     active_clients: ClientStatDetail
     inactive_clients: ClientStatDetail
     new_clients: ClientStatDetail
+
+class ExpenseCreate(BaseModel):
+    expense_id: str
+    date: Optional[str] = None
+    merchant: Optional[str] = None
+    category: Optional[str] = None
+    amount: float
+    payment_method: str
+    status: Optional[str] = "Pending"
+    notes: Optional[str] = None
+    client_id: Optional[str] = None
+
+class ExpenseUpdate(BaseModel):
+    expense_id: Optional[str] = None
+    date: Optional[str] = None
+    merchant: Optional[str] = None
+    category: Optional[str] = None
+    amount: Optional[float] = None
+    payment_method: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    client_id: Optional[str] = None
+    is_deleted: Optional[bool] = None
+
+class ExpenseResponse(ExpenseCreate):
+    id: str = Field(alias="_id")
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    created_by: Optional[str] = None
