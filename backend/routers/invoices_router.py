@@ -37,7 +37,7 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
     )
         
     # Auto-create pending payment for this invoice
-    from db import payments_collection
+    from db import payments_collection, ledger_collection
     
     payment_status = "Pending"
     if data.get("status") == "Paid":
@@ -62,6 +62,22 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
         "source_type": "Invoice"
     }
     await payments_collection.insert_one(payment_entry)
+    
+    if payment_status == "Completed":
+        ledger_entry = {
+            "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
+            "date": datetime.utcnow().strftime('%Y-%m-%d'),
+            "description": f"Invoice Payment: {data.get('invoice_number', 'N/A')}",
+            "reference_id": payment_entry["payment_id"],
+            "client_id": data.get("client_id"),
+            "type": "Credit",
+            "amount": payment_entry["amount_received"],
+            "status": "settled",
+            "created_by": current_user["_id"],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        await ledger_collection.insert_one(ledger_entry)
 
     created["_id"] = str(created["_id"])
     return created
@@ -191,9 +207,9 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
         f"Updated invoice '{updated.get('invoice_number', '')}'"
     )
         
-    # Sync status to Payments
+    # Sync status to Payments and Ledger
     if "status" in data:
-        from db import payments_collection
+        from db import payments_collection, ledger_collection
         payment_status = "Pending"
         if data["status"] == "Paid":
             payment_status = "Completed"
@@ -204,6 +220,27 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
             {"invoice_id": obj_id},
             {"$set": {"status": payment_status, "updated_at": datetime.utcnow()}}
         )
+        
+        if payment_status == "Completed":
+            # Find the payments updated and create ledger entries if they don't exist
+            payments = await payments_collection.find({"invoice_id": obj_id}).to_list(length=None)
+            for p in payments:
+                existing_ledger = await ledger_collection.find_one({"reference_id": p.get("payment_id")})
+                if not existing_ledger:
+                    ledger_entry = {
+                        "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
+                        "date": datetime.utcnow().strftime('%Y-%m-%d'),
+                        "description": f"Invoice Payment: {updated.get('invoice_number', 'N/A')}",
+                        "reference_id": p.get("payment_id"),
+                        "client_id": updated.get("client_id"),
+                        "type": "Credit",
+                        "amount": p.get("amount_received", 0),
+                        "status": "settled",
+                        "created_by": current_user["_id"],
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    await ledger_collection.insert_one(ledger_entry)
 
     updated["_id"] = str(updated["_id"])
     return updated

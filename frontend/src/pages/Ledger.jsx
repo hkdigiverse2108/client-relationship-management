@@ -146,12 +146,15 @@ const Ledger = () => {
         <html>
         <head>
           <title>General Ledger Preview</title>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
           <style>
-            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #525659; }
-            .action-bar { background: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex-shrink: 0; }
-            .btn-download { background: #718d52; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+            .action-bar { position: sticky; top: 0; z-index: 999; background: #fff; border-bottom: 1px solid #e9ecef; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+            .btn-download { background: #718d52; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
             .btn-download:hover { background: #5e7a44; }
-            iframe { flex: 1; border: none; width: 100%; height: 100%; }
+            .invoice-page { padding: 24px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+            .pdf-page-canvas { background: #fff; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); max-width: 100%; display: block; }
           </style>
         </head>
         <body>
@@ -162,7 +165,56 @@ const Ledger = () => {
             </div>
             <a href="${url}" download="General_Ledger_${new Date().getTime()}.pdf" class="btn-download">⬇ Download PDF</a>
           </div>
-          <iframe src="${url}#toolbar=0"></iframe>
+          <div class="invoice-page" id="pdf-container">
+            <!-- Canvases will be injected here -->
+          </div>
+          
+          <script>
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+            
+            const loadingTask = pdfjsLib.getDocument('${url}');
+            loadingTask.promise.then(function(pdf) {
+              const container = document.getElementById('pdf-container');
+              
+              for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                pdf.getPage(pageNum).then(function(page) {
+                  const scale = 1.5;
+                  const viewport = page.getViewport({ scale: scale });
+                  
+                  const canvas = document.createElement('canvas');
+                  canvas.className = 'pdf-page-canvas';
+                  const context = canvas.getContext('2d');
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+                  
+                  // Maintain aspect ratio in CSS
+                  canvas.style.width = '800px';
+                  canvas.style.maxWidth = '100%';
+                  canvas.style.height = 'auto';
+                  
+                  // Ensure proper ordering of pages since promises resolve asynchronously
+                  canvas.dataset.page = pageNum;
+                  
+                  // Add to container but keep sorted
+                  container.appendChild(canvas);
+                  
+                  // Sort canvases to make sure they are in order
+                  const canvases = Array.from(container.querySelectorAll('canvas'));
+                  canvases.sort((a, b) => parseInt(a.dataset.page) - parseInt(b.dataset.page));
+                  canvases.forEach(c => container.appendChild(c)); // Re-append in order
+                  
+                  const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                  };
+                  page.render(renderContext);
+                });
+              }
+            }).catch(function(error) {
+              console.error("Error loading PDF: ", error);
+              document.getElementById('pdf-container').innerHTML = '<div style="color:red; padding: 20px;">Failed to load PDF preview.</div>';
+            });
+          </script>
         </body>
         </html>
       `;
