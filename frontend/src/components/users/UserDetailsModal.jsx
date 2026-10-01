@@ -13,6 +13,8 @@ const UserDetailsModal = ({ user, onClose }) => {
     return names[0][0].toUpperCase();
   };
 
+  const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}>
       <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -25,12 +27,21 @@ const UserDetailsModal = ({ user, onClose }) => {
             
             {/* Header Profile Section */}
             <div className="d-flex align-items-center mb-4">
-              <div 
-                className="rounded-circle d-flex align-items-center justify-content-center text-primary bg-light me-3"
-                style={{ width: '60px', height: '60px', fontSize: '24px', fontWeight: 'bold' }}
-              >
-                {getInitials(user.name)}
-              </div>
+              {(user.profile_photo && (user.profile_photo.startsWith('/') || user.profile_photo.startsWith('http'))) ? (
+                <img 
+                  src={user.profile_photo.startsWith('http') ? user.profile_photo : `${backendUrl}${user.profile_photo}`} 
+                  alt="Profile" 
+                  className="rounded-circle me-3" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover' }} 
+                />
+              ) : (
+                <div 
+                  className="rounded-circle d-flex align-items-center justify-content-center text-primary bg-light me-3"
+                  style={{ width: '60px', height: '60px', fontSize: '24px', fontWeight: 'bold' }}
+                >
+                  {getInitials(user.name)}
+                </div>
+              )}
               <div>
                 <h5 className="mb-1 fs-18 fw-bold">{user.name}</h5>
                 <p className="text-muted mb-2 fs-14">{user.email}</p>

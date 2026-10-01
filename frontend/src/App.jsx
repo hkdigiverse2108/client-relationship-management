@@ -291,7 +291,7 @@ function App() {
         <Route path="/profile-settings" element={<ProfileSettings />} />
       
         <Route path="/project-report" element={<ProjectReport />} />
-        <Route path="/projects" element={<Projects />} />
+
         <Route path="/project-pipeline" element={<ProjectPipeline />} />
         <Route path="/gantt-chart" element={<ProjectsGanttChart />} />
         <Route path="/all-projects" element={<Projects />} />

@@ -19,7 +19,7 @@ const ProjectsGrid = () => {
 				>
 					<div className="me-2 mb-2">
 							<div className="d-flex align-items-center border bg-white rounded p-1 me-2 icon-list">
-								<a href="/projects" className="btn btn-icon btn-sm me-1"><i
+								<a href="/all-projects" className="btn btn-icon btn-sm me-1"><i
 										className="ti ti-list-tree"></i></a>
 								<a href="/projects-grid" className="btn btn-icon btn-sm active bg-primary text-white"><i
 										className="ti ti-layout-grid"></i></a>

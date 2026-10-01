@@ -251,7 +251,7 @@ const ProjectDashboard = () => {
             <div className="card">
               <div className="card-header d-flex justify-content-between align-items-center border-0">
                 <h2 className="card-title">Recent Projects</h2>
-                <a href="/projects" className="btn btn-sm btn-primary">View All</a>
+                <a href="/all-projects" className="btn btn-sm btn-primary">View All</a>
               </div>
               <div className="card-body p-0">
                 <CustomDataTable 

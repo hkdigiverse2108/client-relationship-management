@@ -113,7 +113,7 @@ const IndexPage = () => {
 										</span>
 										<h6 className="fs-13 fw-medium text-default mb-1">Total No of Project's</h6>
 										<h3 className="mb-3">90/125</h3>
-										<a href="/projects" className="link-default">View All</a>
+										<a href="/all-projects" className="link-default">View All</a>
 									</div>
 								</div>
 							</div>

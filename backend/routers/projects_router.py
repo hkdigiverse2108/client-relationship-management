@@ -164,20 +164,20 @@ async def update_project(obj_id: str, project: ProjectUpdate, current_user: dict
         
     updated = await projects_collection.find_one({"_id": ObjectId(obj_id)})
     
-    if updated.get("client_id"):
-        changes = []
-        for key, new_val in data.items():
-            if key in ["updated_at"]: continue
-            old_val = old_project.get(key)
-            if old_val != new_val:
-                readable_key = key.replace("_", " ").title()
-                if new_val or old_val:
-                    changes.append(f"{readable_key} changed from '{old_val or 'Empty'}' to '{new_val or 'Empty'}'")
-        
-        desc = f"Project '{updated.get('title', '')}' was updated."
-        if changes:
-            desc += " Updates: " + ", ".join(changes)
+    changes = []
+    for key, new_val in data.items():
+        if key in ["updated_at"]: continue
+        old_val = old_project.get(key)
+        if old_val != new_val:
+            readable_key = key.replace("_", " ").title()
+            if new_val or old_val:
+                changes.append(f"{readable_key} changed from '{old_val or 'Empty'}' to '{new_val or 'Empty'}'")
+    
+    desc = f"Project '{updated.get('title', '')}' was updated."
+    if changes:
+        desc += " Updates: " + ", ".join(changes)
 
+    if updated.get("client_id"):
         await log_client_history(
             client_history_collection,
             updated["client_id"],
@@ -185,13 +185,12 @@ async def update_project(obj_id: str, project: ProjectUpdate, current_user: dict
             "Project Updated",
             desc
         )
-        
     await log_audit_action(
         audit_logs_collection,
         current_user,
         "Update",
         "Projects",
-        f"Updated project '{updated.get('title', '')}'"
+        desc
     )
         
     updated["_id"] = str(updated["_id"])

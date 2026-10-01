@@ -27,6 +27,16 @@ const Users = () => {
   const [salesTarget, setSalesTarget] = useState('100000');
   const [savingTarget, setSavingTarget] = useState(false);
 
+  const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.split(' ').filter(p => p.length > 0);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return 'UN';
+  };
+
   // Fetch users and sales target from backend
   useEffect(() => {
     const fetchData = async () => {
@@ -211,8 +221,12 @@ const Users = () => {
             </div>
             
             <div className="d-flex align-items-center file-name-icon text-truncate">
-              <span className="avatar avatar-md border avatar-rounded me-3 flex-shrink-0">
-                <img src={user.avatar || "/assets/img/profiles/avatar-14.jpg"} className="img-fluid" alt="img" />
+              <span className={`avatar avatar-md border-0 me-3 d-flex align-items-center justify-content-center text-decoration-none ${(user.profile_photo && (user.profile_photo.startsWith('/') || user.profile_photo.startsWith('http'))) ? '' : 'bg-primary'}`} style={{ borderRadius: '50%' }}>
+                {(user.profile_photo && (user.profile_photo.startsWith('/') || user.profile_photo.startsWith('http'))) ? (
+                  <img src={user.profile_photo.startsWith('http') ? user.profile_photo : `${backendUrl}${user.profile_photo}`} className="img-fluid rounded-circle" alt="img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span className="text-white fw-bold" style={{ fontSize: '14px' }}>{getInitials(user.name)}</span>
+                )}
               </span>
               <div className="ms-1 text-truncate">
                 <h6 className="fw-semibold text-dark mb-1 text-truncate">{user.name}</h6>

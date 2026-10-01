@@ -197,8 +197,6 @@ const ProfileSettings = () => {
 																	Upload
 																	<input type="file" className="d-none" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" />
 																</div>
-																<button type="button" onClick={() => { setProfilePhoto(''); }}
-																	className="btn btn-light btn-sm">Cancel</button>
 															</div>
 
 														</div>

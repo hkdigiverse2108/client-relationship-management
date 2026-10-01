@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/common/PageHeader';
@@ -10,9 +10,11 @@ import ClientInvoices from '../components/clients/ClientInvoices';
 import ClientPayments from '../components/clients/ClientPayments';
 import ClientDeals from '../components/clients/ClientDeals';
 import ClientHistory from '../components/clients/ClientHistory';
+import ProjectFormModal from '../components/projects/ProjectFormModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import axiosClient from '../api/axiosClient';
 
-
-
+const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
 const ClientDetails = () => {
   const location = useLocation();
   const client = location.state?.client;
@@ -31,6 +33,66 @@ const ClientDetails = () => {
   const [rowsPerPage_clientdetails, setRowsPerPage_clientdetails] = useState(10);
   const plusBtnRef = React.useRef(null);
   const [searchQuery_clientdetails, setSearchQuery_clientdetails] = useState('');
+
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState({});
+  const [clients, setClients] = useState({});
+
+  const fetchData = async () => {
+    try {
+      const pRes = await axiosClient.get('/projects');
+      const pData = Array.isArray(pRes) ? pRes : (pRes.data || []);
+      setProjects(pData.filter(p => !p.is_deleted));
+      
+      const uRes = await axiosClient.get('/users');
+      const uData = Array.isArray(uRes) ? uRes : (uRes.data || []);
+      const um = {};
+      uData.forEach(u => { um[u.id || u._id] = u; });
+      setUsers(um);
+
+      const cRes = await axiosClient.get('/clients');
+      const cData = Array.isArray(cRes) ? cRes : (cRes.data || []);
+      const cm = {};
+      cData.forEach(c => { cm[c._id || c.client_id || c.id] = c; });
+      setClients(cm);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    try {
+      await axiosClient.delete(`/projects/${projectToDelete._id || projectToDelete.id}`);
+      toast.success("Project deleted successfully");
+      setProjectToDelete(null);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error("An error occurred while deleting project");
+    }
+  };
+
+  // Handle both possible client ID fields dynamically
+  const activeClientId = client?._id || client?.client_id || client?.id;
+  const clientProjects = projects.filter(p => {
+    const pClient = String(p.client_id || (p.client && (p.client._id || p.client.id)) || p.clientId || "");
+    const testId1 = String(activeClientId || "");
+    const testId2 = String(client?._id || "");
+    const testId3 = String(client?.client_id || "");
+    const testId4 = String(client?.id || "");
+    return pClient === testId1 || pClient === testId2 || pClient === testId3 || pClient === testId4;
+  });
+  
+  console.log("ClientProjects filtering:", { activeClientId, clientObjIds: { _id: client?._id, client_id: client?.client_id, id: client?.id }, totalProjects: projects.length, matchedProjects: clientProjects.length });
 
   if (!client) {
     return (
@@ -251,7 +313,16 @@ const ClientDetails = () => {
 <div className="tab-content custom-accordion-items client-accordion">
     <div className="tab-pane active show" id="bottom-justified-tab1" role="tabpanel">
         <div className="accordion accordions-items-seperate" id="overviewAccordion">
-            <ClientProjects isAccordion={true} client={client} />
+            <ClientProjects 
+              isAccordion={true} 
+              client={client} 
+              projects={clientProjects} 
+              users={users} 
+              clients={clients} 
+              setProjectToEdit={setProjectToEdit} 
+              setIsProjectModalOpen={setIsProjectModalOpen} 
+              setProjectToDelete={setProjectToDelete} 
+            />
             <ClientTasks isAccordion={true} client={client} />
             <ClientInvoices isAccordion={true} client={client} />
             <ClientPayments isAccordion={true} client={client} />
@@ -261,7 +332,16 @@ const ClientDetails = () => {
     </div>
     
     <div className="tab-pane" id="bottom-justified-tab2" role="tabpanel">
-        <ClientProjects isAccordion={false} client={client} />
+        <ClientProjects 
+          isAccordion={false} 
+          client={client} 
+          projects={clientProjects} 
+          users={users} 
+          clients={clients} 
+          setProjectToEdit={setProjectToEdit} 
+          setIsProjectModalOpen={setIsProjectModalOpen} 
+          setProjectToDelete={setProjectToDelete} 
+        />
     </div>
     <div className="tab-pane" id="bottom-justified-tab3" role="tabpanel">
         <ClientTasks isAccordion={false} client={client} />
@@ -306,7 +386,7 @@ const ClientDetails = () => {
         </a>
         <ul className="dropdown-menu dropdown-menu-end bg-gray-900 dropdown-menu-md dropdown-menu-dark p-3">
             <li>
-                <a href="#" onClick={(e) => e.preventDefault()}
+                <a href="#" onClick={(e) => { e.preventDefault(); setProjectToEdit({ client_id: activeClientId }); setIsProjectModalOpen(true); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-briefcase"></i></span>
@@ -369,6 +449,23 @@ const ClientDetails = () => {
 			</div>
 			
 		</div>
+    
+      <ProjectFormModal 
+        open={isProjectModalOpen} 
+        onClose={() => {
+          setIsProjectModalOpen(false);
+          setProjectToEdit(null);
+        }} 
+        onSuccess={fetchData}
+        projectData={projectToEdit}
+      />
+
+      <ConfirmationModal 
+        id="delete_project_modal"
+        onConfirm={handleDeleteProject}
+        title="Delete Project"
+        message="Are you sure you want to delete this project?"
+      />
     </>
   );
 };
