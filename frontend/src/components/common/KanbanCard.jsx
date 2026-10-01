@@ -43,10 +43,23 @@ const KanbanCard = ({ card, columnColor, onDragStart, onEdit, onDelete }) => {
         </div>
         
         <div className="mb-2">
-          <h6 className="d-flex align-items-center">{card.title}</h6>
-          {card.client && <p className="text-muted fs-12 mb-0 mt-1">{card.client}</p>}
+          <h6 className="d-flex align-items-center text-truncate" title={card.title}>{card.title}</h6>
+          
+          <div className="d-flex align-items-center mt-2 mb-2">
+            {card.clientAvatar ? (
+              <span className="avatar avatar-xs avatar-rounded me-2 flex-shrink-0">
+                <img src={card.clientAvatar} alt="client" />
+              </span>
+            ) : (
+              <span className="avatar avatar-xs avatar-rounded bg-secondary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0 fw-semibold" style={{ fontSize: '10px' }}>
+                {getInitials(card.client || 'Unknown')}
+              </span>
+            )}
+            <p className="text-muted fs-12 mb-0 text-truncate" title={card.client}>{card.client || 'Unknown Client'}</p>
+          </div>
+
           {card.reason && (
-            <p className={`text-${columnColor} fs-12 mb-0 mt-1 fst-italic`}>Reason: {card.reason}</p>
+            <p className={`text-${columnColor} fs-12 mb-0 mt-1 fst-italic text-truncate`} title={card.reason}>Reason: {card.reason}</p>
           )}
         </div>
         
@@ -60,19 +73,19 @@ const KanbanCard = ({ card, columnColor, onDragStart, onEdit, onDelete }) => {
           <p className="fw-medium mb-0">Expected Close : <span className="text-gray-9"> {card.dueDate}</span></p>
         )}
         
-        <div className="d-flex align-items-center border-top pt-2 mt-2">
+        <div className="d-flex align-items-center justify-content-between border-top pt-2 mt-2">
           {card.assignee && (
-            <div className="d-flex align-items-center">
+            <div className="d-flex align-items-center" style={{ maxWidth: '100%' }}>
               {card.assignee.avatar ? (
-                <span className="avatar avatar-sm avatar-rounded me-2">
+                <span className="avatar avatar-sm avatar-rounded me-2 flex-shrink-0">
                   <img src={card.assignee.avatar} alt="img" />
                 </span>
               ) : (
-                <span className="avatar avatar-sm avatar-rounded bg-primary text-white d-flex align-items-center justify-content-center me-2 fw-semibold fs-11">
+                <span className="avatar avatar-sm avatar-rounded bg-primary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0 fw-semibold fs-11">
                   {getInitials(card.assignee.name)}
                 </span>
               )}
-              <span className="fs-13 fw-medium text-dark">{card.assignee.name}</span>
+              <span className="fs-13 fw-medium text-dark text-truncate" title={card.assignee.name}>{card.assignee.name}</span>
             </div>
           )}
         </div>

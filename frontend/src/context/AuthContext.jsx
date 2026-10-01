@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { authService } from "../api/services/authService";
 import { storage } from "../utils/storage";
 import { STORAGE_KEYS } from "../config/appConfig";
@@ -6,6 +7,7 @@ import { STORAGE_KEYS } from "../config/appConfig";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(() => storage.get(STORAGE_KEYS.user));
   const [loading, setLoading] = useState(false);
 
@@ -40,8 +42,8 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
-    window.location.href = "/login";
-  }, []);
+    navigate("/login");
+  }, [navigate]);
 
 
   

@@ -1,22 +1,64 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import CustomDataTable from './../common/CustomDataTable';
-import CustomDatePicker from './../common/CustomDatePicker';
+import FilterBar from './../common/FilterBar';
 
-const ProjectReportTable = () => {
+const ProjectReportTable = ({ projects = [] }) => {
+  const [priorityFilter, setPriorityFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [dateRange, setDateRange] = React.useState([null, null]);
 
-  const data = [
-    { name: 'Office Management App', status: 'Active', stage: 'In Progress', priority: 'Low', budget: '$50,000', value: '$25,000', deadline: '12 Sep 2024' },
-    { name: 'Clinic Management', status: 'Active', stage: 'Planning', priority: 'Medium', budget: '$35,000', value: '$18,500', deadline: '24 Oct 2024' },
-    { name: 'Educational Platform', status: 'Active', stage: 'In Review', priority: 'High', budget: '$120,000', value: '$110,000', deadline: '18 Feb 2024' },
-    { name: 'Chat & Call Mobile App', status: 'Active', stage: 'In Progress', priority: 'Low', budget: '$15,000', value: '$8,000', deadline: '17 Oct 2024' },
-    { name: 'Travel Planning Website', status: 'Active', stage: 'Completed', priority: 'High', budget: '$45,000', value: '$45,000', deadline: '20 Jul 2024' },
-    { name: 'Service Booking Software', status: 'Active', stage: 'In Progress', priority: 'Low', budget: '$25,000', value: '$12,000', deadline: '10 Apr 2024' },
-    { name: 'Hotel Booking App', status: 'Active', stage: 'Planning', priority: 'Medium', budget: '$60,000', value: '$20,000', deadline: '29 Aug 2024' },
-    { name: 'Car & Bike Rental Software', status: 'Inactive', stage: 'On Hold', priority: 'Low', budget: '$18,000', value: '$0', deadline: '22 Feb 2024' },
-    { name: 'Food Order App', status: 'Active', stage: 'In Review', priority: 'Medium', budget: '$40,000', value: '$38,000', deadline: '03 Nov 2024' },
-    { name: 'POS Admin Software', status: 'Active', stage: 'Completed', priority: 'Low', budget: '$30,000', value: '$30,000', deadline: '17 Dec 2024' }
-  ];
+  const tableData = React.useMemo(() => {
+    let filtered = projects.filter(p => {
+      const stage = (p.stage || '').toLowerCase();
+      const status = (p.status || '').toLowerCase();
+      return !['cancelled'].includes(stage) && !['cancelled'].includes(status);
+    });
+
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(p => (p.priority || 'Low').toLowerCase() === priorityFilter.toLowerCase());
+    }
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(p => (p.status || 'Active').toLowerCase() === statusFilter.toLowerCase());
+    }
+    if (dateRange[0] && dateRange[1]) {
+      filtered = filtered.filter(p => {
+        if (!p.end_date) return false;
+        const d = new Date(p.end_date);
+        return d >= dateRange[0] && d <= dateRange[1];
+      });
+    }
+
+    return filtered.map(p => {
+      const stageLower = (p.stage || 'new').toLowerCase();
+      let displayStage = 'New';
+      if (stageLower === 'in_progress' || stageLower.includes('progress')) displayStage = 'In Progress';
+      else if (stageLower === 'review' || stageLower.includes('review')) displayStage = 'In Review';
+      else if (stageLower === 'completed') displayStage = 'Completed';
+      else if (stageLower === 'hold' || stageLower.includes('hold')) displayStage = 'On Hold';
+      else displayStage = p.stage || 'New';
+
+      // Format currency
+      const formatCurrency = (val) => {
+        if (!val || isNaN(val)) return '-';
+        return `₹${parseFloat(val).toLocaleString()}`;
+      };
+
+      const formatPriority = (p.priority || 'Low').charAt(0).toUpperCase() + (p.priority || 'Low').slice(1);
+      const formatStatus = (p.status || 'Active').charAt(0).toUpperCase() + (p.status || 'Active').slice(1);
+
+      return {
+        id: p._id || p.id,
+        name: p.project_name || p.title || 'Untitled',
+        status: formatStatus,
+        stage: displayStage,
+        priority: formatPriority,
+        budget: formatCurrency(p.budget),
+        value: formatCurrency(p.project_value),
+        deadline: p.end_date ? new Date(p.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'
+      };
+    });
+  }, [projects, priorityFilter, statusFilter, dateRange]);
 
   const columns = [
     {
@@ -34,7 +76,13 @@ const ProjectReportTable = () => {
       selectorKey: 'status',
       sortable: true,
       cell: (row) => {
-        const badgeClass = row.status === 'Active' ? 'badge-success' : 'badge-danger';
+        let badgeClass = 'badge-primary';
+        const st = row.status.toLowerCase();
+        if (st === 'active') badgeClass = 'badge-success';
+        else if (st === 'inactive' || st === 'cancelled') badgeClass = 'badge-danger';
+        else if (st === 'completed') badgeClass = 'badge-info';
+        else if (st === 'on hold' || st === 'hold') badgeClass = 'badge-secondary';
+
         return (
           <span className={`badge ${badgeClass} d-inline-flex align-items-center badge-xs`}>
             <i className="ti ti-point-filled me-1"></i>{row.status}
@@ -55,7 +103,7 @@ const ProjectReportTable = () => {
       cell: (row) => {
         let badgeClass = 'badge-success-transparent';
         if (row.priority === 'Medium') badgeClass = 'badge-warning-transparent';
-        if (row.priority === 'High') badgeClass = 'badge-danger-transparent';
+        if (row.priority === 'High' || row.priority === 'Critical') badgeClass = 'badge-danger-transparent';
         
         return (
           <span className={`badge ${badgeClass}`}>
@@ -84,41 +132,40 @@ const ProjectReportTable = () => {
     }
   ];
 
+  const filterConfig = [
+    { type: 'date', value: dateRange, onChange: (update) => setDateRange(update), placeholder: 'Select deadline range...' },
+    { type: 'select', value: priorityFilter, onChange: setPriorityFilter, options: [
+      { value: 'all', label: 'All Priorities' },
+      { value: 'low', label: 'Low' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' },
+      { value: 'critical', label: 'Critical' }
+    ]},
+    { type: 'select', value: statusFilter, onChange: setStatusFilter, options: [
+      { value: 'all', label: 'All Statuses' },
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'on hold', label: 'On Hold' }
+    ]}
+  ];
+
+  const hasActiveFilters = priorityFilter !== 'all' || statusFilter !== 'all' || (dateRange[0] && dateRange[1]);
+
+  const handleClearFilters = () => {
+    setPriorityFilter('all');
+    setStatusFilter('all');
+    setDateRange([null, null]);
+  };
+
   return (
     <div className="card">
       <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
         <h5>Project Performance Summary</h5>
-        <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-          <div className="me-3">
-            <CustomDatePicker isRange={true} placeholderText="" />
-          </div>
-          <div className="dropdown me-3">
-            <Link to="#"
-              className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-              data-bs-toggle="dropdown">
-              Select Priority
-            </Link>
-            <ul className="dropdown-menu dropdown-menu-end p-3">
-              <li><Link to="#" className="dropdown-item rounded-1">Low</Link></li>
-              <li><Link to="#" className="dropdown-item rounded-1">Medium</Link></li>
-              <li><Link to="#" className="dropdown-item rounded-1">High</Link></li>
-            </ul>
-          </div>
-          <div className="dropdown me-3">
-            <Link to="#"
-              className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-              data-bs-toggle="dropdown">
-              Select Status
-            </Link>
-            <ul className="dropdown-menu dropdown-menu-end p-3">
-              <li><Link to="#" className="dropdown-item rounded-1">Active</Link></li>
-              <li><Link to="#" className="dropdown-item rounded-1">Inactive</Link></li>
-            </ul>
-          </div>
-        </div>
+        <FilterBar filters={filterConfig} onClear={handleClearFilters} hasActiveFilters={hasActiveFilters} />
       </div>
       <div className="card-body p-0">
-        <CustomDataTable columns={columns} data={data} defaultRowsPerPage={10} />
+        <CustomDataTable columns={columns} data={tableData} defaultRowsPerPage={10} />
       </div>
     </div>
   );

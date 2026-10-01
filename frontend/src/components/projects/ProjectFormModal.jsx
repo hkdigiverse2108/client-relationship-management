@@ -36,8 +36,8 @@ const saveLocalOptions = (key, options) => {
 
 export default function ProjectFormModal({ open, onClose, onSuccess, projectData = null }) {
   const [formData, setFormData] = useState({
-    title: "", client_id: "", category: "Web Development", priority: "medium",
-    department: "Engineering", start_date: new Date(), end_date: null,
+    title: "", client_id: "", category: "", priority: "medium",
+    department: "", start_date: new Date(), end_date: null,
     budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
     tags: "", description: ""
   });
@@ -57,9 +57,9 @@ export default function ProjectFormModal({ open, onClose, onSuccess, projectData
         setFormData({
           title: projectData.title || "",
           client_id: projectData.client_id || "",
-          category: projectData.category || "Web Development",
+          category: projectData.category || "",
           priority: projectData.priority || "medium",
-          department: projectData.department || "Engineering",
+          department: projectData.department || "",
           start_date: projectData.start_date ? new Date(projectData.start_date) : new Date(),
           end_date: projectData.end_date ? new Date(projectData.end_date) : null,
           budget: projectData.budget || "",
@@ -72,8 +72,8 @@ export default function ProjectFormModal({ open, onClose, onSuccess, projectData
         });
       } else {
         setFormData({
-          title: "", client_id: "", category: "Web Development", priority: "medium",
-          department: "Engineering", start_date: new Date(), end_date: null,
+          title: "", client_id: "", category: "", priority: "medium",
+          department: "", start_date: new Date(), end_date: null,
           budget: "", project_value: "", assigned_to: "", status: "active", stage: "new",
           tags: "", description: ""
         });
@@ -202,13 +202,13 @@ export default function ProjectFormModal({ open, onClose, onSuccess, projectData
     <Modal 
       open={open} 
       onClose={onClose} 
-      title={projectData ? "Edit Project" : "Create New Project"} 
+      title={(projectData && (projectData._id || projectData.id)) ? "Edit Project" : "Create New Project"} 
       size="lg"
       footer={
         <div className="d-flex align-items-center justify-content-end w-100">
           <button type="button" className="btn btn-light me-2" onClick={onClose} disabled={loading}>Cancel</button>
           <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Saving...' : (projectData ? 'Save Changes' : 'Create Project')}
+            {loading ? 'Saving...' : ((projectData && (projectData._id || projectData.id)) ? 'Save Changes' : 'Create Project')}
           </button>
         </div>
       }
@@ -249,7 +249,8 @@ export default function ProjectFormModal({ open, onClose, onSuccess, projectData
               <CustomSelect 
                 className="select" 
                 creatable={true}
-                value={{ value: formData.category, label: formData.category }} 
+                placeholder="Select Category"
+                value={formData.category ? { value: formData.category, label: formData.category } : null} 
                 onChange={handleCreatableChange('category', setCategories, 'project_categories')}
               >
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -262,7 +263,8 @@ export default function ProjectFormModal({ open, onClose, onSuccess, projectData
               <CustomSelect 
                 className="select" 
                 creatable={true}
-                value={{ value: formData.department, label: formData.department }} 
+                placeholder="Select Department"
+                value={formData.department ? { value: formData.department, label: formData.department } : null} 
                 onChange={handleCreatableChange('department', setDepartments, 'project_departments')}
               >
                 {departments.map(d => <option key={d} value={d}>{d}</option>)}

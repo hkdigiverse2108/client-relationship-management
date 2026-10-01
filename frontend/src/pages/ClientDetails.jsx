@@ -386,7 +386,7 @@ const ClientDetails = () => {
         </a>
         <ul className="dropdown-menu dropdown-menu-end bg-gray-900 dropdown-menu-md dropdown-menu-dark p-3">
             <li>
-                <a href="#" onClick={(e) => { e.preventDefault(); setProjectToEdit({ client_id: activeClientId }); setIsProjectModalOpen(true); }}
+                <a href="#" onClick={(e) => { e.preventDefault(); setProjectToEdit({ client_id: client?._id || client?.client_id || client?.id }); setIsProjectModalOpen(true); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-briefcase"></i></span>
