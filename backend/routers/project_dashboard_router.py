@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from datetime import datetime, timedelta
 from typing import Dict, Any
-from db import projects_collection, payments_collection
-from dependencies import get_current_user
+from db import projects_collection, payments_collection, db
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/project-dashboard", tags=["Project Dashboard"])
 
@@ -297,10 +297,70 @@ async def get_project_dashboard_stats(current_user: dict = Depends(get_current_u
             "value": valStr
         })
 
+    # Team Productivity (Tasks)
+    allowed_ids = await get_allowed_user_ids(current_user)
+    
+    # Fetch tasks
+    tasks_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        tasks_query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"assigned_to": {"$in": allowed_ids}},
+            {"assigned_to": {"$in": [current_user.get("name"), current_user.get("email")]}}
+        ]
+    tasks_cursor = db.tasks.find(tasks_query)
+    tasks = await tasks_cursor.to_list(length=None)
+
+    # Calculate last 5 weeks productivity
+    teamProductivityData = {
+        "categories": [],
+        "series": [
+            {"name": "Total Tasks", "data": []},
+            {"name": "Completed Tasks", "data": []}
+        ]
+    }
+    
+    # We will compute stats for the last 5 weeks (including current week)
+    # A week is considered as 7 days ending on today.
+    # So Week 5 is (today-6 to today), Week 4 is (today-13 to today-7), etc.
+    for i in range(4, -1, -1):
+        week_end = now_midnight + timedelta(days=1) - timedelta(days=7*i)
+        week_start = week_end - timedelta(days=7)
+        
+        # category label
+        if i == 0:
+            cat_label = "This Week"
+        elif i == 1:
+            cat_label = "Last Week"
+        else:
+            cat_label = f"{i} Weeks Ago"
+            
+        teamProductivityData["categories"].append(cat_label)
+        
+        total_for_week = 0
+        comp_for_week = 0
+        
+        for t in tasks:
+            t_created_str = t.get("created_at")
+            if t_created_str:
+                t_created = parse_date(t_created_str)
+            else:
+                t_created = parse_date(t.get("due_date")) or now_midnight
+                
+            if t_created and week_start <= t_created < week_end:
+                total_for_week += 1
+                t_stat = (t.get("status") or "").lower()
+                if t_stat in ["completed", "done", "finished"]:
+                    comp_for_week += 1
+                    
+        teamProductivityData["series"][0]["data"].append(total_for_week)
+        teamProductivityData["series"][1]["data"].append(comp_for_week)
+
     return {
         "projectStats": projectStats,
         "finStats": finStats,
         "categoryData": categoryData,
         "statusData": statusData,
-        "recentProjectsData": recentProjectsData
+        "recentProjectsData": recentProjectsData,
+        "teamProductivityData": teamProductivityData
     }

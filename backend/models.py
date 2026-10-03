@@ -166,6 +166,7 @@ class AuditLogCreate(BaseModel):
 class AuditLogResponse(AuditLogCreate):
     id: str = Field(alias="_id")
     timestamp: datetime
+    avatar: Optional[str] = None
 
 class NotificationCreate(BaseModel):
     user_id: str

@@ -42,24 +42,92 @@ const INITIAL_STATE = {
   product_name: "", quantity: 1, unit_price: "", discount: 0, tax: 0, description: ""
 };
 
-export default function OrderFormModal({ open, onClose }) {
+export default function OrderFormModal({ open, onClose, onSave }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
+  const [errors, setErrors] = useState({});
+  const [productsList, setProductsList] = useState([]);
+
+  React.useEffect(() => {
+    if (open) {
+      import('../../api/axiosClient').then(({ default: axiosClient }) => {
+        axiosClient.get('/products')
+          .then(res => {
+            const data = res.data?.data || res.data || res || [];
+            const options = (Array.isArray(data) ? data : []).map(p => ({
+              value: p.product_name,
+              label: p.product_name,
+              price: p.selling_price || p.base_price || 0
+            }));
+            setProductsList(options);
+          })
+          .catch(err => console.error("Error fetching products", err));
+      });
+    }
+  }, [open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      
+      // Auto-calculate 18% tax if pricing fields change
+      if (['unit_price', 'quantity', 'discount'].includes(name)) {
+        const qty = Number(updated.quantity) || 0;
+        const price = Number(updated.unit_price) || 0;
+        const disc = Number(updated.discount) || 0;
+        const taxableAmount = (qty * price) - disc;
+        if (taxableAmount > 0) {
+          updated.tax = (taxableAmount * 0.18).toFixed(2);
+        } else {
+          updated.tax = 0;
+        }
+      }
+      return updated;
+    });
+    
+    // Clear error for field
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleSelectChange = (name) => (selected) => {
     setFormData(prev => ({ ...prev, [name]: selected ? selected.value : "" }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const validate = () => {
+    let newErrors = {};
+    if (!formData.customer_name) newErrors.customer_name = "Customer Name is required";
+    if (!formData.customer_email) newErrors.customer_email = "Email is required";
+    if (!formData.customer_phone) newErrors.customer_phone = "Phone is required";
+    if (!formData.destination_city) newErrors.destination_city = "City is required";
+    if (!formData.platform) newErrors.platform = "Platform is required";
+    if (!formData.product_name) newErrors.product_name = "Product Name is required";
+    if (!formData.unit_price) newErrors.unit_price = "Price is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Simulated order submitted: ", formData);
-    onClose();
-    // Optional: Reset form on close/submit
-    setFormData(INITIAL_STATE);
+    if (validate() && onSave) {
+      // Parse numbers before saving
+      const dataToSave = { ...formData };
+      dataToSave.quantity = Number(dataToSave.quantity) || 1;
+      dataToSave.unit_price = Number(dataToSave.unit_price) || 0;
+      dataToSave.discount = Number(dataToSave.discount) || 0;
+      dataToSave.tax = Number(dataToSave.tax) || 0;
+      
+      onSave(dataToSave);
+      setFormData(INITIAL_STATE);
+      setErrors({});
+      onClose();
+    }
   };
 
   const getSelectValue = (val, options = []) => {
@@ -90,19 +158,23 @@ export default function OrderFormModal({ open, onClose }) {
         <div className="row g-3 mb-4">
           <div className="col-md-4">
             <label className="form-label">Customer Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="customer_name" placeholder="e.g. Rahul Sharma" value={formData.customer_name} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.customer_name ? 'is-invalid' : ''}`} name="customer_name" placeholder="e.g. Rahul Sharma" value={formData.customer_name} onChange={handleChange} />
+            {errors.customer_name && <div className="invalid-feedback">{errors.customer_name}</div>}
           </div>
           <div className="col-md-4">
-            <label className="form-label">Email</label>
-            <input type="email" className="form-control" name="customer_email" placeholder="e.g. rahul@example.com" value={formData.customer_email} onChange={handleChange} />
+            <label className="form-label">Email <span className="text-danger">*</span></label>
+            <input type="email" className={`form-control ${errors.customer_email ? 'is-invalid' : ''}`} name="customer_email" placeholder="e.g. rahul@example.com" value={formData.customer_email} onChange={handleChange} />
+            {errors.customer_email && <div className="invalid-feedback">{errors.customer_email}</div>}
           </div>
           <div className="col-md-4">
-            <label className="form-label">Phone Number</label>
-            <input type="text" className="form-control" name="customer_phone" placeholder="e.g. +91 9876543210" value={formData.customer_phone} onChange={handleChange} />
+            <label className="form-label">Phone Number <span className="text-danger">*</span></label>
+            <input type="text" className={`form-control ${errors.customer_phone ? 'is-invalid' : ''}`} name="customer_phone" placeholder="e.g. +91 9876543210" value={formData.customer_phone} onChange={handleChange} />
+            {errors.customer_phone && <div className="invalid-feedback">{errors.customer_phone}</div>}
           </div>
           <div className="col-md-4">
             <label className="form-label">Destination City <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="destination_city" placeholder="Type to search city..." list="city-list" value={formData.destination_city} onChange={handleChange} required />
+            <input type="text" className={`form-control ${errors.destination_city ? 'is-invalid' : ''}`} name="destination_city" placeholder="Type to search city..." list="city-list" value={formData.destination_city} onChange={handleChange} />
+            {errors.destination_city && <div className="invalid-feedback">{errors.destination_city}</div>}
             <datalist id="city-list">
               {CITIES.map(city => <option key={city} value={city} />)}
             </datalist>
@@ -123,15 +195,16 @@ export default function OrderFormModal({ open, onClose }) {
             <label className="form-label">Platform <span className="text-danger">*</span></label>
             <div className="custom-select-wrapper">
               <CustomSelect 
-                className="select" 
+                className={`select ${errors.platform ? 'is-invalid' : ''}`} 
                 options={platformOptions}
                 value={getSelectValue(formData.platform, platformOptions)} 
                 onChange={handleSelectChange('platform')} 
               />
+              {errors.platform && <div className="invalid-feedback d-block">{errors.platform}</div>}
             </div>
           </div>
           <div className="col-md-4">
-            <label className="form-label">Payment Status <span className="text-danger">*</span></label>
+            <label className="form-label">Payment Status</label>
             <div className="custom-select-wrapper">
               <CustomSelect 
                 className="select" 
@@ -142,7 +215,7 @@ export default function OrderFormModal({ open, onClose }) {
             </div>
           </div>
           <div className="col-md-4">
-            <label className="form-label">Order Status <span className="text-danger">*</span></label>
+            <label className="form-label">Order Status</label>
             <div className="custom-select-wrapper">
               <CustomSelect 
                 className="select" 
@@ -158,15 +231,31 @@ export default function OrderFormModal({ open, onClose }) {
         <div className="row g-3 mb-4">
           <div className="col-md-6">
             <label className="form-label">Product Name <span className="text-danger">*</span></label>
-            <input type="text" className="form-control" name="product_name" placeholder="e.g. Wireless Mouse" value={formData.product_name} onChange={handleChange} required />
+            <div className="custom-select-wrapper">
+              <CustomSelect
+                className={`select ${errors.product_name ? 'is-invalid' : ''}`}
+                options={productsList}
+                value={getSelectValue(formData.product_name, productsList)}
+                onChange={(selected) => {
+                  handleSelectChange('product_name')(selected);
+                  if (selected && selected.price) {
+                    // Auto-fill price
+                    handleChange({ target: { name: 'unit_price', value: selected.price } });
+                  }
+                }}
+                placeholder="Select a Product"
+              />
+              {errors.product_name && <div className="invalid-feedback d-block">{errors.product_name}</div>}
+            </div>
           </div>
           <div className="col-md-6">
-            <label className="form-label">Quantity <span className="text-danger">*</span></label>
-            <input type="number" className="form-control" name="quantity" min="1" value={formData.quantity} onChange={handleChange} required />
+            <label className="form-label">Quantity</label>
+            <input type="number" className="form-control" name="quantity" min="1" value={formData.quantity} onChange={handleChange} />
           </div>
           <div className="col-md-4">
             <label className="form-label">Unit Price (₹) <span className="text-danger">*</span></label>
-            <input type="number" className="form-control" name="unit_price" min="0" step="0.01" placeholder="0.00" value={formData.unit_price} onChange={handleChange} required />
+            <input type="number" className={`form-control ${errors.unit_price ? 'is-invalid' : ''}`} name="unit_price" min="0" step="0.01" placeholder="0.00" value={formData.unit_price} onChange={handleChange} />
+            {errors.unit_price && <div className="invalid-feedback">{errors.unit_price}</div>}
           </div>
           <div className="col-md-4">
             <label className="form-label">Discount (₹)</label>

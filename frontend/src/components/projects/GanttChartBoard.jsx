@@ -113,8 +113,8 @@ const GanttChartBoard = ({ data }) => {
             <React.Fragment key={project.id}>
               {/* Project Row */}
               <div className="gantt-project-row">
-                <div className="gantt-project-title" style={{ gridRow: projectRowIndex, cursor: 'pointer' }} onClick={() => toggleProject(project.id)}>
-                  <i className={`ti ti-chevron-${isCollapsed ? 'right' : 'down'} text-muted me-2 fs-5`}></i>
+                <div className="gantt-project-title" style={{ gridRow: projectRowIndex, cursor: 'pointer' }} onClick={() => toggleProject(project.id)} title={project.title}>
+                  <i className={`ti ti-chevron-${isCollapsed ? 'right' : 'down'} text-muted me-2 fs-10`}></i>
                   <i className="ti ti-folder text-primary me-2 fs-20"></i>
                   <span className="text-truncate">{project.title}</span>
                 </div>
@@ -146,7 +146,7 @@ const GanttChartBoard = ({ data }) => {
                 
                 return (
                   <div key={task.id} className="gantt-task-row">
-                    <div className="gantt-task-title" style={{ gridRow: taskRowIndex }}>
+                    <div className="gantt-task-title" style={{ gridRow: taskRowIndex }} title={task.title}>
                       <i className="ti ti-clipboard-list text-muted me-2 fs-13"></i>
                       <span className="text-truncate">{task.title}</span>
                     </div>
@@ -164,7 +164,7 @@ const GanttChartBoard = ({ data }) => {
                       className="gantt-bar-container"
                       style={{ gridColumn: `${tStartOffset} / span ${tDuration}`, gridRow: taskRowIndex, zIndex: 5 }}
                     >
-                      <div className={`gantt-task-bar status-${task.status.toLowerCase().replace(' ', '-')}`}>
+                      <div className={`gantt-task-bar status-${task.status.toLowerCase().replace(' ', '-')}`} title={task.title}>
                         <span className="text-truncate">{task.title}</span>
                         
                         {/* Tooltip */}
@@ -177,10 +177,23 @@ const GanttChartBoard = ({ data }) => {
                       
                       {/* Avatars */}
                       {task.assignees && task.assignees.length > 0 && (
-                        <div className="gantt-avatar-group ms-2 position-absolute" style={{ right: '-35px' }}>
-                          {task.assignees.map((img, idx) => (
-                            <img key={idx} src={img} onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} alt="Assignee" className="gantt-avatar" />
+                        <div className="gantt-avatar-group ms-2 position-absolute d-flex align-items-center" style={{ right: '-35px' }}>
+                          {task.assignees.slice(0, 3).map((a, idx) => (
+                            <React.Fragment key={idx}>
+                              {a.avatar ? (
+                                <img src={a.avatar} onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} alt={a.name} title={a.name} className="gantt-avatar rounded-circle border border-white" style={{ marginLeft: idx > 0 ? '-8px' : '0' }} />
+                              ) : (
+                                <div className="rounded-circle border border-white bg-primary text-white d-flex align-items-center justify-content-center fw-medium" title={a.name} style={{ width: 24, height: 24, fontSize: '10px', marginLeft: idx > 0 ? '-8px' : '0' }}>
+                                  {a.initials}
+                                </div>
+                              )}
+                            </React.Fragment>
                           ))}
+                          {task.assignees.length > 3 && (
+                            <span className="gantt-avatar-more rounded-circle bg-light border border-white d-flex align-items-center justify-content-center text-dark fw-medium" style={{ width: 24, height: 24, fontSize: '10px', marginLeft: '-8px' }}>
+                              +{task.assignees.length - 3}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

@@ -36,21 +36,19 @@ async def create_order(order: OrderCreate, current_user: dict = Depends(get_curr
     
     if order.product_name and order.quantity:
         product = await products_collection.find_one({"product_name": order.product_name})
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product '{order.product_name}' not found in inventory")
+        if product:
+            current_initial = product.get("initial_stock_qty", 0)
+            if current_initial < order.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for '{order.product_name}'. Total available: {current_initial} units")
             
-        current_initial = product.get("initial_stock_qty", 0)
-        if current_initial < order.quantity:
-            raise HTTPException(status_code=400, detail=f"Insufficient stock for '{order.product_name}'. Total available: {current_initial} units")
-            
-        warehouse_stocks = product.get("warehouse_stocks") or {}
-        # Initialize if empty
-        if not warehouse_stocks and current_initial:
-            warehouse_stocks["Main Warehouse"] = current_initial
-            
-        current_main = warehouse_stocks.get("Main Warehouse", 0)
-        if current_main < order.quantity:
-            raise HTTPException(status_code=400, detail=f"Insufficient stock in Main Warehouse for '{order.product_name}'. Available: {current_main} units")
+            warehouse_stocks = product.get("warehouse_stocks") or {}
+            # Initialize if empty
+            if not warehouse_stocks and current_initial:
+                warehouse_stocks["Main Warehouse"] = current_initial
+                
+            current_main = warehouse_stocks.get("Main Warehouse", 0)
+            if current_main < order.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock in Main Warehouse for '{order.product_name}'. Available: {current_main} units")
 
     data = order.model_dump()
     data["order_id"] = await generate_order_id()

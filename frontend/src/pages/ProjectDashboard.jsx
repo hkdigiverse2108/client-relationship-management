@@ -42,6 +42,14 @@ const ProjectDashboard = () => {
 
   const statusData = dashboardData?.statusData || [];
   const recentProjectsData = dashboardData?.recentProjectsData || [];
+  
+  const teamProductivityData = dashboardData?.teamProductivityData || {
+    categories: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
+    series: [
+      { name: 'Total Tasks', data: [0, 0, 0, 0, 0] },
+      { name: 'Completed Tasks', data: [0, 0, 0, 0, 0] }
+    ]
+  };
 
   const projectColumns = [
     { name: 'PROJECT NAME', selector: row => row.name, sortable: true },
@@ -248,7 +256,10 @@ const ProjectDashboard = () => {
                 <h2 className="card-title">Team Productivity (Tasks)</h2>
               </div>
               <div className="card-body">
-                <TeamProductivityChart />
+                <TeamProductivityChart 
+                  categories={teamProductivityData.categories}
+                  series={teamProductivityData.series}
+                />
               </div>
             </div>
           </div>

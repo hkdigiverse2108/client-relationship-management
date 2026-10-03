@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import CustomDataTable from '../components/common/CustomDataTable';
-import { ordersData } from './ordersData';
 import OrderFormModal from '../components/orders/OrderFormModal';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import OrdersGridView from '../components/orders/OrdersGridView';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const Contacts = () => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState([null, null]);
@@ -25,8 +28,45 @@ const Contacts = () => {
     setPlatformFilter('');
     setPaymentFilter('');
   };
-  // Pagination state for contacts
-        
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/orders');
+      // Some interceptors return data inside data.data or similar
+      const fetchedData = res.data?.data || res.data || res || [];
+      setOrders(Array.isArray(fetchedData) ? fetchedData : []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const handleSaveOrder = async (formData) => {
+    try {
+      await axiosClient.post('/orders', formData);
+      toast.success('Order simulated successfully');
+      fetchOrders();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to simulate order');
+    }
+  };
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   const columns = [
     {
       name: 'Order ID',
@@ -42,7 +82,13 @@ const Contacts = () => {
       cell: (row) => (
         <div className="d-flex align-items-center">
           <Link to="#" className="avatar avatar-md border avatar-rounded me-2">
-            <img src={row.avatar} className="img-fluid" alt="img" />
+            {row.avatar ? (
+              <img src={row.avatar} className="img-fluid" alt="img" />
+            ) : (
+              <div className="d-flex align-items-center justify-content-center bg-primary text-white fs-13 fw-semibold w-100 h-100 rounded-circle">
+                {getInitials(row.customer_name)}
+              </div>
+            )}
           </Link>
           <div>
             <h6 className="fw-medium mb-1"><Link to="#">{row.customer_name}</Link></h6>
@@ -207,8 +253,8 @@ const Contacts = () => {
 								<span className="d-inline-flex align-items-center bg-primary-transparent text-primary px-2 py-1 rounded fw-medium" style={{ border: '1px solid rgba(var(--bs-primary-rgb), 0.2)' }}>
 									<span className="spinner-grow spinner-grow-sm text-primary me-2" role="status" aria-hidden="true" style={{ width: '0.6rem', height: '0.6rem' }}></span>
 									{platformFilter 
-										? `Showing ${ordersData.filter(order => order.platform === platformFilter).length} orders for ${platformFilter}` 
-										: `Showing ${ordersData.length} total orders across all platforms`}
+										? `Showing ${(orders || []).filter(order => order.platform === platformFilter).length} orders for ${platformFilter}` 
+										: `Showing ${(orders || []).length} total orders across all platforms`}
 								</span>
 							</div>
 						</div>
@@ -275,11 +321,11 @@ const Contacts = () => {
 					<div className="card-body p-0">
 						{viewMode === 'list' ? (
 							<div className="custom-datatable-filter table-responsive">
-								<CustomDataTable columns={columns} data={ordersData} />
+								<CustomDataTable columns={columns} data={orders || []} />
 							</div>
 						) : (
 							<div className="p-3">
-								<OrdersGridView />
+								<OrdersGridView data={orders || []} />
 							</div>
 						)}
 					</div>
@@ -291,7 +337,7 @@ const Contacts = () => {
 			
 
 		</div>
-		<OrderFormModal open={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} />
+		<OrderFormModal open={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} onSave={handleSaveOrder} />
     </>
   );
 };

@@ -150,6 +150,70 @@ const RolesPermissions = () => {
     setCurrentPermissions(updated);
   };
 
+  const areAllSelectedForItem = (item, type) => {
+    if (!item.subMenu) return false;
+    return item.subMenu.every(subItem => currentPermissions[subItem.path]?.[type]);
+  };
+
+  const handleSelectAllForItem = (item, type, isChecked) => {
+    if (!item.subMenu) return;
+    const updated = { ...currentPermissions };
+    item.subMenu.forEach(subItem => {
+      if (!updated[subItem.path]) updated[subItem.path] = {};
+      updated[subItem.path][type] = isChecked;
+    });
+    setCurrentPermissions(updated);
+  };
+
+  const areAllActionsSelectedForItem = (item) => {
+    if (!item.subMenu) return false;
+    return ['view', 'add', 'edit', 'delete'].every(type => areAllSelectedForItem(item, type));
+  };
+
+  const handleSelectAllActionsForItem = (item, isChecked) => {
+    if (!item.subMenu) return;
+    const updated = { ...currentPermissions };
+    item.subMenu.forEach(subItem => {
+      updated[subItem.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+    });
+    setCurrentPermissions(updated);
+  };
+
+  const areAllActionsSelectedForPath = (path) => {
+    const p = currentPermissions[path];
+    return p && p.view && p.add && p.edit && p.delete;
+  };
+
+  const handleSelectAllActionsForPath = (path, isChecked) => {
+    setCurrentPermissions(prev => ({
+      ...prev,
+      [path]: {
+        view: isChecked,
+        add: isChecked,
+        edit: isChecked,
+        delete: isChecked
+      }
+    }));
+  };
+
+  const areAllActionsSelectedForSection = (section) => {
+    return ['view', 'add', 'edit', 'delete'].every(type => areAllSelected(section, type));
+  };
+
+  const handleSelectAllActionsForSection = (section, isChecked) => {
+    const updated = { ...currentPermissions };
+    section.items.forEach(item => {
+      if (item.subMenu) {
+        item.subMenu.forEach(subItem => {
+          updated[subItem.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+        });
+      } else {
+        updated[item.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+      }
+    });
+    setCurrentPermissions(updated);
+  };
+
   const handleMasterAll = (checked) => {
     const updated = { ...currentPermissions };
     Object.keys(updated).forEach(path => {
@@ -380,6 +444,7 @@ const RolesPermissions = () => {
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Add</th>
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Edit</th>
                         <th className="bg-light text-center fw-semibold py-3" style={{ width: '80px' }}>Delete</th>
+                        <th className="bg-light text-center fw-semibold py-3 border-end-0" style={{ width: '80px' }}>All</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -399,8 +464,11 @@ const RolesPermissions = () => {
                             <td className="text-center py-2">
                               <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'edit')} onChange={(e) => handleSelectAll(section, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
                             </td>
-                            <td className="text-center py-2 border-end-0">
+                            <td className="text-center py-2">
                               <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelected(section, 'delete')} onChange={(e) => handleSelectAll(section, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
+                            </td>
+                            <td className="text-center py-2 border-end-0">
+                              <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllActionsSelectedForSection(section)} onChange={(e) => handleSelectAllActionsForSection(section, e.target.checked)} style={{ cursor: 'pointer' }} />
                             </td>
                           </tr>
                           
@@ -413,7 +481,21 @@ const RolesPermissions = () => {
                                     <td className="ps-4 fw-medium text-dark py-2 border-start-0 border-end-0">
                                       {item.label}
                                     </td>
-                                    <td colSpan="4" className="border-start-0 border-end-0"></td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelectedForItem(item, 'view')} onChange={(e) => handleSelectAllForItem(item, 'view', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelectedForItem(item, 'add')} onChange={(e) => handleSelectAllForItem(item, 'add', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelectedForItem(item, 'edit')} onChange={(e) => handleSelectAllForItem(item, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllSelectedForItem(item, 'delete')} onChange={(e) => handleSelectAllForItem(item, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    </td>
+                                    <td className="text-center py-2 border-end-0">
+                                      <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllActionsSelectedForItem(item)} onChange={(e) => handleSelectAllActionsForItem(item, e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    </td>
                                   </tr>
                                   {item.subMenu.map(subItem => (
                                     <tr key={subItem.path}>
@@ -429,8 +511,11 @@ const RolesPermissions = () => {
                                       <td className="text-center py-2">
                                         <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.edit || false} onChange={(e) => handlePermissionChange(subItem.path, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
                                       </td>
-                                      <td className="text-center py-2 border-end-0">
+                                      <td className="text-center py-2">
                                         <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[subItem.path]?.delete || false} onChange={(e) => handlePermissionChange(subItem.path, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
+                                      </td>
+                                      <td className="text-center py-2 border-end-0">
+                                        <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllActionsSelectedForPath(subItem.path)} onChange={(e) => handleSelectAllActionsForPath(subItem.path, e.target.checked)} style={{ cursor: 'pointer' }} />
                                       </td>
                                     </tr>
                                   ))}
@@ -452,8 +537,11 @@ const RolesPermissions = () => {
                               <td className="text-center py-2">
                                 <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.edit || false} onChange={(e) => handlePermissionChange(item.path, 'edit', e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
-                              <td className="text-center py-2 border-end-0">
+                              <td className="text-center py-2">
                                 <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={currentPermissions[item.path]?.delete || false} onChange={(e) => handlePermissionChange(item.path, 'delete', e.target.checked)} style={{ cursor: 'pointer' }} />
+                              </td>
+                              <td className="text-center py-2 border-end-0">
+                                <input type="checkbox" className="form-check-input text-primary custom-primary-checkbox" checked={areAllActionsSelectedForPath(item.path)} onChange={(e) => handleSelectAllActionsForPath(item.path, e.target.checked)} style={{ cursor: 'pointer' }} />
                               </td>
                             </tr>
                             );

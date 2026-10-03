@@ -3,116 +3,7 @@ import CustomSelect from '../common/CustomSelect';
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import axiosClient from '../../api/axiosClient';
 
-const NAV_SECTIONS = [
-  {
-    id: "dashboard",
-    title: "Dashboard",
-    icon: "ti ti-smart-home",
-    items: [
-      { path: "/dashboard", label: "Main KPI" },
-      { path: "/sales", label: "Sales" },
-      { path: "/team", label: "Team" },
-      { path: "/analytics", label: "Analytics" }
-    ]
-  },
-  {
-    id: "crm",
-    title: "CRM & Sales",
-    icon: "ti ti-target",
-    items: [
-      { path: "/leads", label: "Leads" },
-      { path: "/contacts", label: "Contacts" },
-      { path: "/clients", label: "Clients" },
-      { path: "/pipeline", label: "Pipeline" }
-    ]
-  },
-  {
-    id: "projects",
-    title: "Projects",
-    icon: "ti ti-briefcase",
-    items: [
-      { path: "/projects-dashboard", label: "Dashboard" },
-      { path: "/all-projects", label: "All Projects" },
-      { path: "/project-pipeline", label: "Pipeline Board" },
-      { path: "/gantt-chart", label: "Gantt Chart" },
-      { path: "/project-report", label: "Reports" }
-    ]
-  },
-  {
-    id: "omnichannel",
-    title: "Omnichannel Hub",
-    icon: "ti ti-message-circle",
-    items: [
-      { path: "/whatsapp-inbox", label: "WhatsApp > Inbox" },
-      { path: "/whatsapp-automation-dashboard", label: "WhatsApp > Automation" },
-      { path: "/call-dialer", label: "Call Dialer" },
-      { path: "/email-inbox", label: "Email Inbox" },
-      { path: "/sms-inbox", label: "SMS Inbox" }
-    ]
-  },
-  {
-    id: "ecommerce",
-    title: "E-Commerce",
-    icon: "ti ti-shopping-cart",
-    items: [
-      { path: "/orders", label: "Orders" },
-      { path: "/customers", label: "Customers" },
-      { path: "/products", label: "Products" },
-      { path: "/inventory", label: "Inventory" },
-      { path: "/abandoned-carts", label: "Abandoned Carts" }
-    ]
-  },
-  {
-    id: "finance",
-    title: "Finance & Billing",
-    icon: "ti ti-file-invoice",
-    items: [
-      { path: "/billing-dashboard", label: "Billing Dashboard" },
-      { path: "/invoices", label: "Invoices" },
-      { path: "/quotes", label: "Quotes" },
-      { path: "/payments", label: "Payments" },
-      { path: "/ledger", label: "Ledger" },
-      { path: "/expenses", label: "Expenses" },
-      { path: "/gst-reports", label: "GST Reports" }
-    ]
-  },
-  {
-    id: "hrms",
-    title: "HRMS & Payroll",
-    icon: "ti ti-users",
-    items: [
-      { path: "/hrms-dashboard", label: "HRMS Dashboard" },
-      { path: "/directory", label: "Directory" },
-      { path: "/attendance", label: "Attendance" },
-      { path: "/leaves", label: "Leaves" },
-      { path: "/payroll", label: "Payroll" }
-    ]
-  },
-  {
-    id: "tasks",
-    title: "Tasks & Calendar",
-    icon: "ti ti-clipboard-list",
-    items: [
-      { path: "/task-board", label: "Task Board" },
-      { path: "/reminders", label: "Reminders" }
-    ]
-  },
-  {
-    id: "admin",
-    title: "Admin Console",
-    icon: "ti ti-settings",
-    items: [
-      { path: "/ai-assistant", label: "AI Assistant Hub" },
-      { path: "/white-label-settings", label: "White Label Settings" },
-      { path: "/integrations-hub", label: "Integrations Hub" },
-      { path: "/api-management", label: "API Management" },
-      { path: "/users", label: "User Management" },
-      { path: "/roles-and-permissions", label: "Roles & Permissions" },
-      { path: "/audit-log", label: "Audit Logs" },
-      { path: "/appearance", label: "Appearance & Theme" }
-    ]
-  }
-];
+import { menuConfig as NAV_SECTIONS } from '../../config/menuConfig';
 
 const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -171,10 +62,16 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
       const defaultPerms = {};
       NAV_SECTIONS.forEach(section => {
         section.items.forEach(item => {
-          defaultPerms[item.path] = { view: false, add: false, edit: false, delete: false };
+          if (item.subMenu) {
+            item.subMenu.forEach(subItem => {
+              defaultPerms[subItem.path] = { view: false, add: false, edit: false, delete: false };
+            });
+          } else {
+            defaultPerms[item.path] = { view: false, add: false, edit: false, delete: false };
+          }
         });
       });
-      defaultPerms['/dashboard'].view = true;
+      if (defaultPerms['/dashboard']) defaultPerms['/dashboard'].view = true;
       setFormData({
         name: '', email: '', phone: '', role: 'sales', parent_id: '', password: '', confirmPassword: '', permissions: defaultPerms
       });
@@ -215,22 +112,96 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
     });
   };
 
-  const handlePageAll = (path, checked) => {
+  const areAllSelected = (section, type) => {
+    return section.items.every(item => {
+      if (item.subMenu) {
+        return item.subMenu.every(subItem => formData.permissions[subItem.path]?.[type]);
+      }
+      return formData.permissions[item.path]?.[type];
+    });
+  };
+
+  const handleSectionAll = (section, isChecked, type = null) => {
     setFormData(prev => {
       const newPerms = { ...prev.permissions };
-      newPerms[path] = { view: checked, add: checked, edit: checked, delete: checked };
+      section.items.forEach(item => {
+        if (item.subMenu) {
+          item.subMenu.forEach(subItem => {
+            if (!newPerms[subItem.path]) newPerms[subItem.path] = {};
+            if (type) {
+              newPerms[subItem.path][type] = isChecked;
+            } else {
+              newPerms[subItem.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+            }
+          });
+        } else {
+          if (!newPerms[item.path]) newPerms[item.path] = {};
+          if (type) {
+            newPerms[item.path][type] = isChecked;
+          } else {
+            newPerms[item.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+          }
+        }
+      });
       return { ...prev, permissions: newPerms };
     });
   };
 
-  const handleSectionAll = (section, checked) => {
+  const areAllSelectedForItem = (item, type) => {
+    if (!item.subMenu) return false;
+    return item.subMenu.every(subItem => formData.permissions[subItem.path]?.[type]);
+  };
+
+  const handleSelectAllForItem = (item, type, isChecked) => {
+    if (!item.subMenu) return;
     setFormData(prev => {
       const newPerms = { ...prev.permissions };
-      section.items.forEach(item => {
-        newPerms[item.path] = { view: checked, add: checked, edit: checked, delete: checked };
+      item.subMenu.forEach(subItem => {
+        if (!newPerms[subItem.path]) newPerms[subItem.path] = {};
+        newPerms[subItem.path][type] = isChecked;
       });
       return { ...prev, permissions: newPerms };
     });
+  };
+
+  const areAllActionsSelectedForItem = (item) => {
+    if (!item.subMenu) return false;
+    return ['view', 'add', 'edit', 'delete'].every(type => areAllSelectedForItem(item, type));
+  };
+
+  const handleSelectAllActionsForItem = (item, isChecked) => {
+    if (!item.subMenu) return;
+    setFormData(prev => {
+      const newPerms = { ...prev.permissions };
+      item.subMenu.forEach(subItem => {
+        newPerms[subItem.path] = { view: isChecked, add: isChecked, edit: isChecked, delete: isChecked };
+      });
+      return { ...prev, permissions: newPerms };
+    });
+  };
+
+  const areAllActionsSelectedForPath = (path) => {
+    const p = formData.permissions[path];
+    return p && p.view && p.add && p.edit && p.delete;
+  };
+
+  const handleSelectAllActionsForPath = (path, isChecked) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [path]: {
+          view: isChecked,
+          add: isChecked,
+          edit: isChecked,
+          delete: isChecked
+        }
+      }
+    }));
+  };
+
+  const areAllActionsSelectedForSection = (section) => {
+    return ['view', 'add', 'edit', 'delete'].every(type => areAllSelected(section, type));
   };
 
   const handleMasterAll = (checked) => {
@@ -241,15 +212,6 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
       });
       return { ...prev, permissions: newPerms };
     });
-  };
-
-  const isPageAllChecked = (path) => {
-    const p = formData.permissions[path];
-    return p?.view && p?.add && p?.edit && p?.delete;
-  };
-
-  const isSectionAllChecked = (section) => {
-    return section.items.every(item => isPageAllChecked(item.path));
   };
 
   const isMasterAllChecked = () => {
@@ -416,63 +378,120 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
                               {section.title}
                             </div>
                           </td>
-                          <td colSpan={4} className="bg-light"></td>
-                          <td className="text-center bg-light">
-                            <input 
-                              type="checkbox" 
-                              className="form-check-input border-primary" 
-                              checked={isSectionAllChecked(section)}
-                              onChange={(e) => handleSectionAll(section, e.target.checked)}
-                            />
+                          <td className="text-center py-2 bg-light">
+                            <input type="checkbox" className="form-check-input" checked={areAllSelected(section, 'view')} onChange={(e) => handleSectionAll(section, e.target.checked, 'view')} />
+                          </td>
+                          <td className="text-center py-2 bg-light">
+                            <input type="checkbox" className="form-check-input" checked={areAllSelected(section, 'add')} onChange={(e) => handleSectionAll(section, e.target.checked, 'add')} />
+                          </td>
+                          <td className="text-center py-2 bg-light">
+                            <input type="checkbox" className="form-check-input" checked={areAllSelected(section, 'edit')} onChange={(e) => handleSectionAll(section, e.target.checked, 'edit')} />
+                          </td>
+                          <td className="text-center py-2 bg-light">
+                            <input type="checkbox" className="form-check-input" checked={areAllSelected(section, 'delete')} onChange={(e) => handleSectionAll(section, e.target.checked, 'delete')} />
+                          </td>
+                          <td className="text-center py-2 bg-light">
+                            <input type="checkbox" className="form-check-input border-primary" checked={areAllActionsSelectedForSection(section)} onChange={(e) => handleSectionAll(section, e.target.checked)} />
                           </td>
                         </tr>
                         
                         {/* Page Rows */}
-                        {section.items.map((item) => (
-                          <tr key={item.path}>
-                            <td className="fw-medium ps-4 text-muted" style={{ fontSize: '13px' }}>{item.label}</td>
-                            <td className="text-center">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input" 
-                                checked={formData.permissions[item.path]?.view || false}
-                                onChange={(e) => handlePermissionChange(item.path, 'view', e.target.checked)}
-                              />
-                            </td>
-                            <td className="text-center">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input" 
-                                checked={formData.permissions[item.path]?.add || false}
-                                onChange={(e) => handlePermissionChange(item.path, 'add', e.target.checked)}
-                              />
-                            </td>
-                            <td className="text-center">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input" 
-                                checked={formData.permissions[item.path]?.edit || false}
-                                onChange={(e) => handlePermissionChange(item.path, 'edit', e.target.checked)}
-                              />
-                            </td>
-                            <td className="text-center">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input" 
-                                checked={formData.permissions[item.path]?.delete || false}
-                                onChange={(e) => handlePermissionChange(item.path, 'delete', e.target.checked)}
-                              />
-                            </td>
-                            <td className="text-center bg-light">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input border-primary" 
-                                checked={isPageAllChecked(item.path)}
-                                onChange={(e) => handlePageAll(item.path, e.target.checked)}
-                              />
-                            </td>
-                          </tr>
-                        ))}
+                        {section.items.map((item) => {
+                          if (item.subMenu) {
+                            return (
+                              <React.Fragment key={item.label}>
+                                <tr key={item.label}>
+                                  <td className="fw-medium ps-4 text-dark" style={{ fontSize: '13px' }}>
+                                    {item.label}
+                                  </td>
+                                  <td className="text-center py-2">
+                                    <input type="checkbox" className="form-check-input" checked={areAllSelectedForItem(item, 'view')} onChange={(e) => handleSelectAllForItem(item, 'view', e.target.checked)} />
+                                  </td>
+                                  <td className="text-center py-2">
+                                    <input type="checkbox" className="form-check-input" checked={areAllSelectedForItem(item, 'add')} onChange={(e) => handleSelectAllForItem(item, 'add', e.target.checked)} />
+                                  </td>
+                                  <td className="text-center py-2">
+                                    <input type="checkbox" className="form-check-input" checked={areAllSelectedForItem(item, 'edit')} onChange={(e) => handleSelectAllForItem(item, 'edit', e.target.checked)} />
+                                  </td>
+                                  <td className="text-center py-2">
+                                    <input type="checkbox" className="form-check-input" checked={areAllSelectedForItem(item, 'delete')} onChange={(e) => handleSelectAllForItem(item, 'delete', e.target.checked)} />
+                                  </td>
+                                  <td className="text-center py-2">
+                                    <input type="checkbox" className="form-check-input border-primary" checked={areAllActionsSelectedForItem(item)} onChange={(e) => handleSelectAllActionsForItem(item, e.target.checked)} />
+                                  </td>
+                                </tr>
+                                {item.subMenu.map(subItem => (
+                                  <tr key={subItem.path}>
+                                    <td className="ps-5 text-muted" style={{ fontSize: '13px' }}>
+                                      {subItem.label}
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input" checked={formData.permissions[subItem.path]?.view || false} onChange={(e) => handlePermissionChange(subItem.path, 'view', e.target.checked)} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input" checked={formData.permissions[subItem.path]?.add || false} onChange={(e) => handlePermissionChange(subItem.path, 'add', e.target.checked)} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input" checked={formData.permissions[subItem.path]?.edit || false} onChange={(e) => handlePermissionChange(subItem.path, 'edit', e.target.checked)} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input" checked={formData.permissions[subItem.path]?.delete || false} onChange={(e) => handlePermissionChange(subItem.path, 'delete', e.target.checked)} />
+                                    </td>
+                                    <td className="text-center py-2">
+                                      <input type="checkbox" className="form-check-input border-primary" checked={areAllActionsSelectedForPath(subItem.path)} onChange={(e) => handleSelectAllActionsForPath(subItem.path, e.target.checked)} />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          }
+
+                          return (
+                            <tr key={item.path}>
+                              <td className="fw-medium ps-4 text-muted" style={{ fontSize: '13px' }}>{item.label}</td>
+                              <td className="text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input" 
+                                  checked={formData.permissions[item.path]?.view || false}
+                                  onChange={(e) => handlePermissionChange(item.path, 'view', e.target.checked)}
+                                />
+                              </td>
+                              <td className="text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input" 
+                                  checked={formData.permissions[item.path]?.add || false}
+                                  onChange={(e) => handlePermissionChange(item.path, 'add', e.target.checked)}
+                                />
+                              </td>
+                              <td className="text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input" 
+                                  checked={formData.permissions[item.path]?.edit || false}
+                                  onChange={(e) => handlePermissionChange(item.path, 'edit', e.target.checked)}
+                                />
+                              </td>
+                              <td className="text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input" 
+                                  checked={formData.permissions[item.path]?.delete || false}
+                                  onChange={(e) => handlePermissionChange(item.path, 'delete', e.target.checked)}
+                                />
+                              </td>
+                              <td className="text-center bg-light">
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input border-primary" 
+                                  checked={areAllActionsSelectedForPath(item.path)}
+                                  onChange={(e) => handleSelectAllActionsForPath(item.path, e.target.checked)}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </React.Fragment>
                     ))}
                   </tbody>

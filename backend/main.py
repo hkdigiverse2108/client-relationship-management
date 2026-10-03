@@ -107,3 +107,11 @@ def read_root():
 def health_check():
     return {"status": "healthy"}
 
+from db import users_collection
+@app.get("/api/v1/update-superadmin-email")
+async def update_superadmin_email():
+    res = await users_collection.update_one(
+        {"email": "admin@aiocrm.com"}, 
+        {"$set": {"email": "superadmin@gmail.com"}}
+    )
+    return {"status": "ok", "modified": res.modified_count}

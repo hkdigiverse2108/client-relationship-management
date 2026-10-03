@@ -2,10 +2,19 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ordersData } from '../../pages/ordersData';
 
-const OrdersGridView = () => {
+const OrdersGridView = ({ data = [] }) => {
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div className="row">
-      {ordersData.map((order) => {
+      {data.map((order) => {
         const qty = Number(order.quantity) || 0;
         const price = Number(order.unit_price) || 0;
         const disc = Number(order.discount) || 0;
@@ -50,7 +59,13 @@ const OrdersGridView = () => {
               <div className="card-body">
                 <div className="d-flex align-items-center mb-3">
                   <Link to="#" className="avatar avatar-md border avatar-rounded me-2">
-                    <img src={order.avatar} className="img-fluid" alt="img" />
+                    {order.avatar ? (
+                      <img src={order.avatar} className="img-fluid" alt="img" />
+                    ) : (
+                      <div className="d-flex align-items-center justify-content-center bg-primary text-white fs-13 fw-semibold w-100 h-100 rounded-circle">
+                        {getInitials(order.customer_name)}
+                      </div>
+                    )}
                   </Link>
                   <div>
                     <h6 className="fw-medium mb-0"><Link to="#">{order.customer_name}</Link></h6>

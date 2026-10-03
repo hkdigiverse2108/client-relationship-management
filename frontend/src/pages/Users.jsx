@@ -5,6 +5,7 @@ import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import UserFormModal from '../components/users/UserFormModal';
 import UserDetailsModal from '../components/users/UserDetailsModal';
+import CustomSelect from '../components/common/CustomSelect';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -13,9 +14,15 @@ const Users = () => {
     return saved ? JSON.parse(saved) : {};
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(null);
   const [visiblePasswords, setVisiblePasswords] = useState({});
+  const [rolesList, setRolesList] = useState([
+    { label: 'Super Admin', value: 'Super Admin' },
+    { label: 'Manager', value: 'manager' },
+    { label: 'Sales', value: 'sales' },
+    { label: 'HR', value: 'HR' }
+  ]);
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -37,17 +44,32 @@ const Users = () => {
     return 'UN';
   };
 
-  // Fetch users and sales target from backend
+  // Fetch users, sales target, and roles from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, targetRes] = await Promise.all([
+        const [usersRes, targetRes, rolesRes] = await Promise.all([
           axiosClient.get('/users'),
-          axiosClient.get('/users/settings/sales-target')
+          axiosClient.get('/users/settings/sales-target'),
+          axiosClient.get('/roles/presets').catch(() => null)
         ]);
         setUsers(usersRes || []);
         if (targetRes && targetRes.target) {
           setSalesTarget(targetRes.target.toString());
+        }
+        if (rolesRes && Array.isArray(rolesRes)) {
+          const defaultRoles = ['Super Admin', 'manager', 'sales', 'HR'];
+          const dynamicRoles = rolesRes
+            .filter(r => !defaultRoles.map(dr => dr.toLowerCase()).includes(r.role_name.toLowerCase()))
+            .map(r => ({ label: r.role_name, value: r.role_name }));
+          
+          setRolesList([
+            { label: 'Super Admin', value: 'Super Admin' },
+            { label: 'Manager', value: 'manager' },
+            { label: 'Sales', value: 'sales' },
+            { label: 'HR', value: 'HR' },
+            ...dynamicRoles
+          ]);
         }
       } catch (err) {
         console.error("Failed to fetch data", err);
@@ -163,9 +185,9 @@ const Users = () => {
     if (searchQuery && !u.name.toLowerCase().includes(searchQuery.toLowerCase()) && !u.email.toLowerCase().includes(searchQuery.toLowerCase())) {
       match = false;
     }
-    if (roleFilter && u.role !== roleFilter) match = false;
-    if (statusFilter === 'Active' && !u.is_active) match = false;
-    if (statusFilter === 'Inactive' && u.is_active) match = false;
+    if (roleFilter && u.role?.toLowerCase() !== roleFilter.value.toLowerCase()) match = false;
+    if (statusFilter && statusFilter.value === 'Active' && !u.is_active) match = false;
+    if (statusFilter && statusFilter.value === 'Inactive' && u.is_active) match = false;
     return match;
   });
 
@@ -358,35 +380,34 @@ const Users = () => {
                     </span>
                     <input
                       type="text"
-                      className="form-control form-control-sm"
+                      className="form-control form-control-md"
                       placeholder="Search users..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                 </div>
-                
-                <div className="dropdown me-3">
-                  <a href="#" className="dropdown-toggle btn btn-sm btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-                    {roleFilter ? roleFilter : 'All Roles'}
-                  </a>
-                  <ul className="dropdown-menu dropdown-menu-end p-3">
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setRoleFilter(''); }} className="dropdown-item rounded-1">All Roles</a></li>
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setRoleFilter('Super Admin'); }} className="dropdown-item rounded-1">Super Admin</a></li>
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setRoleFilter('manager'); }} className="dropdown-item rounded-1">Manager</a></li>
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setRoleFilter('sales'); }} className="dropdown-item rounded-1">Sales</a></li>
-                  </ul>
+                <div className="me-3" style={{ minWidth: '180px' }}>
+                  <CustomSelect
+                    options={rolesList}
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                    placeholder="All Roles"
+                    isClearable
+                  />
                 </div>
                 
-                <div className="dropdown">
-                  <a href="#" className="dropdown-toggle btn btn-sm btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-                    {statusFilter ? statusFilter : 'All Status'}
-                  </a>
-                  <ul className="dropdown-menu dropdown-menu-end p-3">
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setStatusFilter(''); }} className="dropdown-item rounded-1">All Status</a></li>
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setStatusFilter('Active'); }} className="dropdown-item rounded-1">Active</a></li>
-                    <li><a href="#" onClick={(e) => { e.preventDefault(); setStatusFilter('Inactive'); }} className="dropdown-item rounded-1">Inactive</a></li>
-                  </ul>
+                <div style={{ minWidth: '150px' }}>
+                  <CustomSelect
+                    options={[
+                      { label: 'Active', value: 'Active' },
+                      { label: 'Inactive', value: 'Inactive' }
+                    ]}
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    placeholder="All Status"
+                    isClearable
+                  />
                 </div>
               </div>
             </div>

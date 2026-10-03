@@ -11,7 +11,11 @@ export const ProjectCategoryChart = ({ series, labels, colors }) => {
     labels: labels || ['Design', 'Development', 'Marketing', 'Sales', 'Maintenance']
   };
   const dataSeries = series || [85, 70, 60, 55, 50];
-  return <ReactApexChart options={options} series={dataSeries} type="radialBar" height={400} />;
+  return (
+    <div style={{ minHeight: 0, position: 'relative' }}>
+      <ReactApexChart options={options} series={dataSeries} type="radialBar" height={400} />
+    </div>
+  );
 };
 
 export const ProjectStatusChart = ({ data, categories }) => {
@@ -36,11 +40,15 @@ export const ProjectStatusChart = ({ data, categories }) => {
     tooltip: { enabled: true, theme: 'dark' }, legend: { show: false },
     states: { hover: { filter: { type: 'darken', value: 0.9 } }, active: { filter: { type: 'none' } } }
   };
-  const series = [{ name: 'Projects', data: data || [150, 120, 80, 50, 20] }];
-  return <ReactApexChart options={options} series={series} type="bar" height={240} />;
+  const seriesData = [{ name: 'Projects', data: data || [150, 120, 80, 50, 20] }];
+  return (
+    <div style={{ minHeight: 0, position: 'relative' }}>
+      <ReactApexChart options={options} series={seriesData} type="bar" height={240} />
+    </div>
+  );
 };
 
-export const TeamProductivityChart = () => {
+export const TeamProductivityChart = ({ series, categories }) => {
   const options = {
     chart: { type: 'bar', height: 320, toolbar: { show: false } },
     plotOptions: {
@@ -50,7 +58,7 @@ export const TeamProductivityChart = () => {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: { 
-      categories: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
+      categories: categories || ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
       axisBorder: { show: false }, 
       axisTicks: { show: false },
       labels: { style: { colors: '#6B7280', fontSize: '13px' } }
@@ -63,11 +71,15 @@ export const TeamProductivityChart = () => {
     tooltip: { y: { formatter: function (val) { return val + " Tasks" } } },
     legend: { position: 'bottom', markers: { radius: 12 } }
   };
-  const series = [
+  const dataSeries = series || [
     { name: 'Total Tasks', data: [76, 85, 101, 98, 87] },
     { name: 'Completed Tasks', data: [44, 55, 57, 56, 61] }
   ];
-  return <ReactApexChart options={options} series={series} type="bar" height={320} />;
+  return (
+    <div style={{ minHeight: 0, position: 'relative' }}>
+      <ReactApexChart options={options} series={dataSeries} type="bar" height={320} />
+    </div>
+  );
 };
 
 export const FinancialOverviewChart = ({ series, labels, formattedTotal, amounts }) => {

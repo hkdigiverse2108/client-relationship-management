@@ -121,7 +121,11 @@ const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUp
         >
           
           {columns.map(column => {
-            const columnTasks = tasks.filter(task => task.status === column.id);
+            const columnTasks = tasks.filter(task => {
+              const taskStatus = (task.status || '').toLowerCase().replace(/[- ]/g, '');
+              const colStatus = column.id.toLowerCase().replace(/[- ]/g, '');
+              return taskStatus === colStatus;
+            });
             
             return (
               <div 
