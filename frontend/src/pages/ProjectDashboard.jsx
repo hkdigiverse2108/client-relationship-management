@@ -10,301 +10,38 @@ import axiosClient from '../api/axiosClient';
 
 const ProjectDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState([]);
-  const [payments, setPayments] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchDashboardStats = async () => {
       try {
-        const res = await axiosClient.get('/projects');
-        const pData = Array.isArray(res) ? res : (res.data || []);
-        setProjects(pData.filter(p => !p.is_deleted));
+        const res = await axiosClient.get('/project-dashboard/stats');
+        setDashboardData(res.data || res);
       } catch (err) {
-        console.error("Error fetching projects:", err);
+        console.error("Error fetching dashboard stats:", err);
+      } finally {
+        setLoading(false);
       }
     };
-    const fetchPayments = async () => {
-      try {
-        const res = await axiosClient.get('/payments');
-        const payData = Array.isArray(res) ? res : (res.data || []);
-        setPayments(payData);
-      } catch (err) {
-        console.error("Error fetching payments:", err);
-      }
-    };
-    fetchProjects();
-    fetchPayments();
+    fetchDashboardStats();
   }, []);
 
-  const stats = useMemo(() => {
-    const validProjects = projects.filter(p => {
-      const stage = (p.stage || '').toLowerCase();
-      const status = (p.status || '').toLowerCase();
-      return !['cancelled'].includes(stage) && !['cancelled'].includes(status);
-    });
+  const stats = dashboardData?.projectStats || { total: 0, active: 0, completed: 0, overdue: 0, onHold: 0, endingSoon: 0 };
 
-    const isCompleted = (p) => ['completed'].includes((p.stage || '').toLowerCase()) || ['completed'].includes((p.status || '').toLowerCase());
-    const isOnHold = (p) => ['on hold', 'on_hold', 'hold'].includes((p.stage || '').toLowerCase()) || ['on hold', 'on_hold', 'hold'].includes((p.status || '').toLowerCase());
-    
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
+  const finStats = dashboardData?.finStats || { 
+    totalValue: '₹0', amountReceived: '₹0', pendingPayments: '₹0', netProfit: '₹0',
+    tvTrend: { isUp: true, percent: 0, text: '0%' },
+    arTrend: { isUp: true, percent: 0, text: '0%' },
+    ppTrend: { isUp: true, percent: 0, text: '0%' },
+    npTrend: { isUp: true, percent: 0, text: '0%' },
+    rawValues: { totalValue: 0, amountReceived: 0, pendingPayments: 0, netProfit: 0 }
+  };
 
-    const sevenDaysFromNow = new Date(now);
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const categoryData = dashboardData?.categoryData || [];
 
-    const total = validProjects.length;
-    const completed = validProjects.filter(isCompleted).length;
-    const onHold = validProjects.filter(isOnHold).length;
-    
-    // Active: Neither completed nor on hold
-    const active = validProjects.filter(p => !isCompleted(p) && !isOnHold(p)).length;
-
-    // Overdue: Not completed, end date is in the past
-    const overdue = validProjects.filter(p => {
-      if (isCompleted(p) || !p.end_date) return false;
-      return new Date(p.end_date) < now;
-    }).length;
-
-    // Ending Soon: Not completed, end date is between today and next 7 days
-    const endingSoon = validProjects.filter(p => {
-      if (isCompleted(p) || !p.end_date) return false;
-      const end = new Date(p.end_date);
-      return end >= now && end <= sevenDaysFromNow;
-    }).length;
-
-    return { total, active, completed, overdue, onHold, endingSoon };
-  }, [projects]);
-
-  const finStats = useMemo(() => {
-    const validProjects = projects.filter(p => {
-      const stage = (p.stage || '').toLowerCase();
-      const status = (p.status || '').toLowerCase();
-      return !['cancelled'].includes(stage) && !['cancelled'].includes(status);
-    });
-
-    const now = new Date();
-    const last7 = new Date(now.getTime() - 7 * 86400000);
-    const prev7 = new Date(now.getTime() - 14 * 86400000);
-
-    let totalValue = 0;
-    let totalBudget = 0;
-    let tvCurrent = 0;
-    let tvPrev = 0;
-
-    validProjects.forEach(p => {
-      const val = parseFloat(p.project_value) || 0;
-      const budget = parseFloat(p.budget) || 0;
-      totalValue += val;
-      totalBudget += budget;
-
-      const dateStr = p.created_at || p.start_date;
-      if (dateStr) {
-        const d = new Date(dateStr);
-        if (d >= last7) tvCurrent += val;
-        else if (d >= prev7 && d < last7) tvPrev += val;
-      }
-    });
-
-    let amountReceived = 0;
-    let pendingPayments = 0;
-    let arCurrent = 0, arPrev = 0;
-    let ppCurrent = 0, ppPrev = 0;
-
-    payments.forEach(p => {
-      const amt = parseFloat(p.amount_received) || 0;
-      const pDate = p.payment_date || p.created_at;
-      const d = pDate ? new Date(pDate) : null;
-
-      if (p.status === 'Completed') {
-        amountReceived += amt;
-        if (d) {
-          if (d >= last7) arCurrent += amt;
-          else if (d >= prev7 && d < last7) arPrev += amt;
-        }
-      }
-      if (p.status === 'Pending') {
-        pendingPayments += amt;
-        if (d) {
-          if (d >= last7) ppCurrent += amt;
-          else if (d >= prev7 && d < last7) ppPrev += amt;
-        }
-      }
-    });
-
-    const netProfit = totalValue - totalBudget;
-    
-    // Estimate net profit trends based on Project Value trends minus previous budget
-    const npCurrent = tvCurrent - (tvCurrent * 0.7); // Roughly estimating a 30% margin for current week trend
-    const npPrev = tvPrev - (tvPrev * 0.7);
-
-    const calcTrend = (current, prev) => {
-      if (prev === 0 && current === 0) return { text: '0%', isUp: true };
-      if (prev === 0) return { text: current > 0 ? '+100%' : (current < 0 ? '-100%' : '0%'), isUp: current >= 0 };
-      const diff = current - prev;
-      const percent = Math.round((diff / Math.abs(prev)) * 100);
-      return {
-        text: `${percent > 0 ? '+' : ''}${percent}%`,
-        isUp: percent >= 0
-      };
-    };
-
-    const formatCurrency = (val) => {
-      const isNegative = val < 0;
-      const absVal = Math.abs(val);
-      let formatted = '';
-      if (absVal >= 10000000) formatted = `₹${(absVal / 10000000).toFixed(2)}Cr`;
-      else if (absVal >= 100000) formatted = `₹${(absVal / 100000).toFixed(2)}L`;
-      else if (absVal >= 1000) formatted = `₹${(absVal / 1000).toFixed(2)}K`;
-      else formatted = `₹${absVal.toFixed(2)}`;
-      
-      return isNegative ? `-${formatted}` : formatted;
-    };
-
-    const tvTrend = calcTrend(tvCurrent, tvPrev);
-    const arTrend = calcTrend(arCurrent, arPrev);
-    const ppTrend = calcTrend(ppCurrent, ppPrev);
-    const npTrend = calcTrend(npCurrent, npPrev);
-
-    return {
-      totalValue: formatCurrency(totalValue),
-      amountReceived: formatCurrency(amountReceived),
-      pendingPayments: formatCurrency(pendingPayments),
-      netProfit: formatCurrency(netProfit),
-      tvTrend,
-      arTrend,
-      ppTrend,
-      npTrend,
-      rawValues: {
-        totalValue,
-        amountReceived,
-        pendingPayments,
-        netProfit
-      }
-    };
-  }, [projects, payments]);
-
-  const categoryData = useMemo(() => {
-    const validProjects = projects.filter(p => !p.is_deleted);
-    const catMap = {};
-    let total = 0;
-    
-    validProjects.forEach(p => {
-      const cat = p.category || 'Uncategorized';
-      catMap[cat] = (catMap[cat] || 0) + 1;
-      total++;
-    });
-
-    const sortedCats = Object.keys(catMap).map(key => ({
-      name: key,
-      count: catMap[key],
-      percent: total > 0 ? Math.round((catMap[key] / total) * 100) : 0
-    })).sort((a, b) => b.count - a.count);
-
-    let topCats = sortedCats.slice(0, 4);
-    if (sortedCats.length > 5) {
-      const othersCount = sortedCats.slice(4).reduce((sum, c) => sum + c.count, 0);
-      const othersPercent = total > 0 ? Math.round((othersCount / total) * 100) : 0;
-      topCats.push({ name: 'Others', count: othersCount, percent: othersPercent });
-    } else {
-      topCats = sortedCats;
-    }
-
-    const defaultColors = ['#03C95A', '#AB47BC', '#FFC107', '#1B84FF', '#FF6F28'];
-    const cssClasses = ['bg-success', 'bg-purple', 'bg-warning', 'bg-info', 'bg-primary'];
-
-    topCats = topCats.map((c, i) => ({
-      ...c,
-      color: defaultColors[i % defaultColors.length],
-      cssClass: cssClasses[i % cssClasses.length]
-    }));
-
-    if (topCats.length === 0) {
-      topCats = [{ name: 'No Projects', count: 0, percent: 0, color: '#E5E5E5', cssClass: 'bg-secondary' }];
-    }
-
-    return topCats;
-  }, [projects]);
-
-  const statusData = useMemo(() => {
-    const validProjects = projects.filter(p => {
-      const stage = (p.stage || '').toLowerCase();
-      const status = (p.status || '').toLowerCase();
-      return !['cancelled'].includes(stage) && !['cancelled'].includes(status);
-    });
-    
-    const total = validProjects.length;
-    let comp = 0, hold = 0, od = 0, pend = 0, act = 0;
-
-    const now = new Date();
-    now.setHours(0,0,0,0);
-
-    validProjects.forEach(p => {
-      const s = (p.status || '').toLowerCase();
-      const st = (p.stage || '').toLowerCase();
-      
-      const isComp = ['completed', 'finished', 'done'].includes(s) || ['completed', 'finished', 'done'].includes(st);
-      const isHold = s.includes('hold') || st.includes('hold');
-      const isOd = !isComp && p.end_date && new Date(p.end_date) < now;
-      const isPend = !isComp && !isHold && !isOd && (['pending', 'not started', 'new'].includes(s) || ['pending', 'not started', 'new'].includes(st));
-
-      if (isComp) comp++;
-      else if (isHold) hold++;
-      else if (isOd) od++;
-      else if (isPend) pend++;
-      else act++;
-    });
-
-    const getPct = (val) => total > 0 ? Math.round((val / total) * 100) : 0;
-    
-    return [
-      { name: 'Pending', count: pend, percent: getPct(pend), colorClass: 'bg-primary' },
-      { name: 'Active', count: act, percent: getPct(act), colorClass: 'bg-info' },
-      { name: 'Completed', count: comp, percent: getPct(comp), colorClass: 'bg-success' },
-      { name: 'Overdue', count: od, percent: getPct(od), colorClass: 'bg-danger' },
-      { name: 'On Hold', count: hold, percent: getPct(hold), colorClass: 'bg-warning' }
-    ];
-  }, [projects]);
-
-  const recentProjectsData = useMemo(() => {
-    const validProjects = projects.filter(p => !p.is_deleted);
-    const sorted = [...validProjects].sort((a, b) => {
-      const d1 = new Date(a.created_at || a.start_date || 0);
-      const d2 = new Date(b.created_at || b.start_date || 0);
-      return d2 - d1;
-    });
-
-    return sorted.slice(0, 10).map(p => {
-      let pStage = (p.stage || 'New').toLowerCase();
-      let displayStage = 'New';
-      if (pStage === 'in_progress' || pStage.includes('progress')) displayStage = 'In Progress';
-      else if (pStage === 'review' || pStage.includes('review')) displayStage = 'In Review';
-      else if (pStage === 'completed') displayStage = 'Completed';
-      else if (pStage === 'hold' || pStage.includes('hold')) displayStage = 'On Hold';
-      else displayStage = (p.stage || 'New').charAt(0).toUpperCase() + (p.stage || 'New').slice(1);
-      
-      const val = parseFloat(p.project_value) || 0;
-      let valStr = `₹${val.toFixed(2)}`;
-      if (val >= 10000000) valStr = `₹${(val / 10000000).toFixed(2)}Cr`;
-      else if (val >= 100000) valStr = `₹${(val / 100000).toFixed(2)}L`;
-      else if (val >= 1000) valStr = `₹${(val / 1000).toFixed(2)}K`;
-
-      let badgeClass = 'success';
-      if (pStage.includes('pending') || pStage.includes('new') || pStage.includes('not started')) badgeClass = 'primary';
-      else if (pStage.includes('hold')) badgeClass = 'warning';
-      else if (pStage.includes('cancel')) badgeClass = 'danger';
-      else if (pStage.includes('progress') || pStage.includes('active')) badgeClass = 'info';
-
-      return {
-        id: p._id || p.id,
-        name: p.project_name || p.title || '-',
-        category: (!p.category || p.category === 'Uncategorized') ? '-' : p.category,
-        stage: displayStage,
-        badgeClass: badgeClass,
-        endDate: p.end_date ? new Date(p.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-        value: valStr
-      };
-    });
-  }, [projects]);
+  const statusData = dashboardData?.statusData || [];
+  const recentProjectsData = dashboardData?.recentProjectsData || [];
 
   const projectColumns = [
     { name: 'PROJECT NAME', selector: row => row.name, sortable: true },
@@ -322,6 +59,16 @@ const ProjectDashboard = () => {
     { name: 'END DATE', selector: row => row.endDate, sortable: true },
     { name: 'VALUE', selector: row => row.value, sortable: true }
   ];
+
+  if (loading) {
+    return (
+      <div className="page-wrapper d-flex justify-content-center align-items-center">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-wrapper">

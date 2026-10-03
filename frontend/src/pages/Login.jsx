@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -102,7 +102,7 @@ const Login = () => {
 													</div>
 												</div>
 												<div className="text-end">
-													<a href="/forgot-password" className="link-danger">Forgot Password?</a>
+													<Link to="/forgot-password" className="link-danger">Forgot Password?</Link>
 												</div>
 											</div>
 											<div className="mb-3">
@@ -116,8 +116,8 @@ const Login = () => {
 											</div>
 											<div className="text-center">
 												<h6 className="fw-normal text-dark mb-0">By continuing, you agree to our
-													<a href="/terms-condition" target="_blank" className="hover-a"> Terms</a> and 
-													<a href="/privacy-policy" target="_blank" className="hover-a"> Privacy Policy</a>
+													<Link to="/terms-condition" target="_blank" className="hover-a"> Terms</Link> and 
+													<Link to="/privacy-policy" target="_blank" className="hover-a"> Privacy Policy</Link>
 												</h6>
 											</div>
 											

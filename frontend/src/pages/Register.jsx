@@ -74,7 +74,7 @@ const Register = () => {
 											</div>
 											<div className="text-center">
 												<h6 className="fw-normal text-dark mb-0">Already have an account?
-													<a href="/login" className="hover-a">Sign In</a>
+													<Link to="/login" className="hover-a"> Sign In</Link>
 												</h6>
 											</div>
 											<div className="login-or">

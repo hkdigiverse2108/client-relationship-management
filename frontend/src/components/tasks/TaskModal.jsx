@@ -15,7 +15,8 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
     end_date: new Date(),
     reminder_date: null,
     description: '',
-    notes: ''
+    notes: '',
+    progress: 0
   });
 
   const [errors, setErrors] = useState({});
@@ -29,14 +30,14 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
       // Fetch projects
       axiosClient.get('/projects').then(res => {
         if (res && Array.isArray(res)) {
-          setProjectOptions(res.map(p => ({ value: p.id, label: p.title })));
+          setProjectOptions(res.map(p => ({ value: p.id || p._id, label: p.title })));
         }
       }).catch(err => console.error("Failed to load projects", err));
 
       // Fetch users
       axiosClient.get('/users').then(res => {
         if (res && Array.isArray(res)) {
-          setAssigneeOptions(res.map(u => ({ value: u.id, label: `${u.name} (${u.role})` })));
+          setAssigneeOptions(res.map(u => ({ value: u.id || u._id, label: `${u.name} (${u.role})` })));
         }
       }).catch(err => console.error("Failed to load users", err));
     }
@@ -55,7 +56,8 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
         end_date: initialData.end_date ? new Date(initialData.end_date) : new Date(),
         reminder_date: initialData.reminder_date ? new Date(initialData.reminder_date) : null,
         description: initialData.description || '',
-        notes: initialData.notes || ''
+        notes: initialData.notes || '',
+        progress: initialData.progress || 0
       });
     } else {
       setFormData({
@@ -69,7 +71,8 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
         end_date: new Date(),
         reminder_date: null,
         description: '',
-        notes: ''
+        notes: '',
+        progress: 0
       });
     }
   }, [initialData, isOpen]);
@@ -106,6 +109,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
     if (onSave) {
       const submitData = {
         ...formData,
+        id: initialData?.id,
         start_date: formData.start_date ? formData.start_date.toISOString() : null,
         end_date: formData.end_date ? formData.end_date.toISOString() : null,
         reminder_date: formData.reminder_date ? formData.reminder_date.toISOString() : null
@@ -134,7 +138,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
 
   const statusOptions = [
     { value: 'To Do', label: 'To Do' },
-    { value: 'Inprogress', label: 'Inprogress' },
+    { value: 'In Progress', label: 'In Progress' },
     { value: 'Pending', label: 'Pending' },
     { value: 'Review', label: 'Review' },
     { value: 'On-hold', label: 'On-hold' },
@@ -162,7 +166,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <label className="form-label">Task Type</label>
                   <CustomSelect 
                     options={taskTypeOptions} 
-                    value={taskTypeOptions.find(o => o.value === formData.task_type) || taskTypeOptions[0]}
+                    value={taskTypeOptions.find(o => String(o.value).toLowerCase() === String(formData.task_type || '').toLowerCase()) || taskTypeOptions[0]}
                     onChange={(sel) => setFormData(prev => ({ ...prev, task_type: sel ? sel.value : '' }))}
                     placeholder="Select Type" 
                   />
@@ -172,7 +176,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <label className="form-label">Priority</label>
                   <CustomSelect 
                     options={priorityOptions} 
-                    value={priorityOptions.find(o => o.value === formData.priority) || priorityOptions[1]}
+                    value={priorityOptions.find(o => String(o.value).toLowerCase() === String(formData.priority || '').toLowerCase()) || priorityOptions[1]}
                     onChange={(sel) => setFormData(prev => ({ ...prev, priority: sel ? sel.value : '' }))}
                     placeholder="Select Priority" 
                   />
@@ -182,9 +186,22 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <label className="form-label">Status</label>
                   <CustomSelect 
                     options={statusOptions} 
-                    value={statusOptions.find(o => o.value === formData.status) || statusOptions[0]}
+                    value={statusOptions.find(o => String(o.value).toLowerCase().replace(/[- ]/g, '') === String(formData.status || '').toLowerCase().replace(/[- ]/g, '')) || statusOptions[0]}
                     onChange={(sel) => setFormData(prev => ({ ...prev, status: sel ? sel.value : '' }))}
                     placeholder="Select Status" 
+                  />
+                </div>
+                
+                <div className="col-md-6">
+                  <label className="form-label">Progress ({formData.progress}%)</label>
+                  <input 
+                    type="range" 
+                    className="form-range" 
+                    min="0" 
+                    max="100" 
+                    name="progress" 
+                    value={formData.progress} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, progress: parseInt(e.target.value, 10) }))} 
                   />
                 </div>
                 
@@ -192,7 +209,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <label className="form-label">Associated Project</label>
                   <CustomSelect 
                     options={projectOptions} 
-                    value={projectOptions.find(o => o.value === formData.project_id) || null}
+                    value={projectOptions.find(o => String(o.value) === String(formData.project_id)) || null}
                     onChange={(sel) => setFormData(prev => ({ ...prev, project_id: sel ? sel.value : '' }))}
                     placeholder="Select Project" 
                   />
@@ -203,7 +220,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
                   <div className={errors.assigned_to ? 'border border-danger rounded' : ''}>
                     <CustomSelect 
                       options={assigneeOptions} 
-                      value={assigneeOptions.find(o => o.value === formData.assigned_to) || null}
+                      value={assigneeOptions.find(o => String(o.value) === String(formData.assigned_to)) || null}
                       onChange={(sel) => {
                         setFormData(prev => ({ ...prev, assigned_to: sel ? sel.value : '' }));
                         setErrors(prev => ({ ...prev, assigned_to: null }));
@@ -269,7 +286,7 @@ const TaskModal = ({ isOpen, onClose, initialData, onSave }) => {
               </div>
               <div className="d-flex justify-content-end gap-2 mt-4">
                 <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Task</button>
+                <button type="submit" className="btn btn-primary">{initialData ? 'Update Task' : 'Add Task'}</button>
               </div>
             </form>
           </div>

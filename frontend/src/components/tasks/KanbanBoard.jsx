@@ -3,7 +3,24 @@ import axiosClient from '../../api/axiosClient';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
-const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
+const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUpdate }) => {
+
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    if (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.replace('/api/v1', '');
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   const [draggingTaskId, setDraggingTaskId] = useState(null);
 
@@ -62,6 +79,19 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
     e.currentTarget.classList.remove('bg-light');
   };
 
+  const handleBoardDragOver = (e) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const threshold = 100; // pixels near edge
+    const rect = container.getBoundingClientRect();
+    
+    if (e.clientX < rect.left + threshold) {
+      container.scrollLeft -= 15;
+    } else if (e.clientX > rect.right - threshold) {
+      container.scrollLeft += 15;
+    }
+  };
+
   const handleDrop = async (e, targetStatus) => {
     e.preventDefault();
     e.currentTarget.classList.remove('bg-light');
@@ -84,7 +114,11 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
   return (
     <div className="tab-content" id="pills-tabContent">
       <div className="tab-pane fade show active" id="pills-home" role="tabpanel">
-        <div className="d-flex align-items-start overflow-auto project-status pb-4" style={{ minHeight: '600px' }}>
+        <div 
+          className="d-flex align-items-stretch overflow-auto project-status pb-4" 
+          style={{ minHeight: '600px' }}
+          onDragOver={handleBoardDragOver}
+        >
           
           {columns.map(column => {
             const columnTasks = tasks.filter(task => task.status === column.id);
@@ -92,7 +126,7 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
             return (
               <div 
                 key={column.id} 
-                className="p-3 rounded bg-transparent-secondary w-100 me-3" 
+                className="p-3 rounded bg-transparent-secondary w-100 me-3 d-flex flex-column" 
                 style={{ minWidth: '300px' }}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -109,20 +143,11 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
                       <h5 className="me-2">{column.title}</h5>
                       <span className="badge bg-light rounded-pill">{columnTasks.length < 10 ? `0${columnTasks.length}` : columnTasks.length}</span>
                     </div>
-                    <div className="dropdown">
-                      <a href="#" onClick={(e) => e.preventDefault()} className="d-inline-flex align-items-center" data-bs-toggle="dropdown">
-                        <i className="ti ti-dots-vertical"></i>
-                      </a>
-                      <ul className="dropdown-menu dropdown-menu-end p-3">
-                        <li><a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a></li>
-                        <li><a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a></li>
-                      </ul>
-                    </div>
                   </div>
                 </div>
 
                 {/* Droppable Area */}
-                <div className="kanban-drag-wrap" style={{ minHeight: '150px' }}>
+                <div className="kanban-drag-wrap flex-grow-1" style={{ minHeight: '150px' }}>
                   {columnTasks.map(task => {
                     const progress = task.progress || 0;
                     const dueDateStr = task.end_date ? format(new Date(task.end_date), 'dd MMM yyyy') : 'No Date';
@@ -151,8 +176,8 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
                               <i className="ti ti-dots-vertical"></i>
                             </a>
                             <ul className="dropdown-menu dropdown-menu-end p-3">
-                              <li><a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a></li>
-                              <li><a href="#" onClick={(e) => { e.preventDefault(); if(window.confirm('Delete this task?')) { axiosClient.delete(`/tasks/${task.id}`).then(()=>onTaskUpdate()); } }} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a></li>
+                              <li><a href="#" onClick={(e) => { e.preventDefault(); if(onEditTask) onEditTask(task); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a></li>
+                              <li><a href="#" onClick={(e) => { e.preventDefault(); if(onDeleteTask) onDeleteTask(task.id, task.title); }} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a></li>
                             </ul>
                           </div>
                         </div>
@@ -171,9 +196,18 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
                         <p className="fw-medium mb-0">Due on : <span className="text-gray-9"> {dueDateStr}</span></p>
                         
                         <div className="d-flex align-items-center justify-content-between border-top pt-2 mt-2">
-                          <div className="avatar-list-stacked avatar-group-sm me-3">
-                            <span className="avatar avatar-rounded">
-                              <img className="border border-white" src={`assets/img/profiles/${assigneeAvatar}`} alt={task.assigned_to} title={task.assigned_to} />
+                          <div className="d-flex align-items-center" style={{ maxWidth: '100%' }}>
+                            {task.assignee_avatar && task.assignee_avatar !== 'avatar-01.jpg' ? (
+                              <span className="avatar avatar-sm avatar-rounded me-2 flex-shrink-0">
+                                <img src={getImageUrl(task.assignee_avatar)} alt={task.assignee_name || task.assigned_to} />
+                              </span>
+                            ) : (
+                              <span className="avatar avatar-sm avatar-rounded bg-primary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0 fw-semibold fs-11">
+                                {getInitials(task.assignee_name || task.assigned_to || 'Unknown')}
+                              </span>
+                            )}
+                            <span className="fs-13 fw-medium text-dark text-truncate" title={task.assignee_name || task.assigned_to || 'Unknown'} style={{ maxWidth: '150px' }}>
+                              {task.assignee_name || task.assigned_to || 'Unassigned'}
                             </span>
                           </div>
                         </div>
@@ -189,7 +223,7 @@ const KanbanBoard = ({ tasks = [], onAddTask, onTaskUpdate }) => {
                 </div>
 
                 <div className="pt-2">
-                  <a href="#" className="btn btn-white border border-dashed d-flex align-items-center justify-content-center" onClick={(e) => { e.preventDefault(); if (onAddTask) onAddTask(); }}>
+                  <a href="#" className="btn btn-white border border-dashed d-flex align-items-center justify-content-center" onClick={(e) => { e.preventDefault(); if (onAddTask) onAddTask(column.id); }}>
                     <i className="ti ti-plus me-2"></i> New Task
                   </a>
                 </div>

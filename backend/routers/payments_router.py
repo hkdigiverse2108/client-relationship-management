@@ -154,8 +154,15 @@ async def update_payment(obj_id: str, payment: PaymentUpdate, current_user: dict
                 {"_id": ObjectId(updated["invoice_id"])},
                 {"$set": {"status": inv_status, "updated_at": datetime.utcnow()}}
             )
+            
+            if data["status"] == "Completed":
+                from db import db
+                await db.reminders.update_many(
+                    {"linked_invoice_id": updated["invoice_id"]},
+                    {"$set": {"status": "completed", "updated_at": datetime.utcnow().isoformat()}}
+                )
         except Exception as e:
-            print("Failed to sync invoice status:", e)
+            print("Failed to sync invoice status or reminder:", e)
 
     updated["_id"] = str(updated["_id"])
     return updated

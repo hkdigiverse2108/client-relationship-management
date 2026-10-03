@@ -29,6 +29,7 @@ from routers import (
     invoices_router,
     payments_router,
     tasks_router,
+    project_dashboard_router,
     reminders_router,
     orders_router,
     customers_router,
@@ -40,7 +41,8 @@ from routers import (
     expenses_router,
     gst_router,
     hrms_router,
-    ats_router
+    ats_router,
+    events_router
 )
 
 app = FastAPI(title="AIO CRM API")
@@ -93,6 +95,9 @@ app.include_router(hrms_router.router, prefix="/api/v1/hrms", tags=["hrms"])
 app.include_router(ats_router.router, prefix="/api/v1/ats", tags=["ats"])
 
 app.include_router(reminders_router.router, prefix="/api/v1", tags=["reminders"])
+
+app.include_router(project_dashboard_router.router, prefix="/api/v1")
+app.include_router(events_router.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():

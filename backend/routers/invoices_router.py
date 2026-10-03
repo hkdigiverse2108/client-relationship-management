@@ -63,6 +63,31 @@ async def create_invoice(invoice: InvoiceCreate, current_user: dict = Depends(ge
     }
     await payments_collection.insert_one(payment_entry)
     
+    # Auto-create reminder for payment collection
+    if payment_status != "Completed":
+        try:
+            # Use next_issue_date if recurring, else due_date
+            rem_date = data.get("next_issue_date") if data.get("is_recurring") and data.get("next_issue_date") else data.get("due_date")
+            if not rem_date:
+                rem_date = datetime.utcnow().strftime('%Y-%m-%d')
+                
+            reminder_entry = {
+                "description": f"Collect payment for Invoice {data.get('invoice_number', '')}",
+                "category": "Payment Collection",
+                "priority": "high",
+                "client_id": str(data.get("client_id", "")),
+                "due_date": f"{rem_date} 10:00:00",
+                "status": "pending",
+                "created_by": current_user["_id"],
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+                "linked_invoice_id": str(result.inserted_id)
+            }
+            from db import db
+            await db["reminders"].insert_one(reminder_entry)
+        except Exception as e:
+            print("Failed to auto-create reminder:", e)
+        
     if payment_status == "Completed":
         ledger_entry = {
             "entry_id": f"LEDG-{int(datetime.utcnow().timestamp())}",
@@ -178,6 +203,14 @@ async def update_invoice(obj_id: str, invoice: InvoiceUpdate, current_user: dict
     result = await invoices_collection.update_one({"_id": ObjectId(obj_id)}, {"$set": data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    # If status updated to Paid, complete the reminder
+    if data.get("status") == "Paid":
+        from db import db
+        await db.reminders.update_many(
+            {"linked_invoice_id": obj_id},
+            {"$set": {"status": "completed", "updated_at": datetime.utcnow().isoformat()}}
+        )
         
     updated = await invoices_collection.find_one({"_id": ObjectId(obj_id)})
     

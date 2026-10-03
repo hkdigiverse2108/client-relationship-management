@@ -5,6 +5,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import EventModal from './EventModal';
+import axiosClient from '../../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const MiniCalendar = () => {
   // Pagination state for calendar
@@ -70,46 +72,73 @@ const MiniCalendar = () => {
   );
 };
 
-const CalendarView = () => {
+const CalendarView = ({ onReady }) => {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [eventModalData, setEventModalData] = useState(null);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null, title: '' });
 
   useEffect(() => {
-    let draggableEl = document.getElementById('external-events');
-    if (draggableEl) {
-      new Draggable(draggableEl, {
-        itemSelector: '.fc-event',
-        eventData: function(eventEl) {
-          return {
-            title: eventEl.innerText,
-            className: eventEl.getAttribute('data-event-classname')
-          };
+    if (onReady) {
+      onReady({
+        openEventModal: () => {
+          setEventModalData(null);
+          setIsEventModalOpen(true);
         }
       });
     }
+  }, [onReady]);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await axiosClient.get('/events');
+      if (Array.isArray(res)) {
+        // FullCalendar expects 'start' property
+        const formattedEvents = res.map(e => ({
+          ...e,
+          id: e.id || e._id,
+          start: e.start_time ? `${e.date}T${e.start_time}` : e.date,
+          end: e.end_time ? `${e.date}T${e.end_time}` : undefined,
+        }));
+        setEvents(formattedEvents);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch events");
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
   }, []);
 
-  const events = [
-    {
-      title: 'Event Name 4',
-      start: new Date(Date.now() + 148000000).toISOString().slice(0, 10),
-      className: "bg-transparent-purple"
-    },
-    {
-      title: 'Test Event 1',
-      start: new Date(Date.now() + 168000000).toISOString().slice(0, 10),
-      className: "bg-transparent-info"
-    },
-    {
-      title: 'Test Event 2',
-      start: new Date(Date.now() + 338000000).toISOString().slice(0, 10),
-      className: "bg-transparent-success"
-    },
-    {
-      title: 'Test Event 3',
-      start: new Date(Date.now() + 168000000).toISOString().slice(0, 10),
-      className: "bg-transparent-danger"
+  const handleSaveEvent = async (formData) => {
+    try {
+      if (formData.id) {
+        await axiosClient.put(`/events/${formData.id}`, formData);
+        toast.success("Event updated successfully!");
+      } else {
+        await axiosClient.post('/events', formData);
+        toast.success("Event created successfully!");
+      }
+      setIsEventModalOpen(false);
+      setEventModalData(null);
+      fetchEvents();
+    } catch (err) {
+      toast.error("Failed to save event");
     }
-  ];
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!confirmDeleteModal.id) return;
+    try {
+      await axiosClient.delete(`/events/${confirmDeleteModal.id}`);
+      toast.success("Event deleted successfully!");
+      setConfirmDeleteModal({ isOpen: false, id: null, title: '' });
+      fetchEvents();
+    } catch (err) {
+      toast.error("Failed to delete event");
+    }
+  };
 
   return (
     <>
@@ -130,8 +159,17 @@ const CalendarView = () => {
             border-color: #e5e7eb !important;
           }
           #external-events .fc-event {
-            color: #333 !important;
-            cursor: grab;
+            color: #000 !important;
+          }
+          .fc-event, .fc-event-main, .fc-event-title, .fc-event-time {
+            color: #000 !important;
+          }
+          html[data-theme="dark"] #external-events .fc-event,
+          html[data-theme="dark"] .fc-event, 
+          html[data-theme="dark"] .fc-event-main, 
+          html[data-theme="dark"] .fc-event-title,
+          html[data-theme="dark"] .fc-event-time {
+            color: #fff !important;
           }
         `}
       </style>
@@ -157,55 +195,73 @@ const CalendarView = () => {
               <div className="border-bottom pb-4 mb-4">
                 <div className="d-flex align-items-center justify-content-between mb-2">
                   <h5>Event </h5>
-                  <a href="#" className="link-primary" onClick={(e) => { e.preventDefault(); setIsEventModalOpen(true); }}>
+                  <a href="#" className="link-primary" onClick={(e) => { e.preventDefault(); setEventModalData(null); setIsEventModalOpen(true); }}>
                     <i className="ti ti-square-rounded-plus-filled fs-16"></i>
                   </a>
                 </div>
-                <p className="fs-12 mb-2">Drag and drop your event or click in the calendar</p>
-                <div id='external-events'>
-                  <div className="fc-event bg-transparent-success mb-1" data-event='{ "title": "Team Events" }' data-event-classname="bg-transparent-success">
-                    <i className="ti ti-square-rounded text-success me-2"></i>Team Events
-                  </div>
-                  <div className="fc-event bg-transparent-warning mb-1" data-event='{ "title": "Team Events" }' data-event-classname="bg-transparent-warning">
-                    <i className="ti ti-square-rounded text-warning me-2"></i>Work
-                  </div>
-                  <div className="fc-event bg-transparent-danger mb-1" data-event='{ "title": "External" }' data-event-classname="bg-transparent-danger">
-                    <i className="ti ti-square-rounded text-danger me-2"></i>External
-                  </div>
-                  <div className="fc-event bg-transparent-skyblue mb-1" data-event='{ "title": "Projects" }' data-event-classname="bg-transparent-skyblue">
-                    <i className="ti ti-square-rounded text-skyblue me-2"></i>Projects
-                  </div>
-                  <div className="fc-event bg-transparent-purple mb-1" data-event='{ "title": "Applications" }' data-event-classname="bg-transparent-purple">
-                    <i className="ti ti-square-rounded text-purple me-2"></i>Applications
-                  </div>
-                  <div className="fc-event bg-transparent-info mb-0" data-event='{ "title": "Desgin" }' data-event-classname="bg-transparent-info">
-                    <i className="ti ti-square-rounded text-info me-2"></i>Desgin
-                  </div>
+                <p className="fs-12 mb-2">Click on the calendar to add your event</p>
+                <div id='external-events' style={{ maxHeight: '250px', overflowY: 'auto', overflowX: 'hidden', paddingRight: '5px' }}>
+                  {events.length > 0 ? (
+                    events.sort((a, b) => new Date(b.date) - new Date(a.date)).map((e, idx) => {
+                      const colorMap = {
+                        'bg-transparent-skyblue': 'border-skyblue',
+                        'bg-transparent-success': 'border-success',
+                        'bg-transparent-danger': 'border-danger',
+                        'bg-transparent-warning': 'border-warning',
+                        'bg-transparent-info': 'border-info',
+                        'bg-transparent-purple': 'border-purple',
+                      };
+                      const borderClass = colorMap[e.className] || 'border-skyblue';
+                      const iconClass = borderClass.replace('border-', 'text-');
+                      return (
+                        <div key={e.id || idx} className={`fc-event ${e.className} mb-1 d-flex align-items-center justify-content-between p-2 rounded`} style={{ cursor: 'pointer' }} onClick={() => { setEventModalData(e); setIsEventModalOpen(true); }}>
+                          <div>
+                            <i className={`ti ti-square-rounded ${iconClass} me-2`}></i>
+                            {e.title}
+                          </div>
+                          <a href="#" className="text-muted" onClick={(evt) => { evt.preventDefault(); evt.stopPropagation(); setConfirmDeleteModal({ isOpen: true, id: e.id, title: e.title }); }}>
+                            <i className="ti ti-trash"></i>
+                          </a>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-muted fs-14">No events found.</p>
+                  )}
                 </div>
               </div>
               {/* /Event */}
 
               {/* Upcoming Event */}
               <div className="pb-2">
-                <h5 className="mb-2">Upcoming Event<span className="badge badge-success rounded-pill ms-2">15</span></h5>
-                <div className="border-start border-purple border-3 mb-3">
-                  <div className="ps-3">
-                    <h6 className="fw-medium mb-1">Meeting with Team Dev</h6>
-                    <p className="fs-12"><i className="ti ti-calendar-check text-info me-2"></i>15 Mar 2025</p>
-                  </div>
-                </div>
-                <div className="border-start border-pink border-3 mb-3">
-                  <div className="ps-3">
-                    <h6 className="fw-medium mb-1">Design System With Client</h6>
-                    <p className="fs-12"><i className="ti ti-calendar-check text-info me-2"></i>24 Mar 2025</p>
-                  </div>
-                </div>
-                <div className="border-start border-success border-3 mb-3">
-                  <div className="ps-3">
-                    <h6 className="fw-medium mb-1">UI/UX Team Call</h6>
-                    <p className="fs-12"><i className="ti ti-calendar-check text-info me-2"></i>28 Mar 2025</p>
-                  </div>
-                </div>
+                <h5 className="mb-2">Upcoming Event<span className="badge badge-success rounded-pill ms-2">{events.filter(e => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0))).length}</span></h5>
+                {events
+                  .filter(e => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0)))
+                  .sort((a, b) => new Date(a.date) - new Date(b.date))
+                  .slice(0, 5)
+                  .map((e, index) => {
+                    const colorMap = {
+                      'bg-transparent-skyblue': 'border-skyblue',
+                      'bg-transparent-success': 'border-success',
+                      'bg-transparent-danger': 'border-danger',
+                      'bg-transparent-warning': 'border-warning',
+                      'bg-transparent-info': 'border-info',
+                      'bg-transparent-purple': 'border-purple',
+                    };
+                    const borderClass = colorMap[e.className] || 'border-skyblue';
+                    const iconClass = borderClass.replace('border-', 'text-');
+                    return (
+                      <div key={e.id || index} className={`border-start ${borderClass} border-3 mb-3 cursor-pointer`} onClick={() => { setEventModalData(e); setIsEventModalOpen(true); }}>
+                        <div className="ps-3">
+                          <h6 className="fw-medium mb-1">{e.title}</h6>
+                          <p className="fs-12"><i className={`ti ti-calendar-check ${iconClass} me-2`}></i>{new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                      </div>
+                    );
+                })}
+                {events.filter(e => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0))).length === 0 && (
+                  <p className="text-muted fs-14">No upcoming events.</p>
+                )}
               </div>
               {/* /Upcoming Event */}
 
@@ -230,17 +286,80 @@ const CalendarView = () => {
                   right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 }}
                 events={events}
+                eventClick={(info) => {
+                  const localDateStr = info.event.start ? `${info.event.start.getFullYear()}-${String(info.event.start.getMonth() + 1).padStart(2, '0')}-${String(info.event.start.getDate()).padStart(2, '0')}` : info.event.extendedProps.date;
+                  setEventModalData({
+                    id: info.event.extendedProps.id || info.event.id,
+                    title: info.event.title,
+                    date: localDateStr,
+                    start_time: info.event.extendedProps.start_time,
+                    end_time: info.event.extendedProps.end_time,
+                    location: info.event.extendedProps.location,
+                    description: info.event.extendedProps.description,
+                    className: info.event.extendedProps.className || info.event.classNames?.find(c => c.startsWith('bg-')) || 'bg-transparent-skyblue'
+                  });
+                  setIsEventModalOpen(true);
+                }}
+                select={(info) => {
+                  setEventModalData({
+                    date: info.startStr // e.g. "2026-10-28"
+                  });
+                  setIsEventModalOpen(true);
+                }}
+                eventDrop={async (info) => {
+                  try {
+                    const eventId = info.event.extendedProps.id || info.event.id;
+                    if (!eventId) {
+                      info.revert();
+                      return;
+                    }
+                    const localDateStr = `${info.event.start.getFullYear()}-${String(info.event.start.getMonth() + 1).padStart(2, '0')}-${String(info.event.start.getDate()).padStart(2, '0')}`;
+                    const updatedEvent = {
+                      title: info.event.title,
+                      date: localDateStr,
+                      start_time: info.event.start.toTimeString().slice(0, 5), // basic formatting
+                      className: info.event.extendedProps.className || info.event.classNames?.find(c => c.startsWith('bg-')) || 'bg-transparent-skyblue'
+                    };
+                    await axiosClient.put(`/events/${eventId}`, updatedEvent);
+                    toast.success("Event moved!");
+                  } catch (e) {
+                    info.revert();
+                    toast.error("Failed to move event");
+                  }
+                }}
                 editable={true}
                 selectable={true}
                 selectMirror={true}
                 dayMaxEvents={true}
-                droppable={true}
               />
             </div>
           </div>
         </div>
       </div>
-      <EventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} />
+      <EventModal isOpen={isEventModalOpen} onClose={() => {setIsEventModalOpen(false); setEventModalData(null);}} onSave={handleSaveEvent} initialData={eventModalData} />
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteModal.isOpen && (
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center pt-0">
+                <div className="mb-4">
+                  <i className="ti ti-alert-circle text-danger display-4"></i>
+                </div>
+                <h4>Delete Event</h4>
+                <p className="text-muted mb-0">Do you really want to delete the event <strong>{confirmDeleteModal.title}</strong>?</p>
+                <div className="d-flex justify-content-center mt-4">
+                  <button className="btn btn-light px-4 me-2" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })}>Cancel</button>
+                  <button className="btn btn-danger px-4" onClick={handleDeleteEvent}>Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

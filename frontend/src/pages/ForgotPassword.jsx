@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { authService } from '../api/services/authService';
 
@@ -82,7 +82,7 @@ const ForgotPassword = () => {
                           </div>
                           <div className="text-center">
                             <h6 className="fw-normal text-dark mb-0">Remembered it? 
-                              <a href="/login" className="hover-a"> Back to sign in</a>
+                              <Link to="/login" className="hover-a"> Back to sign in</Link>
                             </h6>
                           </div>
                         </div>

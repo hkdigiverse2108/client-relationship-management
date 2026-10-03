@@ -14,6 +14,7 @@ const NotificationSettings = () => {
 		invoice_status_update: true,
 		hr_leave_updates: true,
 		new_chat_message: true,
+		reminder_notifications: true,
 		system_alerts: true
 	});
 
@@ -68,6 +69,7 @@ const NotificationSettings = () => {
 		{ key: "invoice_status_update", label: "Invoice status update" },
 		{ key: "hr_leave_updates", label: "HR Leave updates" },
 		{ key: "new_chat_message", label: "New chat message" },
+		{ key: "reminder_notifications", label: "Reminder notifications" },
 		{ key: "system_alerts", label: "System alerts" }
 	];
 

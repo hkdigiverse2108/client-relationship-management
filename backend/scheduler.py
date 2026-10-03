@@ -20,9 +20,8 @@ async def check_overdue_deadlines():
     }).to_list(length=100)
 
     for reminder in overdue_reminders:
-        # Determine who to notify. For now, notify the user who created it, or a default user.
-        # If reminder has assigned_to or created_by, use that.
-        user_id = reminder.get("created_by", "admin")
+        # Determine who to notify
+        user_id = str(reminder.get("created_by", "admin"))
         title = "Reminder Overdue"
         message = f"The reminder '{reminder.get('description', 'Untitled')}' is overdue!"
         
@@ -31,7 +30,8 @@ async def check_overdue_deadlines():
             title=title,
             message=message,
             type="error",
-            link="/reminders"
+            link="/reminders",
+            pref_key="reminder_notifications"
         )
         # Mark as notified to avoid spam
         await db.reminders.update_one(
@@ -48,7 +48,7 @@ async def check_overdue_deadlines():
     }).to_list(length=100)
 
     for task in overdue_tasks:
-        user_id = task.get("assigned_to") or task.get("created_by", "admin")
+        user_id = str(task.get("assigned_to") or task.get("created_by", "admin"))
         title = "Task Overdue"
         message = f"The task '{task.get('title', 'Untitled')}' is overdue!"
         
@@ -131,7 +131,7 @@ async def process_recurring_invoices():
             await db.invoices.update_one({"_id": inv["_id"]}, {"$set": {"next_issue_date": new_next_iso}})
             
         # Send Notification
-        user_id = inv.get("created_by", "admin")
+        user_id = str(inv.get("created_by", "admin"))
         await create_notification(
             user_id=user_id,
             title="Recurring Invoice Generated",
@@ -165,7 +165,7 @@ async def check_expired_quotes():
                     )
                     
                     # Notify
-                    user_id = q.get("created_by", "admin")
+                    user_id = str(q.get("created_by", "admin"))
                     await create_notification(
                         user_id=user_id,
                         title="Quote Expired",
@@ -177,8 +177,8 @@ async def check_expired_quotes():
                 print(f"Error checking quote expiration for {q.get('_id')}: {e}")
 
 def start_scheduler():
-    # Run the check every 5 minutes for deadlines
-    scheduler.add_job(check_overdue_deadlines, IntervalTrigger(minutes=5), id="overdue_check", replace_existing=True)
+    # Run the check every 1 minute for deadlines
+    scheduler.add_job(check_overdue_deadlines, IntervalTrigger(minutes=1), id="overdue_check", replace_existing=True)
     # Run recurring invoice check every 24 hours (daily)
     scheduler.add_job(process_recurring_invoices, IntervalTrigger(hours=24), id="recurring_invoices", replace_existing=True)
     # Check expired quotes every 24 hours

@@ -54,6 +54,7 @@ class NotificationPreferences(BaseModel):
     deal_stage_changes: bool = True
     new_task_assigned: bool = True
     task_deadline_reminder: bool = True
+    reminder_notifications: bool = True
     new_project_assigned: bool = True
     invoice_status_update: bool = True
     hr_leave_updates: bool = True
@@ -497,6 +498,7 @@ class TaskCreate(BaseModel):
     reminder_date: Optional[str] = None
     description: Optional[str] = None
     notes: Optional[str] = None
+    progress: int = 0
     # Fields for Gantt Compatibility
     dependencies: List[str] = []
     is_milestone: bool = False
@@ -513,6 +515,7 @@ class TaskUpdate(BaseModel):
     reminder_date: Optional[str] = None
     description: Optional[str] = None
     notes: Optional[str] = None
+    progress: Optional[int] = None
     # Fields for Gantt Compatibility
     dependencies: Optional[List[str]] = None
     is_milestone: Optional[bool] = None
@@ -522,6 +525,8 @@ class TaskResponse(TaskCreate):
     created_at: str
     updated_at: str
     created_by: str
+    assignee_avatar: Optional[str] = None
+    assignee_name: Optional[str] = None
 
 class InvoiceLineItem(BaseModel):
     description: str

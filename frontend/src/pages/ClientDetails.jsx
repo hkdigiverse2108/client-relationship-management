@@ -323,7 +323,7 @@ const ClientDetails = () => {
               setIsProjectModalOpen={setIsProjectModalOpen} 
               setProjectToDelete={setProjectToDelete} 
             />
-            <ClientTasks isAccordion={true} client={client} />
+            <ClientTasks isAccordion={true} client={client} clientProjects={clientProjects} users={users} />
             <ClientInvoices isAccordion={true} client={client} />
             <ClientPayments isAccordion={true} client={client} />
             <ClientDeals isAccordion={true} client={client} />
@@ -344,7 +344,7 @@ const ClientDetails = () => {
         />
     </div>
     <div className="tab-pane" id="bottom-justified-tab3" role="tabpanel">
-        <ClientTasks isAccordion={false} client={client} />
+        <ClientTasks isAccordion={false} client={client} clientProjects={clientProjects} users={users} />
     </div>
     <div className="tab-pane" id="bottom-justified-tab4" role="tabpanel">
         <ClientInvoices isAccordion={false} client={client} />
@@ -397,7 +397,7 @@ const ClientDetails = () => {
                 </a>
             </li>
             <li>
-                <a href="#" onClick={(e) => e.preventDefault()}
+                <a href="#" onClick={(e) => { e.preventDefault(); document.dispatchEvent(new CustomEvent('openClientTaskModal')); }}
                     className="dropdown-item rounded-1 d-flex align-items-center">
                     <span className="avatar avatar-md bg-gray-800 flex-shrink-0 me-2"><i
                             className="ti ti-checkbox"></i></span>

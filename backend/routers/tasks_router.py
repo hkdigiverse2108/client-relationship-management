@@ -4,8 +4,9 @@ from typing import List
 from bson import ObjectId
 from datetime import datetime
 
-from db import db, audit_logs_collection
+from db import db, audit_logs_collection, client_history_collection
 from audit_logger import log_audit_action
+from history_logger import log_client_history
 from models import TaskCreate, TaskUpdate, TaskResponse
 from routers.notifications_router import create_notification
 
@@ -55,6 +56,20 @@ async def create_task(task: TaskCreate, current_user: dict = Depends(get_current
         f"Created task '{task_dict.get('title', 'Untitled')}'"
     )
 
+    if task_dict.get("project_id"):
+        try:
+            project = await db.projects.find_one({"_id": ObjectId(task_dict["project_id"])})
+            if project and project.get("client_id"):
+                await log_client_history(
+                    client_history_collection,
+                    project["client_id"],
+                    current_user,
+                    "Task Created",
+                    f"Task '{task_dict.get('title', 'Untitled')}' was created."
+                )
+        except Exception as e:
+            print("Error logging client history for task create:", e)
+
     return serialize_doc(created_task)
 
 @router.get("", response_model=List[TaskResponse])
@@ -73,6 +88,21 @@ async def get_tasks(project_id: str = None, current_user: dict = Depends(get_cur
     
     cursor = db.tasks.find(query)
     tasks = await cursor.to_list(length=1000)
+    
+    # Populate assignee details
+    for t in tasks:
+        assignee_id = t.get("assigned_to")
+        if assignee_id:
+            user = None
+            if ObjectId.is_valid(assignee_id):
+                user = await db.users.find_one({"_id": ObjectId(assignee_id)})
+            if not user:
+                user = await db.users.find_one({"_id": assignee_id})
+            
+            if user:
+                t["assignee_name"] = user.get("name", "Unknown")
+                t["assignee_avatar"] = user.get("profile_photo")
+    
     return [serialize_doc(t) for t in tasks]
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -126,6 +156,50 @@ async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict 
         "Tasks",
         f"Updated task '{updated_task.get('title', 'Untitled')}'"
     )
+    
+    update_desc = f"Task '{updated_task.get('title', 'Untitled')}' was updated."
+    if old_task:
+        changes = []
+        for k, v in update_data.items():
+            if k in ["updated_at", "created_at"]: continue
+            old_val = old_task.get(k)
+            
+            # Date normalization
+            v_str = str(v)
+            old_str = str(old_val) if old_val is not None else "None"
+            
+            if 'T00:00:00' in v_str: v_str = v_str.split('T')[0]
+            if 'T00:00:00' in old_str: old_str = old_str.split('T')[0]
+            
+            if old_str != v_str and not (old_str == "None" and not v_str):
+                k_name = k.replace('_', ' ').title()
+                if k == "assigned_to": k_name = "Assignee"
+                
+                if len(v_str) > 50: v_str = v_str[:47] + "..."
+                if len(old_str) > 50: old_str = old_str[:47] + "..."
+                
+                # Ignore the database normalization from name to ID
+                if k == "assigned_to" and len(v_str) > 20 and len(old_str) < 36 and "-" not in old_str:
+                    continue
+                    
+                changes.append(f"{k_name} changed from '{old_str}' to '{v_str}'")
+        
+        if changes:
+            update_desc += " Updates: " + ", ".join(changes)
+
+    if updated_task.get("project_id"):
+        try:
+            project = await db.projects.find_one({"_id": ObjectId(updated_task["project_id"])})
+            if project and project.get("client_id"):
+                await log_client_history(
+                    client_history_collection,
+                    project["client_id"],
+                    current_user,
+                    "Task Updated",
+                    update_desc
+                )
+        except Exception as e:
+            print("Error logging client history for task update:", e)
 
     return serialize_doc(updated_task)
 
@@ -145,5 +219,19 @@ async def delete_task(task_id: str, current_user: dict = Depends(get_current_use
         "Tasks",
         f"Deleted task '{title}'"
     )
+
+    if task and task.get("project_id"):
+        try:
+            project = await db.projects.find_one({"_id": ObjectId(task["project_id"])})
+            if project and project.get("client_id"):
+                await log_client_history(
+                    client_history_collection,
+                    project["client_id"],
+                    current_user,
+                    "Task Deleted",
+                    f"Task '{title}' was deleted."
+                )
+        except Exception as e:
+            print("Error logging client history for task delete:", e)
         
     return {"status": "deleted"}

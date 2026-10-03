@@ -31,7 +31,6 @@ function HistoryList({ client }) {
       const clientId = client?._id || client?.id;
       if (!clientId) return;
       try {
-        // Fetch history and users in parallel
         const [historyRes, usersRes] = await Promise.all([
           axiosClient.get(`/clients/${clientId}/history`),
           axiosClient.get('/users')
@@ -40,7 +39,6 @@ function HistoryList({ client }) {
         const historyData = historyRes || [];
         const users = usersRes.data || [];
         
-        // Helper to find user name and avatar
         const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
         const getProfileUrl = (photoPath) => {
           if (!photoPath) return '/assets/img/profiles/avatar-03.jpg';
@@ -59,7 +57,6 @@ function HistoryList({ client }) {
           return { name: fallbackName || 'System', avatar: '/assets/img/profiles/avatar-03.jpg' };
         };
 
-        // Map real client history to UI format
         const formattedHistory = historyData.map((log, index) => {
           let logDate = new Date();
           if (log.timestamp) {
@@ -74,12 +71,12 @@ function HistoryList({ client }) {
           
           const userInfo = getUserInfo(log.user_id, log.user_name);
           
-          // Determine icon based on action
           let icon = 'ti ti-activity';
           let iconBg = 'bg-soft-info';
           
           const actionLower = (log.action || '').toLowerCase();
-          if (actionLower.includes('deal')) { icon = 'ti ti-target'; iconBg = 'bg-transparent-purple'; }
+          if (actionLower.includes('task')) { icon = 'ti ti-clipboard-list'; iconBg = 'bg-soft-success'; }
+          else if (actionLower.includes('deal')) { icon = 'ti ti-target'; iconBg = 'bg-transparent-purple'; }
           else if (actionLower.includes('project')) { icon = 'ti ti-briefcase'; iconBg = 'bg-soft-warning'; }
           else if (actionLower.includes('invoice')) { icon = 'ti ti-file-invoice'; iconBg = 'bg-soft-primary'; }
           else if (actionLower.includes('payment')) { icon = 'ti ti-cash'; iconBg = 'bg-soft-success'; }
@@ -107,7 +104,19 @@ function HistoryList({ client }) {
     };
     
     fetchHistory();
-  }, [client]);
+    const handleTabChange = (e) => {
+      const target = e.target ? (e.target.getAttribute('href') || e.target.getAttribute('data-bs-target')) : null;
+      if (target === '#bottom-justified-tab7' || target === '#collapseClientHistory') {
+        fetchHistory();
+      }
+    };
+    document.addEventListener('shown.bs.tab', handleTabChange);
+    document.addEventListener('shown.bs.collapse', handleTabChange);
+    return () => {
+      document.removeEventListener('shown.bs.tab', handleTabChange);
+      document.removeEventListener('shown.bs.collapse', handleTabChange);
+    };
+  }, [client, currentUser]);
 
   if (history.length === 0) {
     return <div className="text-center py-4 text-muted">No history found for this client.</div>;

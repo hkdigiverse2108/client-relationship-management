@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/common/PageHeader';
 import ReminderModal from '../components/reminders/ReminderModal';
 import CustomDataTable from '../components/common/CustomDataTable';
 import CustomSelect from '../components/common/CustomSelect';
 import { FiClock, FiAlertCircle, FiCheckCircle, FiSearch, FiFilter } from 'react-icons/fi';
+import axiosClient from '../api/axiosClient';
+import toast from 'react-hot-toast';
 
 const MetricCard = ({ title, value, icon, color, percent, isUp }) => (
   <div className="col-md-4 d-flex">
@@ -29,11 +31,7 @@ const MetricCard = ({ title, value, icon, color, percent, isUp }) => (
   </div>
 );
 
-const initialReminders = [
-  { id: 1, description: 'Follow up on the new CRM proposal', category: 'call', priority: 'high', client_id: '1', client_name: 'Acme Corp', due_date: '2026-09-20T10:00', status: 'pending' },
-  { id: 2, description: 'Send NDA document', category: 'document', priority: 'critical', client_id: '2', client_name: 'Globex Inc', due_date: '2026-09-17T15:00', status: 'pending' },
-  { id: 3, description: 'Invoice payment reminder', category: 'payment', priority: 'medium', client_id: '3', client_name: 'Initech', due_date: '2026-09-25T12:00', status: 'completed' },
-];
+const initialReminders = [];
 
 const Reminders = () => {
   const [reminders, setReminders] = useState(initialReminders);
@@ -41,6 +39,32 @@ const Reminders = () => {
   const [editingReminder, setEditingReminder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [clients, setClients] = useState([]);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null, title: '' });
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ isOpen: false, reminder: null, newStatus: '' });
+
+  useEffect(() => {
+    fetchReminders();
+    const fetchClients = async () => {
+      try {
+        const res = await axiosClient.get('/clients');
+        setClients(res || []);
+      } catch (err) {
+        console.error("Failed to fetch clients", err);
+      }
+    };
+    fetchClients();
+  }, []);
+
+  const fetchReminders = async () => {
+    try {
+      const res = await axiosClient.get('/reminders');
+      setReminders(res || []);
+    } catch (err) {
+      console.error("Failed to fetch reminders", err);
+      toast.error("Failed to load reminders");
+    }
+  };
 
   const handleOpenModal = (reminder = null) => {
     setEditingReminder(reminder);
@@ -50,6 +74,59 @@ const Reminders = () => {
   const handleCloseModal = () => {
     setEditingReminder(null);
     setIsModalOpen(false);
+  };
+
+  const handleSaveReminder = async (reminderData) => {
+    const selectedClient = clients.find(c => String(c._id) === String(reminderData.client_id) || String(c.client_id) === String(reminderData.client_id));
+    const clientName = selectedClient ? selectedClient.client_name || selectedClient.company_name : 'Unknown Client';
+    
+    const payload = {
+      ...reminderData,
+      client_name: clientName,
+      status: reminderData.status || 'pending'
+    };
+
+    try {
+      if (payload.id) {
+        await axiosClient.put(`/reminders/${payload.id}`, payload);
+        toast.success("Reminder updated successfully!");
+      } else {
+        await axiosClient.post('/reminders', payload);
+        toast.success("Reminder added successfully!");
+      }
+      fetchReminders();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Failed to save reminder", err);
+      toast.error("Failed to save reminder");
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!confirmStatusModal.reminder) return;
+    try {
+      const { reminder, newStatus } = confirmStatusModal;
+      await axiosClient.put(`/reminders/${reminder.id || reminder._id}`, { status: newStatus });
+      toast.success(`Reminder marked as ${newStatus}!`);
+      fetchReminders();
+      setConfirmStatusModal({ isOpen: false, reminder: null, newStatus: '' });
+    } catch (err) {
+      console.error("Failed to update status", err);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleDeleteReminder = async () => {
+    if (!confirmDeleteModal.id) return;
+    try {
+      await axiosClient.delete(`/reminders/${confirmDeleteModal.id}`);
+      toast.success("Reminder deleted!");
+      fetchReminders();
+      setConfirmDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      console.error("Failed to delete reminder", err);
+      toast.error("Failed to delete reminder");
+    }
   };
 
   const getPriorityBadge = (priority) => {
@@ -71,12 +148,39 @@ const Reminders = () => {
       name: 'Type',
       selector: row => row.category,
       sortable: true,
-      cell: row => <span className="text-capitalize">{row.category}</span>
+      cell: row => <span className="text-capitalize">{row.category === '-' || !row.category ? '-' : row.category}</span>
     },
     {
       name: 'Linked Client',
       selector: row => row.client_name,
       sortable: true,
+      cell: row => {
+        const c = clients.find(cl => String(cl._id) === String(row.client_id) || String(cl.client_id) === String(row.client_id));
+        const name = (c ? (c.client_name || c.company_name) : row.client_name) || 'Unknown';
+        const image = c?.clientAvatar || c?.logo;
+        
+        const getInitials = (n) => {
+          if (!n) return 'UN';
+          return n.split(' ').map(part => part[0]).join('').substring(0, 2).toUpperCase();
+        };
+
+        return (
+          <div className="d-flex align-items-center file-name-icon">
+            <span className="avatar avatar-md border avatar-rounded flex-shrink-0">
+              {image ? (
+                <img src={image} className="img-fluid" alt="img" />
+              ) : (
+                <div className="avatar-title bg-primary rounded-circle text-white" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   {getInitials(name)}
+                </div>
+              )}
+            </span>
+            <div className="ms-2">
+              <h6 className="fw-medium mb-0">{name}</h6>
+            </div>
+          </div>
+        );
+      }
     },
     {
       name: 'Priority',
@@ -85,10 +189,10 @@ const Reminders = () => {
       cell: row => getPriorityBadge(row.priority)
     },
     {
-      name: 'Due Time',
+      name: 'Due Date',
       selector: row => row.due_date,
       sortable: true,
-      cell: row => new Date(row.due_date).toLocaleString()
+      cell: row => new Date(row.due_date).toLocaleDateString('en-GB')
     },
     {
       name: 'Status',
@@ -102,12 +206,18 @@ const Reminders = () => {
     },
     {
       name: 'Actions',
-      cell: row => (
-        <div className="action-icon d-inline-flex">
-          <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); handleOpenModal(row); }}><i className="ti ti-edit"></i></a>
-          <a href="#" onClick={(e) => e.preventDefault()}><i className="ti ti-trash"></i></a>
-        </div>
-      )
+      cell: row => {
+        const newStatus = row.status === 'completed' ? 'pending' : 'completed';
+        return (
+          <div className="action-icon d-inline-flex">
+            <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); setConfirmStatusModal({ isOpen: true, reminder: row, newStatus }); }} title={row.status === 'completed' ? "Mark as Pending" : "Mark as Completed"}>
+              <i className={`ti ${row.status === 'completed' ? 'ti-restore text-warning' : 'ti-check text-success'}`}></i>
+            </a>
+            <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); handleOpenModal(row); }}><i className="ti ti-edit"></i></a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row.id || row._id, title: row.description }); }}><i className="ti ti-trash"></i></a>
+          </div>
+        );
+      }
     }
   ];
 
@@ -150,7 +260,7 @@ const Reminders = () => {
             />
             <MetricCard 
               title="Overdue Alerts" 
-              value="1" 
+              value={reminders.filter(r => r.status !== 'completed' && new Date(r.due_date) < new Date()).length} 
               icon="ti ti-alert-circle" 
               color="danger" 
               percent="-2.01%" 
@@ -191,7 +301,53 @@ const Reminders = () => {
           </div>
         </div>
       </div>
-      <ReminderModal isOpen={isModalOpen} onClose={handleCloseModal} reminder={editingReminder} />
+      <ReminderModal isOpen={isModalOpen} onClose={handleCloseModal} reminder={editingReminder} onSave={handleSaveReminder} clients={clients} />
+      
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteModal.isOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete Reminder</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">Do you really want to delete the reminder <strong>{confirmDeleteModal.title}</strong>? This process cannot be undone.</p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })}>Cancel</button>
+                <button className="btn btn-danger px-4" onClick={handleDeleteReminder}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Toggle Confirmation Modal */}
+      {confirmStatusModal.isOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Change Status</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmStatusModal({ isOpen: false, reminder: null, newStatus: '' })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className={`ti ${confirmStatusModal.newStatus === 'completed' ? 'ti-circle-check text-success' : 'ti-restore text-warning'} mb-3`} style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">Do you want to mark this reminder as <strong>{confirmStatusModal.newStatus}</strong>?</p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmStatusModal({ isOpen: false, reminder: null, newStatus: '' })}>Cancel</button>
+                <button className={`btn ${confirmStatusModal.newStatus === 'completed' ? 'btn-success' : 'btn-warning'} px-4`} onClick={handleToggleStatus}>Yes, Mark as {confirmStatusModal.newStatus}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
