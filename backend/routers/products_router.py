@@ -45,6 +45,17 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
     
     return ProductResponse(**data)
 
+
+
+@router.get("/debug/all")
+async def get_all_products_debug():
+    cursor = products_collection.find()
+    all_products = []
+    async for p in cursor:
+        p["_id"] = str(p["_id"])
+        all_products.append(p)
+    return {"count": len(all_products), "products": all_products}
+
 @router.get("", response_model=List[ProductResponse])
 async def get_products(current_user: dict = Depends(get_current_user)):
     cursor = products_collection.find({"is_deleted": {"$ne": True}}).sort("created_at", -1)

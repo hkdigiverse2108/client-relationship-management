@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ordersData } from '../../pages/ordersData';
 
-const OrdersGridView = ({ data = [] }) => {
+const OrdersGridView = ({ data = [], onEditClick, onDeleteClick }) => {
   const getInitials = (name) => {
     if (!name) return 'UN';
     const parts = name.trim().split(' ').filter(Boolean);
@@ -68,8 +68,11 @@ const OrdersGridView = ({ data = [] }) => {
                     )}
                   </Link>
                   <div>
-                    <h6 className="fw-medium mb-0"><Link to="#">{order.customer_name}</Link></h6>
-                    <span className="fs-12 text-muted">{order.destination_city}, {order.destination_state}</span>
+                    <h6 className="fw-medium mb-0"><Link to="#">{order.customer_name || '-'}</Link></h6>
+                    <span className="fs-12 text-muted">{[order.destination_city, order.destination_state].filter(Boolean).join(", ") || '-'}</span>
+                    <span className="fs-12 text-muted d-block mt-1">
+                      {[order.customer_email, order.customer_phone].filter(Boolean).join(" | ") || '-'}
+                    </span>
                   </div>
                 </div>
 
@@ -91,6 +94,18 @@ const OrdersGridView = ({ data = [] }) => {
                       <h6 className="fs-13 fw-medium mb-0">₹{total.toLocaleString()}</h6>
                     </div>
                   </div>
+                  <div className="col-6">
+                    <div className="p-2 border rounded">
+                      <span className="fs-11 text-muted d-block mb-1">Tax</span>
+                      <h6 className="fs-13 fw-medium mb-0 text-danger">+₹{tax.toLocaleString()}</h6>
+                    </div>
+                  </div>
+                  <div className="col-6">
+                    <div className="p-2 border rounded">
+                      <span className="fs-11 text-muted d-block mb-1">Discount</span>
+                      <h6 className="fs-13 fw-medium mb-0 text-success">-₹{disc.toLocaleString()}</h6>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="d-flex align-items-center justify-content-between pt-2 border-top">
@@ -101,8 +116,8 @@ const OrdersGridView = ({ data = [] }) => {
                     </span>
                   </div>
                   <div className="action-icon d-inline-flex mt-2">
-                    <Link to="#" className="me-2 text-primary" data-bs-toggle="modal" data-bs-target="#edit_order"><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(order); }}><i className="ti ti-edit"></i></Link>
+                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(order); }}><i className="ti ti-trash"></i></Link>
                   </div>
                 </div>
               </div>

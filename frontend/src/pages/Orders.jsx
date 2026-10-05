@@ -6,6 +6,7 @@ import OrderFormModal from '../components/orders/OrderFormModal';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import OrdersGridView from '../components/orders/OrdersGridView';
+import FilterBar from '../components/common/FilterBar';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 
@@ -14,6 +15,8 @@ const Contacts = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [currentEditOrder, setCurrentEditOrder] = useState(null);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null, title: '' });
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
   const [statusFilter, setStatusFilter] = useState('');
@@ -21,6 +24,50 @@ const Contacts = () => {
   const [paymentFilter, setPaymentFilter] = useState('');
 
   const hasFilters = startDate || endDate || statusFilter || platformFilter || paymentFilter;
+
+  const filterConfig = [
+    {
+      type: 'date',
+      value: dateRange,
+      onChange: setDateRange,
+      placeholder: "Select Date Range"
+    },
+    {
+      type: 'select',
+      value: platformFilter,
+      onChange: setPlatformFilter,
+      options: [
+        { value: '', label: 'All Platforms' },
+        { value: 'Amazon', label: 'Amazon' },
+        { value: 'Flipkart', label: 'Flipkart' },
+        { value: 'Shopify', label: 'Shopify' },
+        { value: 'WooCommerce', label: 'WooCommerce' }
+      ]
+    },
+    {
+      type: 'select',
+      value: paymentFilter,
+      onChange: setPaymentFilter,
+      options: [
+        { value: '', label: 'All Payments' },
+        { value: 'paid', label: 'Paid' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'failed', label: 'Failed' }
+      ]
+    },
+    {
+      type: 'select',
+      value: statusFilter,
+      onChange: setStatusFilter,
+      options: [
+        { value: '', label: 'All Status' },
+        { value: 'processing', label: 'Processing' },
+        { value: 'shipped', label: 'Shipped' },
+        { value: 'in transit', label: 'In Transit' },
+        { value: 'delivered', label: 'Delivered' }
+      ]
+    }
+  ];
 
   const clearFilters = () => {
     setDateRange([null, null]);
@@ -50,12 +97,36 @@ const Contacts = () => {
 
   const handleSaveOrder = async (formData) => {
     try {
-      await axiosClient.post('/orders', formData);
-      toast.success('Order simulated successfully');
+      if (currentEditOrder) {
+        await axiosClient.put(`/orders/${currentEditOrder._id}`, formData);
+        toast.success('Order updated successfully');
+      } else {
+        await axiosClient.post('/orders', formData);
+        toast.success('Order simulated successfully');
+      }
       fetchOrders();
+      setIsOrderModalOpen(false);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to simulate order');
+      toast.error('Failed to save order');
+    }
+  };
+
+  const handleEditClick = (order) => {
+    setCurrentEditOrder(order);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!confirmDeleteModal.id) return;
+    try {
+      await axiosClient.delete(`/orders/${confirmDeleteModal.id}`);
+      toast.success('Order deleted successfully');
+      fetchOrders();
+      setConfirmDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete order');
     }
   };
   const getInitials = (name) => {
@@ -91,12 +162,12 @@ const Contacts = () => {
             )}
           </Link>
           <div>
-            <h6 className="fw-medium mb-1"><Link to="#">{row.customer_name}</Link></h6>
+            <h6 className="fw-medium mb-1"><Link to="#">{row.customer_name || '-'}</Link></h6>
             <span className="fs-13 fw-normal text-muted d-block">
-              {[row.destination_city, row.destination_state, row.destination_country].filter(Boolean).join(", ")}
+              {[row.destination_city, row.destination_state, row.destination_country].filter(Boolean).join(", ") || '-'}
             </span>
             <span className="fs-12 fw-normal text-muted d-block mt-1">
-              {[row.customer_email, row.customer_phone].filter(Boolean).join(" | ")}
+              {[row.customer_email, row.customer_phone].filter(Boolean).join(" | ") || '-'}
             </span>
           </div>
         </div>
@@ -204,28 +275,61 @@ const Contacts = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" data-bs-toggle="modal" data-bs-target="#edit_order"><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
+          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.order_id }); }}><i className="ti ti-trash"></i></Link>
         </div>
       ),
     },
   ];
 
-  return (
-    <>
-      <div className="page-wrapper">
-			<div className="content">
+	const filteredOrders = (orders || []).filter(order => {
+		let match = true;
+		
+		// Date filter
+		if (startDate && endDate) {
+			const orderDate = new Date(order.created_at || order.order_date);
+			const start = new Date(startDate);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(endDate);
+			end.setHours(23, 59, 59, 999);
+			if (orderDate < start || orderDate > end) {
+				match = false;
+			}
+		}
 
-				{/* Breadcrumb */}
-				<PageHeader 
-					title="Orders Management"
-					breadcrumbs={[
-						{ label: 'Dashboard' },
-						{ label: 'E-Commerce' },
-						{ label: viewMode === 'list' ? 'Orders List' : 'Orders Grid', active: true }
-					]}
-				>
-					<div className="me-2 mb-2">
+		// Platform filter
+		if (platformFilter && order.platform !== platformFilter) {
+			match = false;
+		}
+
+		// Payment filter
+		if (paymentFilter && order.payment_status?.toLowerCase() !== paymentFilter.toLowerCase()) {
+			match = false;
+		}
+
+		// Status filter
+		if (statusFilter && order.order_status?.toLowerCase() !== statusFilter.toLowerCase()) {
+			match = false;
+		}
+
+		return match;
+	});
+
+	return (
+		<>
+			<div className="page-wrapper">
+				<div className="content">
+
+					{/* Breadcrumb */}
+					<PageHeader 
+						title="Orders Management"
+						breadcrumbs={[
+							{ label: 'Dashboard' },
+							{ label: 'E-Commerce' },
+							{ label: viewMode === 'list' ? 'Orders List' : 'Orders Grid', active: true }
+						]}
+					>
+						<div className="me-2 mb-2">
 							<div className="d-flex align-items-center border bg-white rounded p-1 me-2 icon-list">
 								<a href="#" onClick={(e) => { e.preventDefault(); setViewMode('list'); }} className={`btn btn-icon btn-sm me-1 ${viewMode === 'list' ? 'active bg-primary text-white' : ''}`}><i
 										className="ti ti-list-tree"></i></a>
@@ -235,97 +339,49 @@ const Contacts = () => {
 						</div>
 						
 						<div className="mb-2">
-							<a href="#" onClick={(e) => { e.preventDefault(); setIsOrderModalOpen(true); }}
+							<a href="#" onClick={(e) => { e.preventDefault(); setCurrentEditOrder(null); setIsOrderModalOpen(true); }}
 								className="btn btn-primary d-flex align-items-center"><i
 									className="ti ti-circle-plus me-2"></i>Simulate E-com Order</a>
 						</div>
 					
-				</PageHeader>
-				{/* /Breadcrumb */}
+					</PageHeader>
+					{/* /Breadcrumb */}
 
-				{/*orders List */}
-				<div className="card">
-					
-					<div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-						<div>
-							<h5 className="mb-1">{viewMode === 'list' ? 'Orders List' : 'Orders Grid'}</h5>
-							<div className="fs-13 mb-0">
-								<span className="d-inline-flex align-items-center bg-primary-transparent text-primary px-2 py-1 rounded fw-medium" style={{ border: '1px solid rgba(var(--bs-primary-rgb), 0.2)' }}>
-									<span className="spinner-grow spinner-grow-sm text-primary me-2" role="status" aria-hidden="true" style={{ width: '0.6rem', height: '0.6rem' }}></span>
-									{platformFilter 
-										? `Showing ${(orders || []).filter(order => order.platform === platformFilter).length} orders for ${platformFilter}` 
-										: `Showing ${(orders || []).length} total orders across all platforms`}
-								</span>
-							</div>
-						</div>
-						<div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-							<div className="me-3" style={{ minWidth: '220px' }}>
-								<CustomDatePicker 
-									isRange={true}
-									startDate={startDate}
-									endDate={endDate}
-									onChange={(update) => setDateRange(update)}
-									placeholderText="Select Date Range"
-								/>
-							</div>
-							<div className="me-3 custom-select-wrapper" style={{ width: '150px' }}>
-								<CustomSelect 
-									options={[
-										{ value: '', label: 'All Platforms' },
-										{ value: 'Amazon', label: 'Amazon' },
-										{ value: 'Flipkart', label: 'Flipkart' },
-										{ value: 'Shopify', label: 'Shopify' },
-										{ value: 'WooCommerce', label: 'WooCommerce' }
-									]}
-									value={platformFilter ? { value: platformFilter, label: platformFilter } : { value: '', label: 'All Platforms' }}
-									onChange={(selected) => setPlatformFilter(selected ? selected.value : '')}
-								/>
-							</div>
-							<div className="me-3 custom-select-wrapper" style={{ width: '150px' }}>
-								<CustomSelect 
-									options={[
-										{ value: '', label: 'All Payments' },
-										{ value: 'paid', label: 'Paid' },
-										{ value: 'pending', label: 'Pending' },
-										{ value: 'failed', label: 'Failed' }
-									]}
-									value={paymentFilter ? { value: paymentFilter, label: paymentFilter.charAt(0).toUpperCase() + paymentFilter.slice(1) } : { value: '', label: 'All Payments' }}
-									onChange={(selected) => setPaymentFilter(selected ? selected.value : '')}
-								/>
-							</div>
-							<div className="custom-select-wrapper" style={{ width: '140px' }}>
-								<CustomSelect 
-									options={[
-										{ value: '', label: 'All Status' },
-										{ value: 'processing', label: 'Processing' },
-										{ value: 'shipped', label: 'Shipped' },
-										{ value: 'in transit', label: 'In Transit' },
-										{ value: 'delivered', label: 'Delivered' }
-									]}
-									value={statusFilter ? { value: statusFilter, label: statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) } : { value: '', label: 'All Status' }}
-									onChange={(selected) => setStatusFilter(selected ? selected.value : '')}
-								/>
-							</div>
-							{hasFilters ? (
-								<div className="ms-2">
-									<button 
-										className="btn btn-outline-danger btn-sm d-flex align-items-center"
-										onClick={clearFilters}
-									>
-										<i className="ti ti-x me-1"></i>Clear
-									</button>
+					{/*orders List */}
+					<div className="card">
+						
+						<div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
+							<div>
+								<h5 className="mb-1">{viewMode === 'list' ? 'Orders List' : 'Orders Grid'}</h5>
+								<div className="fs-13 mb-0">
+									<span className="d-inline-flex align-items-center bg-primary-transparent text-primary px-2 py-1 rounded fw-medium" style={{ border: '1px solid rgba(var(--bs-primary-rgb), 0.2)' }}>
+										<span className="spinner-grow spinner-grow-sm text-primary me-2" role="status" aria-hidden="true" style={{ width: '0.6rem', height: '0.6rem' }}></span>
+										{platformFilter 
+											? `Showing ${filteredOrders.length} orders for ${platformFilter}` 
+											: `Showing ${filteredOrders.length} total orders across all platforms`}
+									</span>
 								</div>
-							) : null}
+							</div>
+						<div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
+							<FilterBar 
+                filters={filterConfig} 
+                onClear={clearFilters} 
+                hasActiveFilters={hasFilters} 
+              />
 						</div>
 					</div>
 					<div className="card-body p-0">
 						{viewMode === 'list' ? (
 							<div className="custom-datatable-filter table-responsive">
-								<CustomDataTable columns={columns} data={orders || []} />
+								<CustomDataTable columns={columns} data={filteredOrders} />
 							</div>
 						) : (
 							<div className="p-3">
-								<OrdersGridView data={orders || []} />
+								<OrdersGridView 
+                  data={filteredOrders} 
+                  onEditClick={handleEditClick}
+                  onDeleteClick={(row) => setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.order_id })}
+                />
 							</div>
 						)}
 					</div>
@@ -337,7 +393,35 @@ const Contacts = () => {
 			
 
 		</div>
-		<OrderFormModal open={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} onSave={handleSaveOrder} />
+		<OrderFormModal 
+      open={isOrderModalOpen} 
+      onClose={() => setIsOrderModalOpen(false)} 
+      onSave={handleSaveOrder} 
+      initialData={currentEditOrder} 
+    />
+    
+    {/* Delete Confirmation Modal */}
+    {confirmDeleteModal.isOpen && (
+      <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Delete Order</h5>
+              <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })} aria-label="Close"></button>
+            </div>
+            <div className="modal-body text-center py-4">
+              <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+              <h5 className="mb-2">Are you sure?</h5>
+              <p className="text-muted mb-0">Do you really want to delete the order <strong>{confirmDeleteModal.title}</strong>? This process cannot be undone.</p>
+            </div>
+            <div className="modal-footer justify-content-center border-0 pt-0">
+              <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '' })}>Cancel</button>
+              <button className="btn btn-danger px-4" onClick={handleDeleteOrder}>Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };

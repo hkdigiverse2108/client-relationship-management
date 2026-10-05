@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { productsData } from '../../pages/productsData';
+import { APP_CONFIG } from '../../config/appConfig';
 
-const ProductsGridView = () => {
+const ProductsGridView = ({ products = [], onEditClick, onDeleteClick }) => {
   return (
     <div className="row">
-      {productsData.map((product) => {
+      {products.map((product) => {
 
         let statusBadgeClass = "bg-primary-transparent";
         let statusTextClass = "text-primary";
@@ -21,7 +21,7 @@ const ProductsGridView = () => {
         }
 
         return (
-          <div className="col-xxl-3 col-xl-4 col-md-6 mb-4" key={product.id}>
+          <div className="col-xxl-3 col-xl-4 col-md-6 mb-4" key={product._id || product.id || Math.random()}>
             <div className="card h-100 mb-0">
               <div className="card-header border-bottom d-flex align-items-center justify-content-between">
                 <span className="badge bg-primary-transparent text-primary fw-semibold">{product.sku_code}</span>
@@ -31,9 +31,18 @@ const ProductsGridView = () => {
               </div>
               <div className="card-body">
                 <div className="d-flex align-items-center flex-column mb-3">
-                  <Link to="#" className="avatar avatar-xl border avatar-rounded mb-2">
-                    <img src={product.image} className="img-fluid" alt="img" />
-                  </Link>
+                  <a 
+                    href={product.image ? (product.image.startsWith('http') ? product.image : `${new URL(APP_CONFIG.apiBaseUrl).origin}${product.image}`) : '#'} 
+                    target={product.image ? "_blank" : "_self"} 
+                    rel="noreferrer"
+                    className={`avatar avatar-xl border avatar-rounded mb-2 d-flex align-items-center justify-content-center text-decoration-none ${!product.image ? 'bg-primary text-white fw-semibold fs-20' : ''}`}
+                  >
+                    {product.image ? (
+                      <img src={product.image.startsWith('http') ? product.image : `${new URL(APP_CONFIG.apiBaseUrl).origin}${product.image}`} className="img-fluid" alt={product.product_name} />
+                    ) : (
+                      <span>{product.product_name?.charAt(0)?.toUpperCase()}</span>
+                    )}
+                  </a>
                   <div className="text-center">
                     <h6 className="fw-medium mb-1"><Link to="#">{product.product_name}</Link></h6>
                     <span className="fs-12 text-muted">{product.brand_name} • {product.category}</span>
@@ -55,10 +64,32 @@ const ProductsGridView = () => {
                   </div>
                 </div>
 
+                <div className="row g-2 mb-3">
+                  <div className="col-12">
+                    <div className="p-2 border rounded text-center">
+                      <span className="fs-11 text-muted d-block mb-1">Variants</span>
+                      <div className="d-flex justify-content-center gap-1 flex-wrap">
+                        {(!product.variants || product.variants.length === 0) ? (
+                          <span className="fs-12 text-muted">-</span>
+                        ) : (
+                          product.variants.map((v, i) => {
+                            const valString = v.values ? (Array.isArray(v.values) ? v.values.join(', ') : v.values) : '';
+                            return (
+                              <span key={i} className="badge bg-light text-dark border fs-11 text-truncate" style={{ maxWidth: '140px' }} title={`${v.name}: ${valString}`}>
+                                <span className="fw-bold">{v.name}:</span> {valString}
+                              </span>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="d-flex align-items-center justify-content-center pt-2 border-top">
                   <div className="action-icon d-inline-flex">
-                    <Link to="#" className="me-2 text-primary" data-bs-toggle="modal" data-bs-target="#edit_product"><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(product); }}><i className="ti ti-edit"></i></Link>
+                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(product); }}><i className="ti ti-trash"></i></Link>
                   </div>
                 </div>
               </div>

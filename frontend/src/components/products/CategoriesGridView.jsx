@@ -1,11 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { categoriesData } from '../../pages/categoriesData';
 
-const CategoriesGridView = () => {
+const CategoriesGridView = ({ categories = [], onEditClick, onDeleteClick }) => {
   return (
     <div className="row">
-      {categoriesData.map((category) => {
+      {categories.map((category) => {
 
         let statusBadgeClass = "bg-primary-transparent";
         let statusTextClass = "text-primary";
@@ -18,7 +17,7 @@ const CategoriesGridView = () => {
         }
 
         return (
-          <div className="col-xxl-3 col-xl-4 col-md-6 mb-4" key={category.id}>
+          <div className="col-xxl-3 col-xl-4 col-md-6 mb-4" key={category._id || category.id}>
             <div className="card h-100 mb-0">
               <div className="card-header border-bottom d-flex align-items-center justify-content-between">
                 <h6 className="fw-medium mb-0"><Link to="#">{category.name}</Link></h6>
@@ -38,8 +37,8 @@ const CategoriesGridView = () => {
 
                 <div className="d-flex align-items-center justify-content-center pt-2 border-top">
                   <div className="action-icon d-inline-flex">
-                    <Link to="#" className="me-2 text-primary" data-bs-toggle="modal" data-bs-target="#edit_category"><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(category); }}><i className="ti ti-edit"></i></Link>
+                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(category); }}><i className="ti ti-trash"></i></Link>
                   </div>
                 </div>
               </div>

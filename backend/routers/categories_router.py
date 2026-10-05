@@ -8,8 +8,12 @@ from dependencies import get_current_user
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
+from typing import List, Optional
+
 class CategoryCreate(BaseModel):
     name: str
+    status: Optional[str] = "Active"
+    description: Optional[str] = ""
 
 class CategoryResponse(CategoryCreate):
     id: str = Field(alias="_id")
@@ -24,7 +28,7 @@ async def create_category(category: CategoryCreate, current_user: dict = Depends
 
 @router.get("", response_model=List[CategoryResponse])
 async def get_categories(current_user: dict = Depends(get_current_user)):
-    cursor = categories_collection.find().sort("name", 1)
+    cursor = categories_collection.find({"is_deleted": {"$ne": True}}).sort("name", 1)
     categories = []
     async for c in cursor:
         c["_id"] = str(c["_id"])
@@ -44,7 +48,10 @@ async def update_category(obj_id: str, category: CategoryCreate, current_user: d
 
 @router.delete("/{obj_id}")
 async def delete_category(obj_id: str, current_user: dict = Depends(get_current_user)):
-    result = await categories_collection.delete_one({"_id": ObjectId(obj_id)})
-    if result.deleted_count == 0:
+    result = await categories_collection.update_one(
+        {"_id": ObjectId(obj_id)}, 
+        {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Category not found")
     return {"message": "Category deleted successfully"}

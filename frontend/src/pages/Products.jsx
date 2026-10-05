@@ -1,40 +1,250 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import CustomDataTable from '../components/common/CustomDataTable';
-import { productsData } from './productsData';
 import ProductFormModal from '../components/products/ProductFormModal';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import ProductsGridView from '../components/products/ProductsGridView';
-import { categoriesData } from './categoriesData';
+import { categoriesData } from './categoriesData'; // kept for legacy reference, can remove if unused
 import CategoryFormModal from '../components/products/CategoryFormModal';
 import CategoriesGridView from '../components/products/CategoriesGridView';
+import toast from 'react-hot-toast';
+import axiosClient from '../api/axiosClient';
+import { APP_CONFIG } from '../config/appConfig';
+import FilterBar from '../components/common/FilterBar';
 
 const Products = () => {
   const [viewMode, setViewMode] = useState('list');
   const [activeTab, setActiveTab] = useState('products');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentEditProduct, setCurrentEditProduct] = useState(null);
+  const [currentEditCategory, setCurrentEditCategory] = useState(null);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null, title: '', type: 'product' });
+
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const [categoryStatusFilter, setCategoryStatusFilter] = useState('');
 
-  const hasFilters = startDate || endDate || statusFilter || categoryFilter;
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/products');
+      const fetchedData = res.data?.data || res.data || res || [];
+      const prodArray = Array.isArray(fetchedData) ? fetchedData : [];
+      setProducts(prodArray);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/categories');
+      const fetchedData = res.data?.data || res.data || res || [];
+      const catArray = Array.isArray(fetchedData) ? fetchedData : [];
+      setCategories(catArray);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to fetch categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Always fetch both so total_products count is accurate and ProductFormModal has dynamic categories
+    fetchProducts();
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'categories') fetchCategories();
+    if (activeTab === 'products') fetchProducts();
+  }, [activeTab]);
+
+  const handleSaveCategory = async (formData) => {
+    try {
+      if (currentEditCategory) {
+        await axiosClient.put(`/categories/${currentEditCategory._id}`, formData);
+        toast.success('Category updated successfully');
+      } else {
+        await axiosClient.post('/categories', formData);
+        toast.success('Category created successfully');
+      }
+      fetchCategories();
+      setIsCategoryModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      let errorMsg = 'Failed to save category';
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          errorMsg = error.response.data.detail[0]?.msg || 'Validation Error';
+        } else {
+          errorMsg = error.response.data.detail;
+        }
+      }
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleEditCategoryClick = (category) => {
+    setCurrentEditCategory(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSaveProduct = async (formData) => {
+    try {
+      if (currentEditProduct) {
+        await axiosClient.put(`/products/${currentEditProduct._id}`, formData);
+        toast.success('Product updated successfully');
+      } else {
+        await axiosClient.post('/products', formData);
+        toast.success('Product created successfully');
+      }
+      fetchProducts();
+      setIsProductModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      let errorMsg = 'Failed to save product';
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          errorMsg = error.response.data.detail[0]?.msg || 'Validation Error';
+        } else {
+          errorMsg = error.response.data.detail;
+        }
+      }
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleEditClick = (product) => {
+    setCurrentEditProduct(product);
+    setIsProductModalOpen(true);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!confirmDeleteModal.id) return;
+    try {
+      if (confirmDeleteModal.type === 'product') {
+        await axiosClient.delete(`/products/${confirmDeleteModal.id}`);
+        toast.success('Product deleted successfully');
+        fetchProducts();
+      } else if (confirmDeleteModal.type === 'category') {
+        await axiosClient.delete(`/categories/${confirmDeleteModal.id}`);
+        toast.success('Category deleted successfully');
+        fetchCategories();
+      }
+      setConfirmDeleteModal({ isOpen: false, id: null, title: '', type: 'product', name: '' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete');
+    }
+  };
+
+  const hasFilters = startDate || endDate || statusFilter || categoryFilter || brandFilter;
   const hasCategoryFilters = startDate || endDate || categoryStatusFilter;
 
   const clearFilters = () => {
     setDateRange([null, null]);
     setStatusFilter('');
     setCategoryFilter('');
+    setBrandFilter('');
   };
 
   const clearCategoryFilters = () => {
     setDateRange([null, null]);
     setCategoryStatusFilter('');
   };
+
+  const uniqueBrands = [...new Set(products.map(p => p.brand_name).filter(Boolean))].map(brand => ({ value: brand, label: brand }));
+
+  const filteredProducts = products.filter(p => {
+    let match = true;
+    if (statusFilter && p.status !== statusFilter) match = false;
+    if (categoryFilter && p.category !== categoryFilter) match = false;
+    if (brandFilter && p.brand_name !== brandFilter) match = false;
+    if (startDate && endDate && p.created_at) {
+        const pDate = new Date(p.created_at);
+        if (pDate < startDate || pDate > endDate) match = false;
+    }
+    return match;
+  });
+
+  const filteredCategories = categories.filter(c => {
+    let match = true;
+    if (categoryStatusFilter && c.status !== categoryStatusFilter) match = false;
+    if (startDate && endDate && c.created_at) {
+        const cDate = new Date(c.created_at);
+        if (cDate < startDate || cDate > endDate) match = false;
+    }
+    return match;
+  }).map(c => ({
+    ...c,
+    total_products: products.filter(p => p.category === c.name).length
+  }));
+
+  const productFilterConfig = [
+    {
+      type: 'date',
+      value: dateRange,
+      onChange: setDateRange,
+      placeholder: 'Select Date Range'
+    },
+    {
+      type: 'select',
+      value: categoryFilter,
+      onChange: setCategoryFilter,
+      options: [{ value: '', label: 'All Categories' }, ...[...new Set(products.map(p => p.category).filter(Boolean))].map(c => ({ value: c, label: c }))]
+    },
+    {
+      type: 'select',
+      value: brandFilter,
+      onChange: setBrandFilter,
+      options: [{ value: '', label: 'All Brands' }, ...uniqueBrands]
+    },
+    {
+      type: 'select',
+      value: statusFilter,
+      onChange: setStatusFilter,
+      options: [
+        { value: '', label: 'All Status' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+        { value: 'out of stock', label: 'Out of Stock' }
+      ]
+    }
+  ];
+
+  const categoryFilterConfig = [
+    {
+      type: 'date',
+      value: dateRange,
+      onChange: setDateRange,
+      placeholder: 'Select Date Range'
+    },
+    {
+      type: 'select',
+      value: categoryStatusFilter,
+      onChange: setCategoryStatusFilter,
+      options: [
+        { value: '', label: 'All Status' },
+        { value: 'Active', label: 'Active' },
+        { value: 'Inactive', label: 'Inactive' }
+      ]
+    }
+  ];
 
   const columns = [
     {
@@ -43,9 +253,18 @@ const Products = () => {
       selector: row => row.product_name,
       cell: (row) => (
         <div className="d-flex align-items-center">
-          <Link to="#" className="avatar avatar-md border avatar-rounded me-2">
-            <img src={row.image} className="img-fluid" alt="img" />
-          </Link>
+          <a 
+            href={row.image ? (row.image.startsWith('http') ? row.image : `${new URL(APP_CONFIG.apiBaseUrl).origin}${row.image}`) : '#'} 
+            target={row.image ? "_blank" : "_self"} 
+            rel="noreferrer"
+            className={`avatar avatar-md border avatar-rounded me-2 d-flex align-items-center justify-content-center text-decoration-none ${!row.image ? 'bg-primary text-white fw-semibold' : ''}`}
+          >
+            {row.image ? (
+              <img src={row.image.startsWith('http') ? row.image : `${new URL(APP_CONFIG.apiBaseUrl).origin}${row.image}`} className="img-fluid" alt={row.product_name} />
+            ) : (
+              <span>{row.product_name?.charAt(0)?.toUpperCase()}</span>
+            )}
+          </a>
           <h6 className="fw-medium mb-0"><Link to="#">{row.product_name}</Link></h6>
         </div>
       ),
@@ -83,6 +302,22 @@ const Products = () => {
       minWidth: '150px'
     },
     {
+      name: 'Variants',
+      cell: (row) => {
+        if (!row.variants || row.variants.length === 0) return <span className="text-muted fs-12">-</span>;
+        return (
+          <div className="d-flex flex-column gap-1">
+            {row.variants.map((v, i) => (
+              <span key={i} className="fs-12 text-muted text-truncate" style={{ maxWidth: '160px' }} title={`${v.name}: ${v.values ? v.values.join(', ') : ''}`}>
+                <strong className="text-dark">{v.name}:</strong> {v.values ? v.values.join(', ') : ''}
+              </span>
+            ))}
+          </div>
+        );
+      },
+      minWidth: '180px'
+    },
+    {
       name: 'Status',
       sortable: true,
       selector: row => row.status,
@@ -111,8 +346,8 @@ const Products = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" data-bs-toggle="modal" data-bs-target="#edit_product"><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
+          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Product', type: 'product', name: row.product_name }); }}><i className="ti ti-trash"></i></Link>
         </div>
       ),
     },
@@ -137,7 +372,7 @@ const Products = () => {
       name: 'Description',
       sortable: true,
       selector: row => row.description,
-      cell: (row) => <span className="text-muted line-clamp-2">{row.description}</span>,
+      cell: (row) => <span className="text-muted line-clamp-2">{row.description || "-"}</span>,
       minWidth: '250px'
     },
     {
@@ -166,8 +401,8 @@ const Products = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" data-bs-toggle="modal" data-bs-target="#edit_category"><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash"></i></Link>
+          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditCategoryClick(row); }}><i className="ti ti-edit"></i></Link>
+          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Category', type: 'category', name: row.name }); }}><i className="ti ti-trash"></i></Link>
         </div>
       ),
     },
@@ -227,111 +462,60 @@ const Products = () => {
           </div>
 
           <div className="tab-content">
-            <div className="tab-pane show active" id="bottom-justified-tab1" role="tabpanel">
+            {/* Products Tab */}
+            <div className={`tab-pane ${activeTab === 'products' ? 'show active' : ''}`} id="bottom-justified-tab1" role="tabpanel">
               {/* Products List/Grid */}
               <div className="card">
                 <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
                   <h5>{viewMode === 'list' ? 'Products List' : 'Products Grid'}</h5>
-                  <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-                    <div className="me-3" style={{ minWidth: '220px' }}>
-                      <CustomDatePicker 
-                        isRange={true}
-                        startDate={startDate}
-                        endDate={endDate}
-                        onChange={(update) => setDateRange(update)}
-                        placeholderText="Select Date Range"
-                      />
-                    </div>
-                    <div className="me-3 custom-select-wrapper" style={{ width: '150px' }}>
-                      <CustomSelect 
-                        options={[
-                          { value: '', label: 'All Categories' },
-                          { value: 'Electronics', label: 'Electronics' },
-                          { value: 'Clothing', label: 'Clothing' },
-                          { value: 'Sports', label: 'Sports' }
-                        ]}
-                        value={categoryFilter ? { value: categoryFilter, label: categoryFilter } : { value: '', label: 'All Categories' }}
-                        onChange={(selected) => setCategoryFilter(selected ? selected.value : '')}
-                      />
-                    </div>
-                    <div className="custom-select-wrapper" style={{ width: '140px' }}>
-                      <CustomSelect 
-                        options={[
-                          { value: '', label: 'All Status' },
-                          { value: 'active', label: 'Active' },
-                          { value: 'inactive', label: 'Inactive' },
-                          { value: 'out of stock', label: 'Out of Stock' }
-                        ]}
-                        value={statusFilter ? { value: statusFilter, label: statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) } : { value: '', label: 'All Status' }}
-                        onChange={(selected) => setStatusFilter(selected ? selected.value : '')}
-                      />
-                    </div>
-                    {hasFilters ? (
-                      <div className="ms-2">
-                        <button className="btn btn-outline-danger btn-sm d-flex align-items-center" onClick={clearFilters}>
-                          <i className="ti ti-x me-1"></i>Clear
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
+                  <FilterBar 
+                    filters={productFilterConfig} 
+                    onClear={clearFilters} 
+                    hasActiveFilters={hasFilters} 
+                  />
                 </div>
                 <div className="card-body p-0">
                   {viewMode === 'list' ? (
                     <div className="custom-datatable-filter table-responsive">
-                      <CustomDataTable columns={columns} data={productsData} />
+                      <CustomDataTable columns={columns} data={filteredProducts} />
                     </div>
                   ) : (
                     <div className="p-3">
-                      <ProductsGridView />
+                      <ProductsGridView 
+                        products={filteredProducts} 
+                        onEditClick={handleEditClick} 
+                        onDeleteClick={(p) => setConfirmDeleteModal({ isOpen: true, id: p._id || p.id, title: 'Delete Product', type: 'product', name: p.product_name })} 
+                      />
                     </div>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="tab-pane" id="bottom-justified-tab2" role="tabpanel">
+            {/* Categories Tab */}
+            <div className={`tab-pane ${activeTab === 'categories' ? 'show active' : ''}`} id="bottom-justified-tab2" role="tabpanel">
               {/* Categories List/Grid */}
               <div className="card">
                 <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
                   <h5>{viewMode === 'list' ? 'Categories List' : 'Categories Grid'}</h5>
-                  <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-                    <div className="me-3" style={{ minWidth: '220px' }}>
-                      <CustomDatePicker 
-                        isRange={true}
-                        startDate={startDate}
-                        endDate={endDate}
-                        onChange={(update) => setDateRange(update)}
-                        placeholderText="Select Date Range"
-                      />
-                    </div>
-                    <div className="custom-select-wrapper" style={{ width: '140px' }}>
-                      <CustomSelect 
-                        options={[
-                          { value: '', label: 'All Status' },
-                          { value: 'Active', label: 'Active' },
-                          { value: 'Inactive', label: 'Inactive' }
-                        ]}
-                        value={categoryStatusFilter ? { value: categoryStatusFilter, label: categoryStatusFilter } : { value: '', label: 'All Status' }}
-                        onChange={(selected) => setCategoryStatusFilter(selected ? selected.value : '')}
-                      />
-                    </div>
-                    {hasCategoryFilters ? (
-                      <div className="ms-2">
-                        <button className="btn btn-outline-danger btn-sm d-flex align-items-center" onClick={clearCategoryFilters}>
-                          <i className="ti ti-x me-1"></i>Clear
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
+                  <FilterBar 
+                    filters={categoryFilterConfig} 
+                    onClear={clearCategoryFilters} 
+                    hasActiveFilters={hasCategoryFilters} 
+                  />
                 </div>
                 <div className="card-body p-0">
                   {viewMode === 'list' ? (
                     <div className="custom-datatable-filter table-responsive">
-                      <CustomDataTable columns={categoryColumns} data={categoriesData} />
+                      <CustomDataTable columns={categoryColumns} data={filteredCategories} />
                     </div>
                   ) : (
                     <div className="p-3">
-                      <CategoriesGridView />
+                      <CategoriesGridView 
+                        categories={filteredCategories} 
+                        onEditClick={handleEditCategoryClick}
+                        onDeleteClick={(c) => setConfirmDeleteModal({ isOpen: true, id: c._id || c.id, title: 'Delete Category', type: 'category', name: c.name })}
+                      />
                     </div>
                   )}
                 </div>
@@ -341,8 +525,44 @@ const Products = () => {
 
         </div>
       </div>
-      <ProductFormModal open={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />
-      <CategoryFormModal open={isCategoryModalOpen} onClose={() => setIsCategoryModalOpen(false)} />
+      <ProductFormModal 
+        open={isProductModalOpen} 
+        onClose={() => { setIsProductModalOpen(false); setCurrentEditProduct(null); }} 
+        onSave={handleSaveProduct}
+        initialData={currentEditProduct}
+        categories={categories}
+      />
+      <CategoryFormModal 
+        open={isCategoryModalOpen} 
+        onClose={() => { setIsCategoryModalOpen(false); setCurrentEditCategory(null); }} 
+        onSave={handleSaveCategory}
+        initialData={currentEditCategory}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteModal.isOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{confirmDeleteModal.title}</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '', type: 'product', name: '' })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">
+                  Do you really want to delete <strong>{confirmDeleteModal.name || `this ${confirmDeleteModal.type}`}</strong>? This process cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, id: null, title: '', type: 'product', name: '' })}>Cancel</button>
+                <button className="btn btn-danger px-4" onClick={handleDeleteProduct}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

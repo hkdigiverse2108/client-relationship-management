@@ -101,7 +101,7 @@ const CustomDataTable = ({ columns, data, searchable = true, defaultRowsPerPage 
               </span>
               <input
                 type="text"
-                className="form-control form-control-md"
+                className="form-control form-control-md pe-5"
                 placeholder="Search"
                 value={filterText}
                 onChange={(e) => {
@@ -109,6 +109,18 @@ const CustomDataTable = ({ columns, data, searchable = true, defaultRowsPerPage 
                   setCurrentPage(1);
                 }}
               />
+              {filterText && (
+                <span 
+                  className="position-absolute d-flex align-items-center justify-content-center"
+                  style={{ right: '10px', top: '0', bottom: '0', cursor: 'pointer', zIndex: 10 }}
+                  onClick={() => {
+                    setFilterText('');
+                    setCurrentPage(1);
+                  }}
+                >
+                  <i className="ti ti-x text-muted" style={{ fontSize: '14px' }}></i>
+                </span>
+              )}
             </div>
           )}
         </div>

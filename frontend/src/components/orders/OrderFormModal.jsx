@@ -42,13 +42,19 @@ const INITIAL_STATE = {
   product_name: "", quantity: 1, unit_price: "", discount: 0, tax: 0, description: ""
 };
 
-export default function OrderFormModal({ open, onClose, onSave }) {
+export default function OrderFormModal({ open, onClose, onSave, initialData = null }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
   const [productsList, setProductsList] = useState([]);
 
   React.useEffect(() => {
     if (open) {
+      if (initialData) {
+        setFormData({ ...INITIAL_STATE, ...initialData });
+      } else {
+        setFormData(INITIAL_STATE);
+      }
+      setErrors({});
       import('../../api/axiosClient').then(({ default: axiosClient }) => {
         axiosClient.get('/products')
           .then(res => {
@@ -143,12 +149,14 @@ export default function OrderFormModal({ open, onClose, onSave }) {
     <Modal 
       open={open} 
       onClose={onClose} 
-      title="Simulate E-commerce Order" 
+      title={initialData ? "Update Order" : "Simulate E-commerce Order"} 
       size="lg"
       footer={
         <div className="d-flex align-items-center justify-content-end w-100">
           <button type="button" className="btn btn-light me-2" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-primary" onClick={handleSubmit}>Simulate Order</button>
+          <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+            {initialData ? "Save Changes" : "Simulate Order"}
+          </button>
         </div>
       }
     >
