@@ -34,6 +34,7 @@ from routers import (
     orders_router,
     customers_router,
     products_router,
+    platforms_router,
     categories_router,
     finance_router,
     quotes_router,
@@ -85,6 +86,7 @@ app.include_router(payments_router.router, prefix="/api/v1")
 app.include_router(orders_router.router, prefix="/api/v1")
 app.include_router(customers_router.router, prefix="/api/v1")
 app.include_router(products_router.router, prefix="/api/v1")
+app.include_router(platforms_router.router, prefix="/api/v1")
 app.include_router(categories_router.router, prefix="/api/v1")
 app.include_router(finance_router.router, prefix="/api/v1")
 app.include_router(quotes_router.router, prefix="/api/v1")

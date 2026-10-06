@@ -1,19 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import CustomDataTable from '../common/CustomDataTable';
+import axiosClient from '../../api/axiosClient';
+import { APP_CONFIG } from '../../config/appConfig';
+import toast from 'react-hot-toast';
 
 const LogsTab = () => {
   const [filterAction, setFilterAction] = useState("All");
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const dummyLogs = [
-    { id: 1, timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), user: "Super Admin", action: "Restock", module: "Inventory", details: "Added 50 units to Apple iPhone 15 Pro Max" },
-    { id: 2, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), user: "System", action: "Update", module: "Orders", details: "Reserved 2 units for Order #1024 (Amazon)" },
-    { id: 3, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), user: "Store Manager", action: "Transfer", module: "Inventory", details: "Transferred 10 units from Main Warehouse to Local Store" },
-    { id: 4, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), user: "Super Admin", action: "Delete", module: "Products", details: "Deleted obsolete SKU: OBS-001" },
-    { id: 5, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 28).toISOString(), user: "System", action: "Update", module: "Orders", details: "Stock reduced by 1 for Order #1023 (Shopify)" },
-    { id: 6, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), user: "Store Manager", action: "Restock", module: "Inventory", details: "Received shipment of 100 units for Samsung Galaxy S24" },
-  ];
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get('/audit');
+        const data = res.data?.data || res.data || res || [];
+        // Filter only inventory-related logs (Products, Orders)
+        const inventoryLogs = (Array.isArray(data) ? data : []).filter(log => 
+          ['Products', 'Orders', 'Inventory'].includes(log.module)
+        );
+        setLogs(inventoryLogs);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+        toast.error('Failed to fetch logs');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
 
-  const filteredLogs = filterAction === "All" ? dummyLogs : dummyLogs.filter(log => log.action === filterAction);
+  const actionTypes = useMemo(() => {
+    const actions = [...new Set(logs.map(log => log.action).filter(Boolean))];
+    return ["All", ...actions];
+  }, [logs]);
+
+  const filteredLogs = filterAction === "All" ? logs : logs.filter(log => log.action === filterAction);
 
   const columns = [
     {
@@ -33,15 +55,27 @@ const LogsTab = () => {
     },
     {
       name: 'User',
-      selector: row => row.user,
-      cell: (row) => (
-        <div className="d-flex align-items-center">
-          <span className="avatar avatar-sm bg-primary-transparent rounded-circle me-2 text-primary">
-            {row.user.charAt(0)}
-          </span>
-          <span className="fw-medium text-dark">{row.user}</span>
-        </div>
-      ),
+      selector: row => row.user_name,
+      cell: (row) => {
+        const userName = row.user_name || "System";
+        const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        return (
+          <div className="d-flex align-items-center">
+            {row.avatar ? (
+              <img 
+                src={row.avatar.startsWith('http') ? row.avatar : `${new URL(APP_CONFIG.apiBaseUrl).origin}${row.avatar}`} 
+                alt="user" 
+                className="avatar avatar-sm rounded-circle me-2 object-fit-cover"
+              />
+            ) : (
+              <span className="avatar avatar-sm bg-primary-transparent rounded-circle me-2 text-primary d-flex align-items-center justify-content-center">
+                {initials}
+              </span>
+            )}
+            <span className="fw-medium text-dark">{userName}</span>
+          </div>
+        );
+      },
       minWidth: '150px'
     },
     {
@@ -49,14 +83,15 @@ const LogsTab = () => {
       selector: row => row.action,
       cell: (row) => {
         let badgeClass = "bg-light text-dark";
-        if (row.action === "Restock") badgeClass = "bg-success-transparent text-success";
-        if (row.action === "Update") badgeClass = "bg-info-transparent text-info";
-        if (row.action === "Transfer") badgeClass = "bg-warning-transparent text-warning";
-        if (row.action === "Delete") badgeClass = "bg-danger-transparent text-danger";
+        const actionStr = (row.action || "").toLowerCase();
+        if (actionStr.includes("restock") || actionStr.includes("create")) badgeClass = "bg-success-transparent text-success";
+        else if (actionStr.includes("update") || actionStr.includes("edit")) badgeClass = "bg-info-transparent text-info";
+        else if (actionStr.includes("transfer")) badgeClass = "bg-warning-transparent text-warning";
+        else if (actionStr.includes("delete") || actionStr.includes("remove")) badgeClass = "bg-danger-transparent text-danger";
         
         return (
           <span className={`badge ${badgeClass} badge-sm`}>
-            {row.action}
+            {row.action || "Action"}
           </span>
         );
       },
@@ -76,7 +111,6 @@ const LogsTab = () => {
     }
   ];
 
-  const actionTypes = ["All", "Restock", "Update", "Transfer", "Delete"];
 
   return (
     <div className="logs-control-tab">
@@ -102,7 +136,7 @@ const LogsTab = () => {
         </div>
         <div className="card-body p-0">
           <div className="custom-datatable-filter table-responsive">
-            <CustomDataTable columns={columns} data={filteredLogs} />
+            <CustomDataTable columns={columns} data={filteredLogs} progressPending={loading} />
           </div>
         </div>
       </div>

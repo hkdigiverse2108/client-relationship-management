@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 import { menuConfig as NAV_SECTIONS } from '../config/menuConfig';
 
-const DEFAULT_ROLES = ["admin", "manager", "HR"];
+const PROTECTED_ROLES = ["Super Admin"]; // Only Super Admin cannot be deleted/renamed
 
 const getEmptyPermissions = () => {
   const perms = {};
@@ -26,8 +26,8 @@ const getEmptyPermissions = () => {
 };
 
 const RolesPermissions = () => {
-  const [roles, setRoles] = useState(DEFAULT_ROLES);
-  const [selectedRole, setSelectedRole] = useState(DEFAULT_ROLES[0]);
+  const [roles, setRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState('');
   const [presets, setPresets] = useState({});
   const [currentPermissions, setCurrentPermissions] = useState(getEmptyPermissions());
   
@@ -85,18 +85,13 @@ const RolesPermissions = () => {
         if (res && res.length > 0) {
           res.forEach(preset => {
             mockPresets[preset.role_name] = preset.permissions;
-            if (!DEFAULT_ROLES.map(r => r.toLowerCase()).includes(preset.role_name.toLowerCase())) {
-              fetchedRolesList.push(preset.role_name);
-            }
+            fetchedRolesList.push(preset.role_name);
           });
         }
         
         setPresets(mockPresets);
-        
-        // Remove duplicates case-insensitively
-        const baseRolesLower = DEFAULT_ROLES.map(r => r.toLowerCase());
-        const uniqueFetched = fetchedRolesList.filter(r => !baseRolesLower.includes(r.toLowerCase()));
-        setRoles([...DEFAULT_ROLES, ...uniqueFetched]);
+        setRoles(fetchedRolesList);
+        if (fetchedRolesList.length > 0) setSelectedRole(fetchedRolesList[0]);
         
       } catch (err) {
         console.error("Failed to fetch roles", err);
@@ -109,7 +104,9 @@ const RolesPermissions = () => {
   // Update permissions when role changes
   useEffect(() => {
     if (presets[selectedRole]) {
-      setCurrentPermissions(JSON.parse(JSON.stringify(presets[selectedRole])));
+      const empty = getEmptyPermissions();
+      const merged = { ...empty, ...JSON.parse(JSON.stringify(presets[selectedRole])) };
+      setCurrentPermissions(merged);
     } else {
       setCurrentPermissions(getEmptyPermissions());
     }
@@ -290,7 +287,8 @@ const RolesPermissions = () => {
       delete newPresets[roleName];
       setPresets(newPresets);
       if (selectedRole === roleName) {
-        setSelectedRole(DEFAULT_ROLES[0]);
+        const remaining = roles.filter(r => r !== roleName);
+        setSelectedRole(remaining.length > 0 ? remaining[0] : '');
       }
       toast.success(`Role ${roleName} deleted successfully`);
     } catch (err) {
@@ -380,7 +378,7 @@ const RolesPermissions = () => {
                       style={{ padding: '10px 15px', borderRadius: '6px', cursor: 'pointer' }}
                     >
                       <span className="text-capitalize text-start">{role}</span>
-                      {!DEFAULT_ROLES.includes(role) && (
+                      {!PROTECTED_ROLES.includes(role) && (
                         <div className="d-flex gap-2">
                           <i 
                             className="ti ti-edit fs-16 text-muted hover-text-white" 

@@ -1,29 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import CustomDataTable from '../common/CustomDataTable';
-import { productsData } from '../../pages/productsData';
+import FilterBar from '../common/FilterBar';
+import ProductFormModal from '../products/ProductFormModal';
+import axiosClient from '../../api/axiosClient';
+import { APP_CONFIG } from '../../config/appConfig';
+import toast from 'react-hot-toast';
+
 
 const AlertsTab = () => {
-  // Generate some dummy alerts based on products data
-  const alertsData = productsData.slice(0, 5).map((product, index) => {
-    const isOutOfStock = index % 2 === 0;
-    const currentStock = isOutOfStock ? 0 : Math.floor(Math.random() * 10) + 1;
-    const threshold = 10;
-    
-    return {
-      ...product,
-      current_stock: currentStock,
-      threshold: threshold,
-      platform: index % 3 === 0 ? "Amazon" : (index % 2 === 0 ? "Shopify" : "All Platforms"),
-      alert_type: isOutOfStock ? "out_of_stock" : "low_stock",
-      alert_message: isOutOfStock ? "Critical: Out of Stock" : `Warning: Low Stock (Only ${currentStock} left)`
-    };
-  });
+  const [products, setProducts] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterPlatform, setFilterPlatform] = useState("");
+  const [filterAlertType, setFilterAlertType] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [currentEditProduct, setCurrentEditProduct] = useState(null);
 
-  const globalAlertsStats = {
-    outOfStock: alertsData.filter(a => a.alert_type === 'out_of_stock').length,
-    lowStock: alertsData.filter(a => a.alert_type === 'low_stock').length,
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const [prodRes, platRes, catRes] = await Promise.all([
+          axiosClient.get('/products'),
+          axiosClient.get('/platforms'),
+          axiosClient.get('/categories')
+        ]);
+        const fetchedData = prodRes.data?.data || prodRes.data || prodRes || [];
+        const fetchedPlatforms = platRes.data?.data || platRes.data || platRes || [];
+        const fetchedCategories = catRes.data?.data || catRes.data || catRes || [];
+        setProducts(Array.isArray(fetchedData) ? fetchedData : []);
+        setPlatforms(Array.isArray(fetchedPlatforms) ? fetchedPlatforms : []);
+        setCategories(Array.isArray(fetchedCategories) ? fetchedCategories : []);
+      } catch (error) {
+        console.error('Error fetching inventory products for alerts:', error);
+        toast.error('Failed to fetch inventory');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const handleEditClick = (product) => {
+    // The alert object might have id modified to id_platform, so find original
+    const originalProduct = products.find(p => p._id === product._id) || product;
+    setCurrentEditProduct(originalProduct);
+    setIsProductModalOpen(true);
   };
+
+  const handleSaveProduct = async (formData) => {
+    try {
+      if (currentEditProduct) {
+        await axiosClient.put(`/products/${currentEditProduct._id}`, formData);
+        toast.success('Product updated successfully');
+      } else {
+        await axiosClient.post('/products', formData);
+        toast.success('Product created successfully');
+      }
+      // Re-fetch to update alerts
+      const prodRes = await axiosClient.get('/products');
+      const fetchedData = prodRes.data?.data || prodRes.data || prodRes || [];
+      setProducts(Array.isArray(fetchedData) ? fetchedData : []);
+      setIsProductModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      let errorMsg = 'Failed to save product';
+      if (error.response?.data?.detail) {
+        errorMsg = Array.isArray(error.response.data.detail) ? error.response.data.detail[0]?.msg : error.response.data.detail;
+      }
+      toast.error(errorMsg);
+    }
+  };
+
+  const { alertsData, globalAlertsStats } = useMemo(() => {
+    let rawAlerts = [];
+    
+    products.forEach(p => {
+      const qty = Number(p.initial_stock_qty) || 0;
+      const safetyLimit = Number(p.safety_stock_limit) || 10;
+      
+      const productPlatforms = Array.isArray(p.platforms) && p.platforms.length > 0 ? p.platforms : [];
+      const platformNames = platforms.filter(pl => pl.status === 'Active').map(pl => pl.name);
+      const validPlatforms = productPlatforms.filter(plat => platformNames.includes(plat));
+      
+      validPlatforms.forEach(plat => {
+        const platQty = p.platform_stocks?.[plat] || 0;
+        if (platQty === 0) {
+          rawAlerts.push({
+            ...p,
+            id: `${p._id}_${plat}`,
+            current_stock: platQty,
+            threshold: safetyLimit,
+            platform: plat,
+            alert_type: "out_of_stock",
+            alert_message: "Critical: Out of Stock"
+          });
+        } else if (platQty < safetyLimit) {
+          rawAlerts.push({
+            ...p,
+            id: `${p._id}_${plat}`,
+            current_stock: platQty,
+            threshold: safetyLimit,
+            platform: plat,
+            alert_type: "low_stock",
+            alert_message: `Warning: Low Stock (Only ${platQty} left)`
+          });
+        }
+      });
+    });
+
+    const stats = {
+      outOfStock: rawAlerts.filter(a => a.alert_type === 'out_of_stock').length,
+      lowStock: rawAlerts.filter(a => a.alert_type === 'low_stock').length,
+    };
+
+    // Filter alerts
+    const filteredAlerts = rawAlerts.filter(a => {
+      if (filterPlatform && a.platform !== filterPlatform) return false;
+      if (filterAlertType && a.alert_type !== filterAlertType) return false;
+      if (searchQuery && !a.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) && !a.sku_code?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
+
+    return { alertsData: filteredAlerts, globalAlertsStats: stats };
+  }, [products, platforms, searchQuery, filterPlatform, filterAlertType]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterPlatform("");
+    setFilterAlertType("");
+  };
+
+  const filterConfig = [
+    {
+      type: 'search',
+      value: searchQuery,
+      onChange: setSearchQuery,
+      placeholder: 'Search Alert Products...'
+    },
+    {
+      type: 'select',
+      value: filterPlatform,
+      onChange: setFilterPlatform,
+      options: [{ value: '', label: 'All Platforms' }, ...platforms.filter(p => p.status === 'Active').map(p => ({ value: p.name, label: p.name }))]
+    },
+    {
+      type: 'select',
+      value: filterAlertType,
+      onChange: setFilterAlertType,
+      options: [
+        { value: '', label: 'All Alerts' },
+        { value: 'out_of_stock', label: 'Out of Stock' },
+        { value: 'low_stock', label: 'Low Stock' }
+      ]
+    }
+  ];
+
+  const hasFilters = filterPlatform || filterAlertType || searchQuery;
 
   const columns = [
     {
@@ -31,8 +167,12 @@ const AlertsTab = () => {
       selector: row => row.product_name,
       cell: (row) => (
         <div className="d-flex align-items-center">
-          <Link to="#" className="avatar avatar-md border avatar-rounded me-2">
-            <img src={row.image} className="img-fluid" alt="img" />
+          <Link to="#" className="avatar avatar-md border rounded me-2 d-flex align-items-center justify-content-center text-decoration-none bg-primary text-white">
+            {row.image ? (
+              <img src={row.image.startsWith('http') ? row.image : `${new URL(APP_CONFIG.apiBaseUrl).origin}${row.image}`} className="img-fluid rounded" alt="img" />
+            ) : (
+              <span>{row.product_name?.charAt(0)?.toUpperCase()}</span>
+            )}
           </Link>
           <div>
             <h6 className="fw-medium mb-0"><Link to="#">{row.product_name}</Link></h6>
@@ -73,8 +213,8 @@ const AlertsTab = () => {
       selector: row => row.alert_message,
       cell: (row) => (
         <div className="d-flex align-items-center">
-          <span className="badge bg-light text-dark border d-inline-flex align-items-center">
-            <i className="ti ti-alert-circle me-1 text-muted"></i>
+          <span className={`badge ${row.alert_type === 'out_of_stock' ? 'bg-danger-transparent text-danger' : 'bg-warning-transparent text-warning'} border d-inline-flex align-items-center`}>
+            <i className="ti ti-alert-circle me-1"></i>
             {row.alert_message}
           </span>
         </div>
@@ -84,17 +224,12 @@ const AlertsTab = () => {
     {
       name: 'Action',
       cell: (row) => (
-        <div className="dropdown">
-          <button className="btn btn-sm btn-light d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            Take Action
-          </button>
-          <ul className="dropdown-menu">
-            <li><Link className="dropdown-item d-flex align-items-center" to="#"><i className="ti ti-circle-plus me-2"></i>Restock</Link></li>
-            <li><Link className="dropdown-item d-flex align-items-center" to="#"><i className="ti ti-arrows-right-left me-2"></i>Transfer Stock</Link></li>
-            <li><hr className="dropdown-divider" /></li>
-            <li><Link className="dropdown-item text-danger d-flex align-items-center" to="#"><i className="ti ti-player-pause me-2"></i>Pause Listings</Link></li>
-          </ul>
-        </div>
+        <button 
+          className="btn btn-sm btn-outline-primary d-flex align-items-center"
+          onClick={() => handleEditClick(row)}
+        >
+          <i className="ti ti-edit me-1"></i> Update Stock
+        </button>
       ),
       minWidth: '140px'
     }
@@ -176,16 +311,28 @@ const AlertsTab = () => {
 
       {/* Active Channel Alerts Log Table */}
       <div className="card mb-4">
-        <div className="card-header border-bottom">
+        <div className="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap row-gap-3">
           <h5 className="card-title mb-0">Active Channel Alerts Log</h5>
+          <FilterBar 
+            filters={filterConfig} 
+            onClear={clearFilters} 
+            hasActiveFilters={hasFilters} 
+          />
         </div>
         <div className="card-body p-0">
           <div className="custom-datatable-filter table-responsive">
-            <CustomDataTable columns={columns} data={alertsData} />
+            <CustomDataTable columns={columns} data={alertsData} progressPending={loading} />
           </div>
         </div>
       </div>
-
+      <ProductFormModal 
+        open={isProductModalOpen} 
+        onClose={() => { setIsProductModalOpen(false); setCurrentEditProduct(null); }} 
+        onSave={handleSaveProduct}
+        initialData={currentEditProduct}
+        categories={categories}
+        platforms={platforms.filter(p => p.status === 'Active')}
+      />
     </div>
   );
 };

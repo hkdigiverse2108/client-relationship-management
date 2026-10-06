@@ -891,6 +891,7 @@ class ProductCreate(BaseModel):
     variants: List[ProductVariant] = []
     description: Optional[str] = None
     warehouse_stocks: Optional[Dict[str, int]] = None
+    platform_stocks: Optional[Dict[str, int]] = None
 
 class ProductUpdate(BaseModel):
     product_name: Optional[str] = None
@@ -910,6 +911,7 @@ class ProductUpdate(BaseModel):
     variants: Optional[List[ProductVariant]] = None
     description: Optional[str] = None
     warehouse_stocks: Optional[Dict[str, int]] = None
+    platform_stocks: Optional[Dict[str, int]] = None
 
 class ProductResponse(ProductCreate):
     id: str = Field(alias="_id")

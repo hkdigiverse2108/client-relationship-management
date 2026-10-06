@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from bson import ObjectId
 from db import categories_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
@@ -22,13 +22,19 @@ class CategoryResponse(CategoryCreate):
 async def create_category(category: CategoryCreate, current_user: dict = Depends(get_current_user)):
     data = category.model_dump()
     data["created_at"] = datetime.utcnow()
+    data["created_by"] = str(current_user["_id"])
     result = await categories_collection.insert_one(data)
     data["_id"] = str(result.inserted_id)
     return CategoryResponse(**data)
 
 @router.get("", response_model=List[CategoryResponse])
 async def get_categories(current_user: dict = Depends(get_current_user)):
-    cursor = categories_collection.find({"is_deleted": {"$ne": True}}).sort("name", 1)
+    allowed_ids = await get_allowed_user_ids(current_user)
+    query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = categories_collection.find(query).sort("name", 1)
     categories = []
     async for c in cursor:
         c["_id"] = str(c["_id"])

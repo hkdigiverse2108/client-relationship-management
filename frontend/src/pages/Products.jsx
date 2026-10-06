@@ -9,6 +9,8 @@ import ProductsGridView from '../components/products/ProductsGridView';
 import { categoriesData } from './categoriesData'; // kept for legacy reference, can remove if unused
 import CategoryFormModal from '../components/products/CategoryFormModal';
 import CategoriesGridView from '../components/products/CategoriesGridView';
+import PlatformFormModal from '../components/products/PlatformFormModal';
+import PlatformsGridView from '../components/products/PlatformsGridView';
 import toast from 'react-hot-toast';
 import axiosClient from '../api/axiosClient';
 import { APP_CONFIG } from '../config/appConfig';
@@ -19,11 +21,14 @@ const Products = () => {
   const [activeTab, setActiveTab] = useState('products');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentEditProduct, setCurrentEditProduct] = useState(null);
   const [currentEditCategory, setCurrentEditCategory] = useState(null);
+  const [currentEditPlatform, setCurrentEditPlatform] = useState(null);
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null, title: '', type: 'product' });
 
   const [dateRange, setDateRange] = useState([null, null]);
@@ -63,15 +68,32 @@ const Products = () => {
     }
   };
 
+  const fetchPlatforms = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/platforms');
+      const fetchedData = res.data?.data || res.data || res || [];
+      const platArray = Array.isArray(fetchedData) ? fetchedData : [];
+      setPlatforms(platArray);
+    } catch (error) {
+      console.error('Error fetching platforms:', error);
+      toast.error('Failed to fetch platforms');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Always fetch both so total_products count is accurate and ProductFormModal has dynamic categories
+    // Always fetch all so ProductFormModal has dynamic data
     fetchProducts();
     fetchCategories();
+    fetchPlatforms();
   }, []);
 
   useEffect(() => {
     if (activeTab === 'categories') fetchCategories();
     if (activeTab === 'products') fetchProducts();
+    if (activeTab === 'platforms') fetchPlatforms();
   }, [activeTab]);
 
   const handleSaveCategory = async (formData) => {
@@ -102,6 +124,36 @@ const Products = () => {
   const handleEditCategoryClick = (category) => {
     setCurrentEditCategory(category);
     setIsCategoryModalOpen(true);
+  };
+
+  const handleSavePlatform = async (formData) => {
+    try {
+      if (currentEditPlatform) {
+        await axiosClient.put(`/platforms/${currentEditPlatform._id}`, formData);
+        toast.success('Platform updated successfully');
+      } else {
+        await axiosClient.post('/platforms', formData);
+        toast.success('Platform created successfully');
+      }
+      fetchPlatforms();
+      setIsPlatformModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      let errorMsg = 'Failed to save platform';
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          errorMsg = error.response.data.detail[0]?.msg || 'Validation Error';
+        } else {
+          errorMsg = error.response.data.detail;
+        }
+      }
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleEditPlatformClick = (platform) => {
+    setCurrentEditPlatform(platform);
+    setIsPlatformModalOpen(true);
   };
 
   const handleSaveProduct = async (formData) => {
@@ -145,6 +197,10 @@ const Products = () => {
         await axiosClient.delete(`/categories/${confirmDeleteModal.id}`);
         toast.success('Category deleted successfully');
         fetchCategories();
+      } else if (confirmDeleteModal.type === 'platform') {
+        await axiosClient.delete(`/platforms/${confirmDeleteModal.id}`);
+        toast.success('Platform deleted successfully');
+        fetchPlatforms();
       }
       setConfirmDeleteModal({ isOpen: false, id: null, title: '', type: 'product', name: '' });
     } catch (error) {
@@ -193,6 +249,19 @@ const Products = () => {
   }).map(c => ({
     ...c,
     total_products: products.filter(p => p.category === c.name).length
+  }));
+
+  const filteredPlatforms = platforms.filter(p => {
+    let match = true;
+    if (categoryStatusFilter && p.status !== categoryStatusFilter) match = false;
+    if (startDate && endDate && p.created_at) {
+        const pDate = new Date(p.created_at);
+        if (pDate < startDate || pDate > endDate) match = false;
+    }
+    return match;
+  }).map(pl => ({
+    ...pl,
+    total_products: products.filter(p => p.platforms && p.platforms.includes(pl.name)).length
   }));
 
   const productFilterConfig = [
@@ -408,6 +477,61 @@ const Products = () => {
     },
   ];
 
+  const platformColumns = [
+    {
+      name: 'Platform Name',
+      sortable: true,
+      selector: row => row.name,
+      cell: (row) => <h6 className="fw-medium mb-0"><Link to="#">{row.name}</Link></h6>,
+      minWidth: '220px'
+    },
+    {
+      name: 'Total Products',
+      sortable: true,
+      selector: row => row.total_products,
+      cell: (row) => <span>{row.total_products || 0}</span>,
+      minWidth: '150px'
+    },
+    {
+      name: 'Description',
+      sortable: true,
+      selector: row => row.description,
+      cell: (row) => <span className="text-muted line-clamp-2">{row.description || "-"}</span>,
+      minWidth: '250px'
+    },
+    {
+      name: 'Status',
+      sortable: true,
+      selector: row => row.status,
+      cell: (row) => {
+        let badgeClass = "badge-soft-secondary";
+        let textClass = "text-secondary";
+        if (row.status === "Active") {
+          badgeClass = "bg-success-transparent";
+          textClass = "text-success";
+        } else if (row.status === "Inactive") {
+          badgeClass = "bg-warning-transparent";
+          textClass = "text-warning";
+        }
+        return (
+          <span className={`badge ${badgeClass} ${textClass} d-inline-flex align-items-center badge-xs text-capitalize`}>
+            <i className="ti ti-point-filled me-1"></i>{row.status}
+          </span>
+        );
+      },
+      minWidth: '120px'
+    },
+    {
+      name: 'Action',
+      cell: (row) => (
+        <div className="action-icon d-inline-flex">
+          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditPlatformClick(row); }}><i className="ti ti-edit"></i></Link>
+          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Platform', type: 'platform', name: row.name }); }}><i className="ti ti-trash"></i></Link>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
       <div className="page-wrapper">
@@ -419,7 +543,7 @@ const Products = () => {
             breadcrumbs={[
               { label: 'Dashboard' },
               { label: 'E-Commerce' },
-              { label: activeTab === 'products' ? (viewMode === 'list' ? 'Products List' : 'Products Grid') : (viewMode === 'list' ? 'Categories List' : 'Categories Grid'), active: true }
+              { label: activeTab === 'products' ? (viewMode === 'list' ? 'Products List' : 'Products Grid') : activeTab === 'categories' ? (viewMode === 'list' ? 'Categories List' : 'Categories Grid') : (viewMode === 'list' ? 'Platforms List' : 'Platforms Grid'), active: true }
             ]}
           >
             <div className="me-2 mb-2">
@@ -432,8 +556,10 @@ const Products = () => {
             <div className="mb-2 d-flex gap-2">
               {activeTab === 'products' ? (
                 <a href="#" onClick={(e) => { e.preventDefault(); setIsProductModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Product</a>
-              ) : (
+              ) : activeTab === 'categories' ? (
                 <a href="#" onClick={(e) => { e.preventDefault(); setIsCategoryModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Category</a>
+              ) : (
+                <a href="#" onClick={(e) => { e.preventDefault(); setIsPlatformModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Platform</a>
               )}
             </div>
             
@@ -456,6 +582,14 @@ const Products = () => {
                   onClick={() => setActiveTab('categories')}>
                   <i className="ti ti-category me-1"></i>
                   Categories
+                </a>
+              </li>
+              <li className="nav-item" role="presentation">
+                <a className={`nav-link fw-medium d-flex align-items-center justify-content-center ${activeTab === 'platforms' ? 'active' : ''}`}
+                  href="#bottom-justified-tab3" data-bs-toggle="tab" aria-selected={activeTab === 'platforms'} role="tab"
+                  onClick={() => setActiveTab('platforms')}>
+                  <i className="ti ti-share me-1"></i>
+                  Platforms
                 </a>
               </li>
             </ul>
@@ -521,6 +655,35 @@ const Products = () => {
                 </div>
               </div>
             </div>
+
+            {/* Platforms Tab */}
+            <div className={`tab-pane ${activeTab === 'platforms' ? 'show active' : ''}`} id="bottom-justified-tab3" role="tabpanel">
+              <div className="card">
+                <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
+                  <h5>{viewMode === 'list' ? 'Platforms List' : 'Platforms Grid'}</h5>
+                  <FilterBar 
+                    filters={categoryFilterConfig} 
+                    onClear={clearCategoryFilters} 
+                    hasActiveFilters={hasCategoryFilters} 
+                  />
+                </div>
+                <div className="card-body p-0">
+                  {viewMode === 'list' ? (
+                    <div className="custom-datatable-filter table-responsive">
+                      <CustomDataTable columns={platformColumns} data={filteredPlatforms} />
+                    </div>
+                  ) : (
+                    <div className="p-3">
+                      <PlatformsGridView 
+                        platforms={filteredPlatforms} 
+                        onEditClick={handleEditPlatformClick}
+                        onDeleteClick={(pl) => setConfirmDeleteModal({ isOpen: true, id: pl._id || pl.id, title: 'Delete Platform', type: 'platform', name: pl.name })}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -531,12 +694,19 @@ const Products = () => {
         onSave={handleSaveProduct}
         initialData={currentEditProduct}
         categories={categories}
+        platforms={platforms.filter(p => p.status === 'Active')}
       />
       <CategoryFormModal 
         open={isCategoryModalOpen} 
         onClose={() => { setIsCategoryModalOpen(false); setCurrentEditCategory(null); }} 
         onSave={handleSaveCategory}
         initialData={currentEditCategory}
+      />
+      <PlatformFormModal 
+        open={isPlatformModalOpen} 
+        onClose={() => { setIsPlatformModalOpen(false); setCurrentEditPlatform(null); }} 
+        onSave={handleSavePlatform}
+        initialData={currentEditPlatform}
       />
       
       {/* Delete Confirmation Modal */}

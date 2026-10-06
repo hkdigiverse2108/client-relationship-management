@@ -29,6 +29,7 @@ orders_collection = db.get_collection("orders")
 customers_collection = db.get_collection("customers")
 products_collection = db.get_collection("products")
 categories_collection = db.get_collection("categories")
+platforms_collection = db.get_collection("platforms")
 settings_collection = db.get_collection("settings")
 tasks_collection = db.get_collection("tasks")
 
@@ -37,3 +38,15 @@ async def init_db():
     await users_collection.create_index("email", unique=True)
     await otps_collection.create_index("email")
     await clients_collection.create_index("client_id", unique=True)
+
+    # Seed system default roles if they don't exist
+    role_presets_collection = db.get_collection("role_presets")
+    default_roles = ["admin", "manager", "HR"]
+    for role_name in default_roles:
+        existing = await role_presets_collection.find_one({"role_name": role_name, "created_by": "system"})
+        if not existing:
+            await role_presets_collection.insert_one({
+                "role_name": role_name,
+                "permissions": {},
+                "created_by": "system"
+            })

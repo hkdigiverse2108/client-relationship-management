@@ -9,10 +9,6 @@ const WAREHOUSES = [
   "Main Warehouse", "Fulfillment Center A", "Fulfillment Center B", "Dropship Partner"
 ];
 
-const PLATFORMS = [
-  "Amazon", "Flipkart", "Meesho", "Shopify", "WooCommerce", "Myntra", "Ajio", "Warehouse", "Other"
-];
-
 const STATUSES = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
@@ -22,13 +18,14 @@ const STATUSES = [
 
 const INITIAL_STATE = {
   product_name: "", sku_code: "", category: "", brand_name: "", image: "", status: "active",
-  initial_stock_qty: "", safety_stock_limit: "", fulfillment_warehouse: "Main Warehouse",
-  cost_price: "", retail_price: "", tax: "", discount: "", platforms: [], description: "", variants: []
+  initial_stock_qty: 0, safety_stock_limit: "", fulfillment_warehouse: "Main Warehouse",
+  cost_price: "", retail_price: "", tax: "", discount: "", platforms: [], platform_stocks: {}, description: "", variants: []
 };
 
-export default function ProductFormModal({ open, onClose, onSave, initialData, categories = [] }) {
+export default function ProductFormModal({ open, onClose, onSave, initialData, categories = [], platforms = [] }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
+  const platformNames = platforms.map(p => p.name);
 
   React.useEffect(() => {
     if (open) {
@@ -76,14 +73,41 @@ export default function ProductFormModal({ open, onClose, onSave, initialData, c
 
   const handlePlatformChange = (platform) => {
     setFormData(prev => {
-      const platforms = prev.platforms.includes(platform)
+      const isSelected = prev.platforms.includes(platform);
+      const platforms = isSelected
         ? prev.platforms.filter(p => p !== platform)
         : [...prev.platforms, platform];
-      return { ...prev, platforms };
+        
+      // Also reset platform_stock if unselected
+      const platform_stocks = { ...prev.platform_stocks };
+      if (isSelected) {
+        delete platform_stocks[platform];
+      } else {
+        platform_stocks[platform] = 0;
+      }
+      
+      return updateInitialStockQty({ ...prev, platforms, platform_stocks });
     });
     if (errors.platforms) {
       setErrors(prev => ({ ...prev, platforms: null }));
     }
+  };
+
+  const handlePlatformStockChange = (platform, value) => {
+    const val = Number(value) || 0;
+    setFormData(prev => {
+      const platform_stocks = { ...prev.platform_stocks, [platform]: val };
+      return updateInitialStockQty({ ...prev, platform_stocks });
+    });
+  };
+
+  const updateInitialStockQty = (data) => {
+    let total = 0;
+    data.platforms.forEach(p => {
+      total += data.platform_stocks[p] || 0;
+    });
+    data.initial_stock_qty = total;
+    return data;
   };
 
   const handleAddVariant = () => {
@@ -158,6 +182,14 @@ export default function ProductFormModal({ open, onClose, onSave, initialData, c
         dataToSave.retail_price = Number(dataToSave.retail_price) || 0;
         dataToSave.tax = Number(dataToSave.tax) || 0;
         dataToSave.discount = Number(dataToSave.discount) || 0;
+        
+        // Clean up platform_stocks to only include selected platforms
+        const cleanedPlatformStocks = {};
+        dataToSave.platforms.forEach(p => {
+          cleanedPlatformStocks[p] = dataToSave.platform_stocks[p] || 0;
+        });
+        dataToSave.platform_stocks = cleanedPlatformStocks;
+        
         onSave(dataToSave);
       }
       onClose();
@@ -251,8 +283,8 @@ export default function ProductFormModal({ open, onClose, onSave, initialData, c
         <h6 className="fw-semibold mb-3 text-primary">Inventory & Warehousing</h6>
         <div className="row g-3 mb-4">
           <div className="col-md-4">
-            <label className="form-label">Initial Stock Qty</label>
-            <input type="number" className="form-control" name="initial_stock_qty" min="0" value={formData.initial_stock_qty} onChange={handleChange} />
+            <label className="form-label">Total Stock Qty (Auto-calculated)</label>
+            <input type="number" className="form-control bg-light" name="initial_stock_qty" value={formData.initial_stock_qty} readOnly title="Total stock is calculated from platform stocks below." />
           </div>
           <div className="col-md-4">
             <label className="form-label">Safety Stock Limit</label>
@@ -294,22 +326,44 @@ export default function ProductFormModal({ open, onClose, onSave, initialData, c
           </div>
         </div>
 
-        <h6 className="fw-semibold mb-3 text-primary">Selling Platforms <span className="text-danger">*</span></h6>
-        <div className={`mb-4 d-flex flex-wrap gap-3 ${errors.platforms ? 'is-invalid border border-danger p-2 rounded' : ''}`}>
-          {PLATFORMS.map(platform => (
-            <div className="form-check cursor-pointer" key={platform}>
-              <input 
-                className="form-check-input cursor-pointer" 
-                type="checkbox" 
-                id={`platform-${platform}`} 
-                checked={formData.platforms.includes(platform)}
-                onChange={() => handlePlatformChange(platform)}
-              />
-              <label className="form-check-label cursor-pointer" htmlFor={`platform-${platform}`}>
-                {platform}
-              </label>
+        <h6 className="fw-semibold mb-3 text-primary">Selling Platforms & Stock Allocation <span className="text-danger">*</span></h6>
+        <div className={`mb-4 d-flex flex-column gap-3 ${errors.platforms ? 'is-invalid border border-danger p-2 rounded' : ''}`}>
+          <div className="d-flex flex-wrap gap-3">
+            {platformNames.map(platform => (
+              <div className="form-check cursor-pointer" key={platform}>
+                <input 
+                  className="form-check-input cursor-pointer" 
+                  type="checkbox" 
+                  id={`platform-${platform}`} 
+                  checked={formData.platforms.includes(platform)}
+                  onChange={() => handlePlatformChange(platform)}
+                />
+                <label className="form-check-label cursor-pointer" htmlFor={`platform-${platform}`}>
+                  {platform}
+                </label>
+              </div>
+            ))}
+          </div>
+          
+          {formData.platforms.length > 0 && (
+            <div className="mt-3 p-3 bg-light rounded border">
+              <h6 className="fs-13 fw-medium mb-3 text-muted">Allocate Stock for Selected Platforms:</h6>
+              <div className="row g-3">
+                {formData.platforms.map(platform => (
+                  <div className="col-md-3 col-sm-6" key={`stock-${platform}`}>
+                    <label className="form-label fs-12">{platform} Stock</label>
+                    <input 
+                      type="number" 
+                      className="form-control form-control-sm" 
+                      min="0"
+                      value={formData.platform_stocks?.[platform] || 0}
+                      onChange={(e) => handlePlatformStockChange(platform, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
         {errors.platforms && <div className="invalid-feedback d-block mt-[-1rem] mb-4">{errors.platforms}</div>}
 

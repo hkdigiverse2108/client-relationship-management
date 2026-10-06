@@ -5,7 +5,7 @@ from bson import ObjectId
 from models import CustomerCreate, CustomerResponse, CustomerUpdate
 from db import customers_collection, audit_logs_collection
 from audit_logger import log_audit_action
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 
 router = APIRouter(prefix="/customers", tags=["E-Commerce Customers"])
 
@@ -60,7 +60,12 @@ async def create_customer(customer: CustomerCreate, current_user: dict = Depends
 
 @router.get("", response_model=List[CustomerResponse])
 async def get_customers(current_user: dict = Depends(get_current_user)):
-    cursor = customers_collection.find({"is_deleted": {"$ne": True}}).sort("created_at", -1)
+    allowed_ids = await get_allowed_user_ids(current_user)
+    query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        query["created_by"] = {"$in": allowed_ids}
+        
+    cursor = customers_collection.find(query).sort("created_at", -1)
     customers = []
     async for c in cursor:
         c["_id"] = str(c["_id"])

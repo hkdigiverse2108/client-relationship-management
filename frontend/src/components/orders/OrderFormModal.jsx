@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
 
-const PLATFORMS = [
-  "Amazon", "Flipkart", "Meesho", "Shopify", "WooCommerce", 
-  "Myntra", "Ajio", "Warehouse", "Other"
-];
+
 
 const PAYMENT_STATUSES = [
   { value: "paid", label: "Paid" },
@@ -38,14 +35,16 @@ const CITIES = [
 const INITIAL_STATE = {
   customer_name: "", customer_email: "", customer_phone: "",
   destination_city: "", destination_state: "", destination_country: "",
-  platform: "Amazon", payment_status: "pending", order_status: "processing",
+  platform: "", payment_status: "pending", order_status: "processing",
   product_name: "", quantity: 1, unit_price: "", discount: 0, tax: 0, description: ""
 };
 
 export default function OrderFormModal({ open, onClose, onSave, initialData = null }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
+  const [rawProducts, setRawProducts] = useState([]);
   const [productsList, setProductsList] = useState([]);
+  const [platformOptions, setPlatformOptions] = useState([]);
 
   React.useEffect(() => {
     if (open) {
@@ -56,20 +55,43 @@ export default function OrderFormModal({ open, onClose, onSave, initialData = nu
       }
       setErrors({});
       import('../../api/axiosClient').then(({ default: axiosClient }) => {
-        axiosClient.get('/products')
-          .then(res => {
-            const data = res.data?.data || res.data || res || [];
-            const options = (Array.isArray(data) ? data : []).map(p => ({
-              value: p.product_name,
-              label: p.product_name,
-              price: p.selling_price || p.base_price || 0
-            }));
-            setProductsList(options);
-          })
-          .catch(err => console.error("Error fetching products", err));
+        Promise.all([
+          axiosClient.get('/products'),
+          axiosClient.get('/platforms')
+        ])
+        .then(([prodRes, platRes]) => {
+          const pData = prodRes.data?.data || prodRes.data || prodRes || [];
+          const platData = platRes.data?.data || platRes.data || platRes || [];
+          
+          setRawProducts(Array.isArray(pData) ? pData : []);
+          
+          const pOptions = (Array.isArray(platData) ? platData : []).filter(p => p.status === 'Active').map(p => ({
+            value: p.name,
+            label: p.name
+          }));
+          setPlatformOptions(pOptions);
+        })
+        .catch(err => console.error("Error fetching order dependencies", err));
       });
     }
   }, [open]);
+
+  React.useEffect(() => {
+    if (formData.platform) {
+      const filtered = rawProducts.filter(p => {
+        const productPlatforms = Array.isArray(p.platforms) && p.platforms.length > 0 ? p.platforms : [];
+        return productPlatforms.includes(formData.platform);
+      });
+      const options = filtered.map(p => ({
+        value: p.product_name,
+        label: p.product_name,
+        price: p.selling_price || p.base_price || p.retail_price || 0
+      }));
+      setProductsList(options);
+    } else {
+      setProductsList([]);
+    }
+  }, [formData.platform, rawProducts]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -143,7 +165,7 @@ export default function OrderFormModal({ open, onClose, onSave, initialData = nu
     return { value: val, label: val.charAt(0).toUpperCase() + val.slice(1).replace('_', ' ') };
   };
 
-  const platformOptions = PLATFORMS.map(p => ({ value: p, label: p }));
+
 
   return (
     <Modal 

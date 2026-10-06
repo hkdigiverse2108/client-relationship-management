@@ -19,11 +19,7 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [roleOptions, setRoleOptions] = useState([
-    { value: 'admin', label: 'Admin' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'HR', label: 'HR' }
-  ]);
+  const [roleOptions, setRoleOptions] = useState([]);
 
   const [rolePresets, setRolePresets] = useState([]);
   const [submitted, setSubmitted] = useState(false);
@@ -36,16 +32,7 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
         if (res && res.length > 0) {
           setRolePresets(res);
           const dynamicRoles = res.map(r => ({ value: r.role_name, label: r.role_name }));
-          
-          // Merge avoiding duplicates
-          const baseRoles = [
-            { value: 'admin', label: 'Admin' },
-          ];
-          
-          const existingValues = new Set(baseRoles.map(r => r.value.toLowerCase()));
-          const extraRoles = dynamicRoles.filter(r => !existingValues.has(r.value.toLowerCase()));
-          
-          setRoleOptions([...baseRoles, ...extraRoles]);
+          setRoleOptions(dynamicRoles);
         }
       } catch (err) {
         console.error("Failed to load roles", err);
@@ -57,7 +44,19 @@ const UserFormModal = ({ isOpen, onClose, initialData, onSave }) => {
   // Initialize form
   useEffect(() => {
     if (initialData) {
-      setFormData({ ...initialData, password: '', confirmPassword: '' });
+      const mergedPerms = { ...(initialData.permissions || {}) };
+      NAV_SECTIONS.forEach(section => {
+        section.items.forEach(item => {
+          if (item.subMenu) {
+            item.subMenu.forEach(subItem => {
+              if (!mergedPerms[subItem.path]) mergedPerms[subItem.path] = { view: false, add: false, edit: false, delete: false };
+            });
+          } else {
+            if (!mergedPerms[item.path]) mergedPerms[item.path] = { view: false, add: false, edit: false, delete: false };
+          }
+        });
+      });
+      setFormData({ ...initialData, permissions: mergedPerms, password: '', confirmPassword: '' });
     } else {
       const defaultPerms = {};
       NAV_SECTIONS.forEach(section => {

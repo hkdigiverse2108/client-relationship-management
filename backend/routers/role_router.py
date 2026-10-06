@@ -11,15 +11,10 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 
 @router.get("/presets", response_model=List[RolePresetResponse])
 async def get_role_presets(current_user = Depends(get_current_user)):
-    # Any user can view presets, but only the ones they are allowed to see
-    # Global roles or roles created by their tenant admin
-    
-    presets = []
     role_presets_collection = db.get_collection("role_presets")
     
     query = {}
     if current_user.get("role") != "Super Admin":
-        # Find the tenant admin ID
         if current_user.get("role") == "admin":
             tenant_admin_id = current_user["_id"]
         else:
@@ -28,14 +23,28 @@ async def get_role_presets(current_user = Depends(get_current_user)):
             
         query["$or"] = [
             {"created_by": tenant_admin_id},
-            {"created_by": None},
-            {"created_by": "system"},
-            {"created_by": {"$exists": False}}
+            {"created_by": "system"}
         ]
 
+    # Deduplicate by role_name: prefer admin's own copy over system copy
+    role_map = {}  # role_name -> preset dict
     async for preset in role_presets_collection.find(query):
         preset["id"] = str(preset.pop("_id"))
-        presets.append(RolePresetResponse(**preset))
+        role_name = preset.get("role_name")
+        existing = role_map.get(role_name)
+        if existing is None:
+            role_map[role_name] = preset
+        else:
+            # Prefer admin's own version over system
+            if existing.get("created_by") in [None, "system"] and preset.get("created_by") not in [None, "system"]:
+                role_map[role_name] = preset
+
+    presets = []
+    for preset in role_map.values():
+        try:
+            presets.append(RolePresetResponse(**preset))
+        except Exception:
+            pass
     return presets
 
 @router.put("/presets/{role_name}", response_model=RolePresetResponse)
@@ -127,17 +136,22 @@ async def delete_role_preset(role_name: str, current_user = Depends(get_current_
     if current_user.get("role") not in ["Super Admin", "admin"]:
         raise HTTPException(status_code=403, detail="Not authorized to delete role presets")
         
-    # Prevent deleting system default roles
-    if role_name in ["admin", "manager", "HR", "Super Admin", "sales", "support"]:
-        raise HTTPException(status_code=400, detail="Cannot delete system default roles")
+    # Only Super Admin role itself is truly undeletable
+    if role_name in ["Super Admin"]:
+        raise HTTPException(status_code=400, detail="Cannot delete the Super Admin role")
         
     role_presets_collection = db.get_collection("role_presets")
     
-    query = {"role_name": role_name}
-    if current_user["role"] != "Super Admin":
-        query["created_by"] = current_user["_id"]
-        
-    result = await role_presets_collection.delete_one(query)
+    # Try deleting admin's own copy first
+    tenant_admin_id = current_user["_id"]
+    result = await role_presets_collection.delete_one({"role_name": role_name, "created_by": tenant_admin_id})
+    
+    # If no own copy found, delete system/global version
+    if result.deleted_count == 0:
+        result = await role_presets_collection.delete_one({
+            "role_name": role_name,
+            "created_by": {"$in": ["system", None]}
+        })
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Role not found or you don't have permission to delete it")
