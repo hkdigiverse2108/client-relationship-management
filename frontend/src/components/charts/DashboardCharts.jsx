@@ -135,29 +135,41 @@ export const RevenueChart = () => {
   return <ReactApexChart options={options} series={series} type="bar" height={280} />;
 };
 
-export const PlanOverviewChart = () => {
+export const PlanOverviewChart = ({ sources = [] }) => {
+  const defaultColors = ['#FFC107', '#1B84FF', '#F26522', '#2DCB73', '#4B3088', '#E91E63', '#9C27B0', '#00BCD4', '#8BC34A', '#795548'];
+  const labels = sources.length > 0 ? sources.map(s => s.label.split('(')[0].trim()) : ['Enterprise', 'Premium', 'Basic'];
+  const series = sources.length > 0 ? sources.map(s => Number(s.value)) : [20, 60, 20];
+  
+  // Ensure we have enough colors even if there are many sources
+  let colors = [];
+  for (let i = 0; i < series.length; i++) {
+    colors.push(defaultColors[i % defaultColors.length]);
+  }
+
+  if (sources.length === 0) {
+    colors = ['#FFC107', '#1B84FF', '#F26522'];
+  }
+
   const options = {
     chart: {
       height: 240,
       type: 'donut',
       toolbar: { show: false }
     },
-    colors: ['#FFC107', '#1B84FF', '#F26522'],
-    labels: ['Enterprise', 'Premium', 'Basic'],
+    colors: colors,
+    labels: labels,
     plotOptions: {
       pie: {
         donut: {
           size: '70%',
-          labels: { show: false },
-          borderRadius: 30
+          labels: { show: false }
         }
       }
     },
     stroke: {
-      lineCap: 'round',
       show: true,
-      width: 0,
-      colors: '#fff'
+      width: 2,
+      colors: ['transparent']
     },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -170,7 +182,5 @@ export const PlanOverviewChart = () => {
     }]
   };
 
-  const series = [20, 60, 20];
-
-  return <ReactApexChart options={options} series={series} type="donut" height={240} />;
+  return <ReactApexChart key={series.join('-')} options={options} series={series} type="donut" height={240} />;
 };

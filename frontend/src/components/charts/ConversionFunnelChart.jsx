@@ -1,11 +1,14 @@
 import React from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-const ConversionFunnelChart = () => {
+const ConversionFunnelChart = ({ funnelData = [] }) => {
   // Use the theme's primary CSS variable, fallback to default orange if not found
   const primaryColor = typeof window !== 'undefined' 
     ? getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#FF6F28'
     : '#FF6F28';
+
+  const categories = funnelData.length > 0 ? funnelData.map(d => d.label) : ['Visitors', 'Leads Captured', 'Qualified', 'Closed Won'];
+  const values = funnelData.length > 0 ? funnelData.map(d => d.value) : [0, 16, 8, 6];
 
   const options = {
     chart: {
@@ -44,7 +47,7 @@ const ConversionFunnelChart = () => {
       enabled: false
     },
     xaxis: {
-      categories: ['Visitors', 'Leads Captured', 'Qualified', 'Closed Won'],
+      categories: categories,
       labels: {
         style: {
           colors: '#111827',
@@ -55,7 +58,7 @@ const ConversionFunnelChart = () => {
   };
 
   const series = [{
-    data: [0, 16, 8, 6],
+    data: values,
     name: 'Count'
   }];
 

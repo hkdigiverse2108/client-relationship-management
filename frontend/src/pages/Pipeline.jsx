@@ -331,6 +331,9 @@ const Pipeline = () => {
         }
       }
 
+      const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+      const getProfileUrl = (url) => url ? (url.startsWith('http') ? url : `${backendUrl}${url}`) : null;
+
       col.cards.push({
         id: deal._id || deal.id,
         title: deal.title || 'Untitled Deal',
@@ -340,7 +343,7 @@ const Pipeline = () => {
         value: deal.amount ? `₹${deal.amount.toLocaleString()}` : '₹0',
         probability: deal.probability ? `${deal.probability}%` : '0%',
         dueDate: formattedDate,
-        assignee: user ? { name: user.name, avatar: user.avatar } : null
+        assignee: user ? { name: user.name, avatar: getProfileUrl(user.profile_photo) } : null
       });
     });
 

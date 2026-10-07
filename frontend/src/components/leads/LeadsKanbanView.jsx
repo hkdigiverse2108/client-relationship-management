@@ -153,8 +153,8 @@ const LeadsKanbanView = ({ data = [], users = [], onInlineUpdate, onEdit, onDele
                                 title="Click to edit assignee"
                                 style={{ maxWidth: '120px', fontSize: '13px' }}
                               >
-                                {assignedUser && assignedUser.image ? (
-                                  <img src={assignedUser.image} alt={assignedUser.name} className="avatar avatar-xs rounded-circle me-1 flex-shrink-0" style={{width: '20px', height: '20px', minWidth: '20px', objectFit: 'cover'}} />
+                                {assignedUser && assignedUser.profile_photo ? (
+                                  <img src={assignedUser.profile_photo.startsWith('http') ? assignedUser.profile_photo : `${import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}${assignedUser.profile_photo}`} alt={assignedUser.name} className="avatar avatar-xs rounded-circle me-1 flex-shrink-0" style={{width: '20px', height: '20px', minWidth: '20px', objectFit: 'cover'}} />
                                 ) : assignedUser ? (
                                   <span className="avatar avatar-xs rounded-circle bg-primary me-1 d-flex justify-content-center align-items-center text-white fw-bold flex-shrink-0" style={{width: '20px', height: '20px', minWidth: '20px', fontSize: '10px'}}>
                                     {assignedUser.name.substring(0, 2).toUpperCase()}

@@ -1,13 +1,56 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CompanyBar1, CompanyBar2, CompanyBar3, CompanyBar4, CompaniesChart, RevenueChart, PlanOverviewChart } from '../components/charts/DashboardCharts';
+import { CompanyBar1, CompanyBar2, CompanyBar3, CompanyBar4, PlanOverviewChart } from '../components/charts/DashboardCharts';
 import PageHeader from '../components/common/PageHeader';
 import ConversionFunnelChart from '../components/charts/ConversionFunnelChart';
 import WhatsAppEngagementChart from '../components/charts/WhatsAppEngagementChart';
 import ActivityHeatmapChart from '../components/charts/ActivityHeatmapChart';
 import { BudgetChart } from '../components/charts/FinanceCharts';
+import axiosClient from '../api/axiosClient';
 
 const Dashboard = () => {
+  const [statsData, setStatsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get('/dashboard/stats');
+        setStatsData(res.data || res);
+      } catch (err) {
+        console.error("Error fetching dashboard stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return <div className="p-5 text-center">Loading dashboard data...</div>;
+  }
+
+  // Extract stats
+  const stats = statsData?.stats || [];
+  const getStat = (key) => stats.find(s => s.key === key) || { value: 0, delta: 0, trend: 'up' };
+
+  const revenueStat = getStat('revenue');
+  const leadsStat = getStat('deals');
+  const convStat = getStat('leads');
+  const waStat = getStat('winrate'); // using the static one as defined in backend
+
+  // Extract sources
+  const sources = statsData?.sources || [];
+  const sourceColors = ['#FFC107', '#1B84FF', '#F26522', '#2DCB73', '#4B3088', '#E91E63', '#9C27B0', '#00BCD4', '#8BC34A', '#795548'];
+  
+  // Format Currency
+  const formatCurrency = (val) => {
+    if (val >= 1000000) return `₹${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
+    return `₹${val.toLocaleString()}`;
+  };
+
   return (
     <>
       <div className="page-wrapper">
@@ -28,25 +71,6 @@ const Dashboard = () => {
 								<i className="ti ti-calendar me-1"></i>Last 30 Days
 							</a>
 						</div>
-						<div className="mb-2">
-							<div className="dropdown">
-								<a href="#" onClick={(e) => e.preventDefault()}
-									className="dropdown-toggle btn btn-primary d-inline-flex align-items-center"
-									data-bs-toggle="dropdown">
-									<i className="ti ti-file-export me-1"></i>Export Report
-								</a>
-								<ul className="dropdown-menu dropdown-menu-end p-3">
-									<li>
-										<a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i
-												className="ti ti-file-type-pdf me-1"></i>Export as PDF</a>
-									</li>
-									<li>
-										<a href="#" onClick={(e) => e.preventDefault()} className="dropdown-item rounded-1"><i
-												className="ti ti-file-type-xls me-1"></i>Export as Excel </a>
-									</li>
-								</ul>
-							</div>
-						</div>
 					</div>
 				</PageHeader>
 				{/* /Breadcrumb */}
@@ -54,7 +78,7 @@ const Dashboard = () => {
 			
 				<div className="row">
 
-					{/* Total Companies */}
+					{/* Total Revenue */}
 					<div className="col-xl-3 col-sm-6 d-flex">
 						<div className="card flex-fill">
 							<div className="card-body">
@@ -62,23 +86,23 @@ const Dashboard = () => {
 									<span className="avatar avatar-md bg-dark mb-3">
 										<i className="ti ti-report-money fs-16"></i>
 									</span>
-									<span className="badge bg-success fw-normal mb-3">
-										+19.01%
+									<span className={`badge bg-${revenueStat.trend === 'up' ? 'success' : 'danger'} fw-normal mb-3`}>
+										{revenueStat.trend === 'up' ? '+' : ''}{revenueStat.delta}%
 									</span>
 								</div>
 								<div className="d-flex align-items-center justify-content-between">
 									<div>
-										<h2 className="mb-1">5468</h2>
-										<p className="fs-13">Total Revenue</p>
+										<h2 className="mb-1">{formatCurrency(revenueStat.value)}</h2>
+										<p className="fs-13">{revenueStat.label}</p>
 									</div>
 									<CompanyBar1 />
 								</div>
 							</div>
 						</div>
 					</div>
-					{/* /Total Companies */}
+					{/* /Total Revenue */}
 
-					{/* Active Companies */}
+					{/* Active Leads */}
 					<div className="col-xl-3 col-sm-6 d-flex">
 						<div className="card flex-fill">
 							<div className="card-body">
@@ -86,23 +110,23 @@ const Dashboard = () => {
 									<span className="avatar avatar-md bg-dark mb-3">
 										<i className="ti ti-target fs-16"></i>
 									</span>
-									<span className="badge bg-danger fw-normal mb-3">
-										-12%
+									<span className={`badge bg-${leadsStat.trend === 'up' ? 'success' : 'danger'} fw-normal mb-3`}>
+										{leadsStat.trend === 'up' ? '+' : ''}{leadsStat.delta}%
 									</span>
 								</div>
 								<div className="d-flex align-items-center justify-content-between">
 									<div>
-										<h2 className="mb-1">4598</h2>
-										<p className="fs-13">Active Leads</p>
+										<h2 className="mb-1">{leadsStat.value.toLocaleString()}</h2>
+										<p className="fs-13">{leadsStat.label}</p>
 									</div>
 									<CompanyBar2 />
 								</div>
 							</div>
 						</div>
 					</div>
-					{/* /Active Companies */}
+					{/* /Active Leads */}
 
-					{/* Total Subscribers */}
+					{/* Conversion Rate */}
 					<div className="col-xl-3 col-sm-6 d-flex">
 						<div className="card flex-fill">
 							<div className="card-body">
@@ -110,23 +134,23 @@ const Dashboard = () => {
 									<span className="avatar avatar-md bg-dark mb-3">
 										<i className="ti ti-trending-up fs-16"></i>
 									</span>
-									<span className="badge bg-success fw-normal mb-3">
-										+6%
+									<span className={`badge bg-${convStat.trend === 'up' ? 'success' : 'danger'} fw-normal mb-3`}>
+										{convStat.trend === 'up' ? '+' : ''}{convStat.delta}%
 									</span>
 								</div>
 								<div className="d-flex align-items-center justify-content-between">
 									<div>
-										<h2 className="mb-1">3698</h2>
-										<p className="fs-13">Conversion Rate</p>
+										<h2 className="mb-1">{convStat.value}%</h2>
+										<p className="fs-13">{convStat.label}</p>
 									</div>
 									<CompanyBar3 />
 								</div>
 							</div>
 						</div>
 					</div>
-					{/* /Total Subscribers */}
+					{/* /Conversion Rate */}
 
-					{/* Total Earnings */}
+					{/* WhatsApp Volume */}
 					<div className="col-xl-3 col-sm-6 d-flex">
 						<div className="card flex-fill">
 							<div className="card-body">
@@ -134,58 +158,33 @@ const Dashboard = () => {
 									<span className="avatar avatar-md bg-dark mb-3">
 										<i className="ti ti-brand-whatsapp fs-16"></i>
 									</span>
-									<span className="badge bg-danger fw-normal mb-3">
-										-16%
+									<span className={`badge bg-${waStat.trend === 'up' ? 'success' : 'danger'} fw-normal mb-3`}>
+										{waStat.trend === 'up' ? '+' : ''}{waStat.delta}%
 									</span>
 								</div>
 								<div className="d-flex align-items-center justify-content-between">
 									<div>
-										<h2 className="mb-1">$89,878,58</h2>
-										<p className="fs-13">WhatsApp Volume
-</p>
+										<h2 className="mb-1">{waStat.value}K</h2>
+										<p className="fs-13">{waStat.label}</p>
 									</div>
 									<CompanyBar4 />
 								</div>
 							</div>
 						</div>
 					</div>
-					{/* /Total Earnings */}
+					{/* /WhatsApp Volume */}
 
 				</div>
 
 				<div className="row">
 
-					
-
 					{/* Revenue */}
 					<div className="col-lg-8 d-flex">
 						<div className="card flex-fill">
-							
 							<div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
 								<div>
 								<h5 className="">Department Budget vs Actual</h5>
 								<p className='text-muted'>Projected vs. Actual monthly earnings</p>
-								</div>
-								<div className="dropdown mb-2">
-									<Link to="#"
-										className="btn btn-white border btn-sm d-inline-flex align-items-center"
-										data-bs-toggle="dropdown">
-										<i className="ti ti-calendar me-1"></i>1 Month
-									</Link>
-									<ul className="dropdown-menu  dropdown-menu-end p-3">
-										<li>
-											<Link to="#" className="dropdown-item rounded-1">1 Month</Link>
-										</li>
-										<li>
-											<Link to="#" className="dropdown-item rounded-1">3 Months</Link>
-										</li>
-										<li>
-											<Link to="#" className="dropdown-item rounded-1">6 Months</Link>
-										</li>
-										<li>
-											<Link to="#" className="dropdown-item rounded-1">1 Year</Link>
-										</li>
-									</ul>
 								</div>
 							</div>
 							<div className="card-body pb-0">
@@ -195,35 +194,30 @@ const Dashboard = () => {
 					</div>
 					{/* /Revenue */}
 
-					{/* Top Plans */}
+					{/* Lead Sources */}
 					<div className="col-lg-4 d-flex">
 						<div className="card flex-fill">
-							
 							<div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-								<h5 className="mb-2">Lead sources
-</h5>
-								
+								<h5 className="mb-2">Lead sources</h5>
 							</div>
 							<div className="card-body">
-								<PlanOverviewChart />
-								<div className="d-flex align-items-center justify-content-between mb-2">
-									<p className="f-13 mb-0"><i className="ti ti-circle-filled text-primary me-1"></i>Basic </p>
-									<p className="f-13 fw-medium text-gray-9">60%</p>
-								</div>
-								<div className="d-flex align-items-center justify-content-between mb-2">
-									<p className="f-13 mb-0"><i className="ti ti-circle-filled text-warning me-1"></i>Premium
-									</p>
-									<p className="f-13 fw-medium text-gray-9">20%</p>
-								</div>
-								<div className="d-flex align-items-center justify-content-between mb-0">
-									<p className="f-13 mb-0"><i className="ti ti-circle-filled text-info me-1"></i>Enterprise
-									</p>
-									<p className="f-13 fw-medium text-gray-9">20%</p>
-								</div>
+								<PlanOverviewChart sources={sources} />
+								{sources.map((src, idx) => (
+									<div key={idx} className={`d-flex align-items-center justify-content-between mb-${idx === sources.length - 1 ? '0' : '2'}`}>
+										<p className="f-13 mb-0">
+											<i className="ti ti-circle-filled me-1" style={{ color: sourceColors[idx % sourceColors.length] }}></i>
+											{src.label.split('(')[0].trim()}
+										</p>
+										<p className="f-13 fw-medium text-gray-9">{src.label.match(/\((.*?)\)/)?.[1]}</p>
+									</div>
+								))}
+                {sources.length === 0 && (
+                  <div className="text-center text-muted mt-4">No sources found</div>
+                )}
 							</div>
 						</div>
 					</div>
-					{/* /Top Plans */}
+					{/* /Lead Sources */}
 
 				</div>
 
@@ -236,7 +230,7 @@ const Dashboard = () => {
 								<h5 className="mb-2">Conversion Funnel</h5>
 							</div>
 							<div className="card-body">
-								<ConversionFunnelChart />
+								<ConversionFunnelChart funnelData={statsData?.funnel || []} />
 							</div>
 						</div>
 					</div>
@@ -262,92 +256,40 @@ const Dashboard = () => {
 
 				<div className="row">
 
-					
-
 					{/* Recent Activity */}
 					<div className="col-xl-6 d-flex">
 						<div className="card flex-fill">
-							
 							<div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
 								<h5 className="mb-2">Recent activity</h5>
-								
 							</div>
 							<div className="card-body pb-2">
-								<div className="d-sm-flex justify-content-between flex-wrap mb-3">
-									<div className="d-flex align-items-center mb-2">
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0">
-											<img src="/assets/img/icons/company-icon-11.svg"
-												className="img-fluid w-auto h-auto" alt="img" />
-										</a>
-										<div className="ms-2 flex-fill">
-											<h6 className="fs-medium text-truncate mb-1"><a
-													href="#" onClick={(e) => e.preventDefault()}>Pitch</a></h6>
-											<p className="fs-13">Basic (Monthly)</p>
+								{statsData?.activity?.map((act, index) => (
+									<div key={act.id || index} className="d-sm-flex justify-content-between flex-wrap mb-3">
+										<div className="d-flex align-items-center mb-2">
+											<div className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center">
+                        {act.profile_photo ? (
+                          <img 
+                            src={`${import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}${act.profile_photo}`} 
+                            alt="Profile" 
+                            className="img-fluid rounded-circle w-100 h-100" 
+                            style={{ objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <span className="text-primary fs-14 fw-bold">
+                            {act.user_name ? act.user_name.substring(0, 2).toUpperCase() : 'NA'}
+                          </span>
+                        )}
+											</div>
+											<div className="ms-2 flex-fill">
+												<h6 className="fs-medium text-truncate mb-1">{act.text}</h6>
+												<p className="fs-13">{new Date(act.time).toLocaleString()}</p>
+											</div>
 										</div>
 									</div>
-									
-								</div>
-								<div className="d-sm-flex justify-content-between flex-wrap mb-3">
-									<div className="d-flex align-items-center mb-2">
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0">
-											<img src="/assets/img/icons/company-icon-12.svg"
-												className="img-fluid w-auto h-auto" alt="img" />
-										</a>
-										<div className="ms-2 flex-fill">
-											<h6 className="fs-medium text-truncate mb-1"><a
-													href="#" onClick={(e) => e.preventDefault()}>Initech</a></h6>
-											<p className="fs-13">Enterprise (Yearly)</p>
-										</div>
-									</div>
-									
-								</div>
-								<div className="d-sm-flex justify-content-between flex-wrap mb-3">
-									<div className="d-flex align-items-center mb-2">
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0">
-											<img src="/assets/img/icons/company-icon-13.svg"
-												className="img-fluid w-auto h-auto" alt="img" />
-										</a>
-										<div className="ms-2 flex-fill">
-											<h6 className="fs-medium text-truncate mb-1"><a
-													href="#" onClick={(e) => e.preventDefault()}>Umbrella Corp</a></h6>
-											<p className="fs-13">Advanced (Monthly)</p>
-										</div>
-									</div>
-									
-								</div>
-								<div className="d-sm-flex justify-content-between flex-wrap mb-3">
-									<div className="d-flex align-items-center mb-2">
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0">
-											<img src="/assets/img/icons/company-icon-14.svg"
-												className="img-fluid w-auto h-auto" alt="img" />
-										</a>
-										<div className="ms-2 flex-fill">
-											<h6 className="fs-medium text-truncate mb-1"><a
-													href="#" onClick={(e) => e.preventDefault()}>Capital Partners</a></h6>
-											<p className="fs-13">Enterprise (Monthly)</p>
-										</div>
-									</div>
-									
-								</div>
-								<div className="d-sm-flex justify-content-between flex-wrap mb-1">
-									<div className="d-flex align-items-center mb-2">
-										<a href="#" onClick={(e) => e.preventDefault()}
-											className="avatar avatar-md bg-gray-100 rounded-circle flex-shrink-0">
-											<img src="/assets/img/icons/company-icon-15.svg"
-												className="img-fluid w-auto h-auto" alt="img" />
-										</a>
-										<div className="ms-2 flex-fill">
-											<h6 className="fs-medium text-truncate mb-1"><a
-													href="#" onClick={(e) => e.preventDefault()}>Massive Dynamic</a></h6>
-											<p className="fs-13">Premium (Yearly)</p>
-										</div>
-									</div>
-									
-								</div>
+								))}
+                {(!statsData?.activity || statsData.activity.length === 0) && (
+                  <div className="text-center text-muted py-4">No recent activity</div>
+                )}
 							</div>
 						</div>
 					</div>
@@ -360,7 +302,7 @@ const Dashboard = () => {
 								<h5 className="mb-2 d-flex align-items-center"><i className="ti ti-activity text-primary fs-20 me-2"></i>Activity Heatmap — 30 Days</h5>
 							</div>
 							<div className="card-body">
-								<ActivityHeatmapChart />
+								<ActivityHeatmapChart heatmapData={statsData?.heatmap || []} />
 							</div>
 						</div>
 					</div>

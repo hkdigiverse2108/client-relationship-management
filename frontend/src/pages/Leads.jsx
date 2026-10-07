@@ -408,14 +408,17 @@ const Leads = () => {
         }
 
         const user = users.find(u => (u._id || u.id) === row.assigned_to);
+        const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+        const getProfileUrl = (url) => url ? (url.startsWith('http') ? url : `${backendUrl}${url}`) : null;
+
         return (
           <span 
             className="cursor-pointer d-flex align-items-center"
             onClick={() => setEditingCell({ rowId: (row._id || row.id), field: 'assigned_to' })}
             title="Click to edit"
           >
-            {user && user.image ? (
-              <img src={user.image} alt={user.name} className="avatar avatar-xs rounded-circle me-2 flex-shrink-0" style={{width: '24px', height: '24px', minWidth: '24px', objectFit: 'cover'}} />
+            {user && user.profile_photo ? (
+              <img src={getProfileUrl(user.profile_photo)} alt={user.name} className="avatar avatar-xs rounded-circle me-2 flex-shrink-0" style={{width: '24px', height: '24px', minWidth: '24px', objectFit: 'cover'}} />
             ) : user ? (
               <span className="avatar avatar-xs rounded-circle bg-primary me-2 d-flex justify-content-center align-items-center text-white fw-bold flex-shrink-0" style={{width: '24px', height: '24px', minWidth: '24px', fontSize: '11px'}}>
                 {user.name.substring(0, 2).toUpperCase()}

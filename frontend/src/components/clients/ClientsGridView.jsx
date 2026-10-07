@@ -106,9 +106,29 @@ const ClientsGridView = ({ clients, users = [], handleEdit, setClientToDelete })
                   <span className="text-muted text-nowrap me-2">Contract Value:</span>
                   <span className="fw-medium text-truncate">{client.contract_value ? `₹${client.contract_value}` : '-'}</span>
                 </div>
-                <div className="d-flex justify-content-between mb-2 fs-12">
+                <div className="d-flex justify-content-between mb-2 fs-12 align-items-center">
                   <span className="text-muted text-nowrap me-2">Account Mgr:</span>
-                  <span className="fw-medium text-truncate">{getUserName(client.assigned_to)}</span>
+                  <span className="fw-medium text-truncate d-flex align-items-center justify-content-end" style={{ maxWidth: '60%' }}>
+                    {(() => {
+                      if (!client.assigned_to) return '-';
+                      const user = users.find(u => (u._id || u.id) === client.assigned_to);
+                      const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+                      const getProfileUrl = (url) => url ? (url.startsWith('http') ? url : `${backendUrl}${url}`) : null;
+                      
+                      return (
+                        <>
+                          {user && user.profile_photo ? (
+                            <img src={getProfileUrl(user.profile_photo)} alt={user.name} className="avatar avatar-xs rounded-circle me-1 flex-shrink-0" style={{width: '20px', height: '20px', minWidth: '20px', objectFit: 'cover'}} />
+                          ) : user ? (
+                            <span className="avatar avatar-xs rounded-circle bg-primary me-1 d-flex justify-content-center align-items-center text-white fw-bold flex-shrink-0" style={{width: '20px', height: '20px', minWidth: '20px', fontSize: '10px'}}>
+                              {user.name.substring(0, 2).toUpperCase()}
+                            </span>
+                          ) : null}
+                          <span className="text-truncate">{getUserName(client.assigned_to)}</span>
+                        </>
+                      );
+                    })()}
+                  </span>
                 </div>
               </div>
             </div>

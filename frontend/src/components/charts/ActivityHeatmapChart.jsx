@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ActivityHeatmapChart = () => {
+const ActivityHeatmapChart = ({ heatmapData = [] }) => {
   // Use the theme's primary CSS variable, fallback to default orange
   const primaryColor = typeof window !== 'undefined' 
     ? getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#FF6F28'
@@ -24,22 +24,27 @@ const ActivityHeatmapChart = () => {
       let isWeekend = dayIndex === 0 || dayIndex === 6;
       for (let hourIndex = 0; hourIndex < 24; hourIndex++) {
         let y = 0;
-        if (isWeekend) {
-          y = Math.random() > 0.6 ? Math.floor(Math.random() * 20) : 0; 
+        if (heatmapData && heatmapData.length > 0) {
+          const point = heatmapData.find(d => d.day === dayIndex && d.hour === hourIndex);
+          if (point) y = point.count;
         } else {
-          if (hourIndex >= 9 && hourIndex <= 17) {
-            y = Math.floor(Math.random() * 80) + 10; 
-          } else if (hourIndex > 17 && hourIndex <= 21) {
-            y = Math.random() > 0.3 ? Math.floor(Math.random() * 40) : 0; 
+          if (isWeekend) {
+            y = Math.random() > 0.6 ? Math.floor(Math.random() * 20) : 0; 
           } else {
-            y = Math.random() > 0.8 ? Math.floor(Math.random() * 10) : 0; 
+            if (hourIndex >= 9 && hourIndex <= 17) {
+              y = Math.floor(Math.random() * 80) + 10; 
+            } else if (hourIndex > 17 && hourIndex <= 21) {
+              y = Math.random() > 0.3 ? Math.floor(Math.random() * 40) : 0; 
+            } else {
+              y = Math.random() > 0.8 ? Math.floor(Math.random() * 10) : 0; 
+            }
           }
         }
         _data.push({ day: days[dayIndex], hour: hours[hourIndex], value: y });
       }
     }
     return _data;
-  }, []);
+  }, [heatmapData]);
 
   const getColor = (value) => {
     if (value === 0) return 'rgba(156, 163, 175, 0.15)'; // Empty state, works elegantly on both dark and light
