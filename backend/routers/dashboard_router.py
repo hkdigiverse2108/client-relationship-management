@@ -21,6 +21,9 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     # 1. Lead Metrics Aggregation
     lead_pipeline = [
         {
+            "$match": {"is_deleted": {"$ne": True}}
+        },
+        {
             "$facet": {
                 "all_time": [
                     {"$group": {
@@ -94,7 +97,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     # 2. Deals Revenue Aggregation
     deal_pipeline = [
         {
-            "$match": {"stage": "won"}
+            "$match": {"stage": "won", "is_deleted": {"$ne": True}}
         },
         {
             "$facet": {
@@ -178,11 +181,28 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     ).sort("timestamp", -1).limit(5)
     
     activity_docs = await activity_cursor.to_list(5)
-    activity = []
     
+    user_ids = list(set([doc.get("user_id") for doc in activity_docs if doc.get("user_id")]))
+    user_map = {}
+    if user_ids:
+        try:
+            from bson import ObjectId
+            obj_ids = [ObjectId(uid) if isinstance(uid, str) and len(uid) == 24 else uid for uid in user_ids]
+            users = await users_collection.find({"_id": {"$in": obj_ids}}).to_list(100)
+            for u in users:
+                user_map[str(u["_id"])] = {
+                    "name": u.get("name", "Unknown"),
+                    "profile_photo": u.get("profile_photo", "")
+                }
+        except Exception:
+            pass
+
+    activity = []
     for doc in activity_docs:
         action = doc.get("action", "")
         module = doc.get("module", "")
+        uid = str(doc.get("user_id", ""))
+        user_info = user_map.get(uid) or {"name": doc.get("user_name", "Unknown"), "profile_photo": ""}
         
         type_str = "note"
         if "Create" in action and "Lead" in module:
@@ -198,6 +218,8 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
             "id": str(doc.get("_id")),
             "type": type_str,
             "text": doc.get("details", ""),
+            "user_name": user_info["name"],
+            "profile_photo": user_info["profile_photo"],
             "time": doc.get("timestamp", "").isoformat() if hasattr(doc.get("timestamp"), 'isoformat') else str(doc.get("timestamp"))
         })
 
@@ -260,7 +282,7 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
     projected_stages = ["qualified", "proposal_sent", "negotiation"]
 
     pipeline = [
-        {"$match": {"created_at": {"$gte": start_date}}},
+        {"$match": {"created_at": {"$gte": start_date}, "is_deleted": {"$ne": True}}},
         {
             "$addFields": {
                 "parsed_date": {
@@ -317,6 +339,9 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     # 1. Global KPIs & Stage Breakdown
     kpi_pipeline = [
         {
+            "$match": {"is_deleted": {"$ne": True}}
+        },
+        {
             "$facet": {
                 "totals": [
                     {
@@ -356,7 +381,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     
     # 2. Monthly Revenue (Needs a separate date string matching)
     monthly_rev_pipeline = [
-        {"$match": {"stage": "won"}},
+        {"$match": {"stage": "won", "is_deleted": {"$ne": True}}},
         {
             "$addFields": {
                 "date_str": {
@@ -388,7 +413,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     
     # 3. Rep Performance
     rep_pipeline = [
-        {"$match": {"assigned_to": {"$ne": None, "$ne": ""}}},
+        {"$match": {"assigned_to": {"$ne": None, "$ne": ""}, "is_deleted": {"$ne": True}}},
         {
             "$group": {
                 "_id": "$assigned_to",
@@ -439,7 +464,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
             
     # 4. Recent Wins
     recent_wins_pipeline = [
-        {"$match": {"stage": "won"}},
+        {"$match": {"stage": "won", "is_deleted": {"$ne": True}}},
         {
             "$addFields": {
                 "sort_date": {
@@ -515,22 +540,22 @@ async def update_sales_target(target_data: SalesTargetUpdate, current_user: User
 @router.get("/team-metrics")
 async def get_team_metrics(current_user: UserResponse = Depends(get_current_user)):
     # 1. KPIs
-    active_users = await users_collection.count_documents({"is_active": True})
-    open_deals = await deals_collection.count_documents({"stage": {"$nin": ["won", "lost"]}})
-    active_projects = await projects_collection.count_documents({"status": {"$ne": "completed"}})
+    active_users = await users_collection.count_documents({"is_active": True, "is_deleted": {"$ne": True}})
+    open_deals = await deals_collection.count_documents({"stage": {"$nin": ["won", "lost"]}, "is_deleted": {"$ne": True}})
+    active_projects = await projects_collection.count_documents({"status": {"$ne": "completed"}, "is_deleted": {"$ne": True}})
     
     one_day_ago = datetime.utcnow() - timedelta(days=1)
     recent_activities_24h = await audit_logs_collection.count_documents({"timestamp": {"$gte": one_day_ago}})
     
     # 2. Roles Distribution
     cursor = users_collection.aggregate([
-        {"$match": {"is_active": True}},
+        {"$match": {"is_active": True, "is_deleted": {"$ne": True}}},
         {"$group": {"_id": "$role", "count": {"$sum": 1}}}
     ])
     roles_data = [{"id": r["_id"] or "Unknown", "value": r["count"]} async for r in cursor]
     
     # 3. Workload per Rep & Roster
-    users = await users_collection.find({"is_active": True}).to_list(100)
+    users = await users_collection.find({"is_active": True, "is_deleted": {"$ne": True}}).to_list(100)
     user_map = {}
     workload = {}
     
@@ -550,7 +575,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
         
     # Aggregate Deals
     deals_workload = await deals_collection.aggregate([
-        {"$match": {"stage": {"$nin": ["won", "lost"]}}},
+        {"$match": {"stage": {"$nin": ["won", "lost"]}, "is_deleted": {"$ne": True}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for d in deals_workload:
@@ -561,7 +586,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
             
     # Aggregate Projects
     projects_workload = await projects_collection.aggregate([
-        {"$match": {"status": {"$ne": "completed"}}},
+        {"$match": {"status": {"$ne": "completed"}, "is_deleted": {"$ne": True}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for p in projects_workload:
@@ -572,7 +597,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
                 
     # Aggregate Tasks
     tasks_workload = await tasks_collection.aggregate([
-        {"$match": {"status": {"$nin": ["completed", "done", "closed"]}}},
+        {"$match": {"status": {"$nin": ["completed", "done", "closed"]}, "is_deleted": {"$ne": True}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for t in tasks_workload:
@@ -650,11 +675,11 @@ async def get_analytics_metrics(
     prev_start_dt = prev_end_dt - duration
 
     # Base Queries
-    query_curr = {"created_at": {"$gte": start_dt, "$lte": end_dt}}
-    query_prev = {"created_at": {"$gte": prev_start_dt, "$lte": prev_end_dt}}
+    query_curr = {"created_at": {"$gte": start_dt, "$lte": end_dt}, "is_deleted": {"$ne": True}}
+    query_prev = {"created_at": {"$gte": prev_start_dt, "$lte": prev_end_dt}, "is_deleted": {"$ne": True}}
     
-    exp_curr = {"date": {"$gte": start_dt, "$lte": end_dt}}
-    exp_prev = {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}}
+    exp_curr = {"date": {"$gte": start_dt, "$lte": end_dt}, "is_deleted": {"$ne": True}}
+    exp_prev = {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}, "is_deleted": {"$ne": True}}
 
     # 1. Deals Aggregations (Revenue, MRR, Velocity, Channels, Services)
     deals_pipeline = [
