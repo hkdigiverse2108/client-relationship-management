@@ -43,18 +43,61 @@ export const HeadcountChart = () => {
   return <ReactApexChart options={options} series={series} type="bar" height={240} />;
 };
 
-export const BudgetChart = () => {
+export const BudgetChart = ({ budgetData = null }) => {
+  // If no dynamic data is passed, use a default skeleton or empty values
+  // Format labels from YYYY-MM to Month YY
+  const labels = budgetData?.labels?.length > 0 ? budgetData.labels.map(l => {
+    if(typeof l === 'string' && l.match(/^\d{4}-\d{2}$/)) {
+      const [year, month] = l.split('-');
+      const date = new Date(year, month - 1);
+      return date.toLocaleString('default', { month: 'short' }) + " '" + year.substring(2);
+    }
+    return l;
+  }) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
+  const actualData = budgetData?.actual?.length > 0 ? budgetData.actual : [0, 0, 0, 0, 0, 0, 0, 0];
+  const projectedData = budgetData?.projected?.length > 0 ? budgetData.projected : [0, 0, 0, 0, 0, 0, 0, 0];
+  
+  // Find maximum value to appropriately scale the y-axis, ensure at least 1000 so it doesn't look weird when empty
+  const maxVal = Math.max(...actualData, ...projectedData, 1000);
+
   const options = {
     chart: { type: 'area', toolbar: { show: false } },
     colors: ['#F26522', '#0C4B5E'],
     dataLabels: { enabled: false },
     stroke: { curve: 'straight', width: 1 },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 100] } },
-    xaxis: { categories: ["Engineering", "Sales", "Marketing", "Operations", "Support", "Admin", "UI/UX", "Devops"], axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { min: 0, max: 40, labels: { offsetX: -15, formatter: function (value) { return value + "k"; } } },
-    grid: { show: false, padding: { left: 0, right: -15, top: 0 } }
+    xaxis: { 
+      categories: labels, 
+      axisBorder: { show: false }, 
+      axisTicks: { show: false } 
+    },
+    yaxis: { 
+      min: 0, 
+      max: maxVal * 1.1, // Add 10% padding on top 
+      labels: { 
+        offsetX: -15, 
+        formatter: function (value) { 
+          if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+          if (value >= 1000) return (value / 1000).toFixed(1) + "k";
+          return Math.round(value);
+        } 
+      } 
+    },
+    grid: { show: false, padding: { left: 0, right: -15, top: 0 } },
+    tooltip: {
+      y: {
+        formatter: function (val) {
+          return "₹" + val.toLocaleString();
+        }
+      }
+    }
   };
-  const series = [{ name: 'Budget', data: [5, 10, 8, 6, 5, 10, 8, 10] }, { name: 'Spent', data: [15, 20, 16, 15, 15, 20, 18, 20] }];
+
+  const series = [
+    { name: 'Actual Earnings', data: actualData },
+    { name: 'Projected Budget', data: projectedData }
+  ];
+
   return <ReactApexChart options={options} series={series} type="area" height={280} />;
 };
 

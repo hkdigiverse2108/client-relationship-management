@@ -636,7 +636,20 @@ const Invoices = () => {
 											onChange={(selected) => setStatusFilter(selected ? selected.value : '')}
 										/>
 									</div>
-								
+									{(clientFilter || statusFilter || (dateRange && dateRange[0] && dateRange[1])) && (
+										<div className="ms-2">
+											<button 
+												onClick={() => {
+													setClientFilter('');
+													setStatusFilter('');
+													setDateRange([null, null]);
+												}} 
+												className="btn btn-outline-danger d-inline-flex align-items-center"
+											>
+												<i className="ti ti-x me-1"></i> Clear
+											</button>
+										</div>
+									)}
 								</div>
 							</div>
 							<div className="card-body p-0">

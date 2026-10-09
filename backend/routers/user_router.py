@@ -316,7 +316,7 @@ async def update_sales_target(payload: SalesTargetUpdate, current_user: dict = D
     settings_collection = db.get_collection("tenant_settings")
     await settings_collection.update_one(
         {"tenant_admin_id": tenant_admin_id},
-        {"$set": {"sales_target": payload.target}},
+        {"$set": {"sales_target": payload.target, "updated_at": datetime.utcnow()}},
         upsert=True
     )
     return {"message": "Sales target updated successfully"}

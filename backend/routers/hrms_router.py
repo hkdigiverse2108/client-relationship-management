@@ -272,15 +272,47 @@ async def get_leaves(current_user: dict = Depends(get_current_user)):
     user_role = current_user.get("role", "employee").lower()
     is_hr = user_role in ["admin", "hr", "superadmin", "super admin"]
     
-    query = {}
+    query = {"is_deleted": {"$ne": True}}
     if not is_hr:
         query["employee_id"] = current_user["_id"]
         
     leaves = await db.hr_leaves.find(query).sort("created_at", -1).to_list(1000)
+    
+    # Fetch avatars
+    users = await db.users.find({}, {"_id": 1, "profile_photo": 1, "avatar": 1, "profile_picture": 1, "image": 1}).to_list(1000)
+    user_images = {}
+    for u in users:
+        img = u.get("profile_photo") or u.get("profile_picture") or u.get("avatar") or u.get("image")
+        if img:
+            user_images[str(u["_id"])] = img
+            
     for l in leaves:
         l["_id"] = str(l["_id"])
-        if "employee_id" in l and isinstance(l["employee_id"], ObjectId):
-            l["employee_id"] = str(l["employee_id"])
+        
+        # Inject employee image
+        if "employee_id" in l:
+            eid = str(l["employee_id"])
+            l["employee_id"] = eid
+            if eid in user_images:
+                l["employee_image"] = user_images[eid]
+                
+        # Inject reviewer image
+        if l.get("reviewer_id") and str(l["reviewer_id"]) in user_images:
+            l["reviewer_image"] = user_images[str(l["reviewer_id"])]
+            
+        # Calculate days if missing
+        if "days" not in l or l["days"] is None:
+            try:
+                s = datetime.strptime(l["start_date"], "%Y-%m-%d")
+                e = datetime.strptime(l["end_date"], "%Y-%m-%d")
+                days = (e - s).days + 1
+                if days < 0: days = 0
+                if l.get("day_type") in ["First Half", "Second Half"] and days == 1:
+                    days = 0.5
+                l["days"] = float(days)
+            except Exception:
+                l["days"] = 0
+                
     return leaves
 
 @router.put("/leaves/{leave_id}/status", response_model=LeaveResponse)
@@ -323,6 +355,52 @@ async def update_leave_status(leave_id: str, update_data: LeaveStatusUpdate, cur
         updated_leave["employee_id"] = str(updated_leave["employee_id"])
         
     return updated_leave
+
+@router.delete("/leaves/{leave_id}")
+async def delete_leave(leave_id: str, current_user: dict = Depends(get_current_user)):
+    user_role = current_user.get("role", "employee").lower()
+    if user_role not in ["admin", "hr", "superadmin", "super admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete leave request")
+        
+    leave = await db.hr_leaves.find_one({"_id": ObjectId(leave_id)})
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+        
+    await db.hr_leaves.update_one(
+        {"_id": ObjectId(leave_id)},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": datetime.utcnow()
+        }}
+    )
+    return {"message": "Leave request deleted successfully"}
+
+@router.put("/leaves/{leave_id}", response_model=LeaveResponse)
+async def update_leave(leave_id: str, leave_data: LeaveCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.hr_leaves.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+        
+    if existing.get("status") != "Pending":
+        raise HTTPException(status_code=400, detail="Only pending leaves can be edited")
+        
+    user_role = current_user.get("role", "employee").lower()
+    if user_role not in ["admin", "hr", "superadmin", "super admin"] and str(existing.get("employee_id")) != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this leave")
+        
+    update_doc = leave_data.dict(exclude_unset=True)
+    update_doc["updated_at"] = datetime.utcnow()
+    
+    await db.hr_leaves.update_one(
+        {"_id": ObjectId(leave_id)},
+        {"$set": update_doc}
+    )
+    
+    updated = await db.hr_leaves.find_one({"_id": ObjectId(leave_id)})
+    updated["_id"] = str(updated["_id"])
+    if "employee_id" in updated and isinstance(updated["employee_id"], ObjectId):
+        updated["employee_id"] = str(updated["employee_id"])
+    return updated
 
 # --- Attendance ---
 @router.post("/attendance/punch")

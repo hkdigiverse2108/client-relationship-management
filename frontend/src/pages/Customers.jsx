@@ -7,6 +7,7 @@ import FilterBar from '../components/common/FilterBar';
 import CustomersGridView from '../components/customers/CustomersGridView';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import Loader from '../components/common/Loader';
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -241,6 +242,7 @@ const Customers = () => {
     },
   ];
 
+
   return (
     <>
       <div className="page-wrapper">
@@ -273,6 +275,10 @@ const Customers = () => {
 				</PageHeader>
 				{/* /Breadcrumb */}
 
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
 				{/*orders List */}
 				<div className="card">
 					
@@ -303,6 +309,8 @@ const Customers = () => {
 					</div>
 				</div>
 				{/* /customers list */}
+          </>
+        )}
 
 			</div>
 

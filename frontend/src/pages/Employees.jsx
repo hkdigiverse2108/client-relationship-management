@@ -4,35 +4,148 @@ import PageHeader from '../components/common/PageHeader';
 import CustomDataTable from '../components/common/CustomDataTable';
 import EmployeeForm from '../components/hrms/EmployeeForm';
 import CustomSelect from '../components/common/CustomSelect';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 import toast from 'react-hot-toast';
 
-const initialEmployees = [
-  { id: 1, employee_id: 'Emp-001', name: 'Anthony Lewis', email: 'anthony@example.com', phone: '(123) 4567 890', role: 'sales', designation: 'Finance', department: 'Finance', joining_date: '2024-09-12', manager_id: 'Manager 1', attendance_status: 'Present', gender: 'Male', dob: '1990-01-01', basic_salary: 50000, is_active: true },
-  { id: 2, employee_id: 'Emp-002', name: 'Brian Villalobos', email: 'brian@example.com', phone: '(179) 7382 829', role: 'admin', designation: 'Developer', department: 'IT', joining_date: '2024-10-24', manager_id: 'Manager 2', attendance_status: 'Present', gender: 'Male', dob: '1992-05-15', basic_salary: 60000, is_active: true },
-  { id: 3, employee_id: 'Emp-003', name: 'Harvey Smith', email: 'harvey@example.com', phone: '(184) 2719 738', role: 'support', designation: 'Developer', department: 'IT', joining_date: '2024-02-18', manager_id: '', attendance_status: 'Present', gender: 'Male', dob: '1991-08-20', basic_salary: 55000, is_active: true },
-  { id: 4, employee_id: 'Emp-004', name: 'Stephan Peralt', email: 'peral@example.com', phone: '(193) 7839 748', role: 'manager', designation: 'Executive Officer', department: 'Management', joining_date: '2024-10-17', manager_id: '', attendance_status: 'Present', gender: 'Male', dob: '1985-11-30', basic_salary: 80000, is_active: true },
-  { id: 5, employee_id: 'Emp-005', name: 'Doglas Martini', email: 'martniwr@example.com', phone: '(183) 9302 890', role: 'manager', designation: 'Manager', department: 'Operations', joining_date: '2024-07-20', manager_id: 'Manager 1', attendance_status: 'Present', gender: 'Male', dob: '1988-03-25', basic_salary: 75000, is_active: true },
-  { id: 6, employee_id: 'Emp-006', name: 'Linda Ray', email: 'ray456@example.com', phone: '(120) 3728 039', role: 'sales', designation: 'Finance', department: 'Finance', joining_date: '2024-04-10', manager_id: 'Manager 2', attendance_status: 'Present', gender: 'Female', dob: '1993-07-12', basic_salary: 52000, is_active: true },
-  { id: 7, employee_id: 'Emp-007', name: 'Elliot Murray', email: 'murray@example.com', phone: '(102) 8480 832', role: 'admin', designation: 'Finance', department: 'Finance', joining_date: '2024-08-29', manager_id: '', attendance_status: 'Present', gender: 'Male', dob: '1990-09-05', basic_salary: 53000, is_active: true },
-  { id: 8, employee_id: 'Emp-008', name: 'Rebecca Smtih', email: 'smtih@example.com', phone: '(162) 8920 713', role: 'support', designation: 'Executive', department: 'Management', joining_date: '2024-02-22', manager_id: '', attendance_status: 'Absent', gender: 'Female', dob: '1994-12-18', basic_salary: 60000, is_active: false },
-];
+
+
+import axiosClient from '../api/axiosClient';
+import { useEffect } from 'react';
 
 const Employees = () => {
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [employees, setEmployees] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [designationFilter, setDesignationFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortFilter, setSortFilter] = useState('');
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ isOpen: false, employee: null });
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, employeeId: null });
 
-  // Metrics
+  const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+
+  const getInitials = (name) => {
+    if (!name) return 'UN';
+    const parts = name.split(' ').filter(p => p.length > 0);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return 'UN';
+  };
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/users');
+      setEmployees(res || []);
+    } catch (err) {
+      toast.error('Failed to load employees');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Live Metrics & Percentages
+  const getEmpDate = (emp) => {
+    if (emp.created_at) return new Date(emp.created_at);
+    if (emp.joining_date) return new Date(emp.joining_date);
+    if (emp.id && typeof emp.id === 'string' && emp.id.length === 24) {
+      return new Date(parseInt(emp.id.substring(0, 8), 16) * 1000);
+    }
+    return new Date();
+  };
+
+  const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0, 23, 59, 59, 999);
+
+  const currentMonthEmps = employees.filter(e => getEmpDate(e) >= currentMonthStart);
+  const lastMonthEmps = employees.filter(e => {
+    const d = getEmpDate(e);
+    return d >= lastMonthStart && d <= lastMonthEnd;
+  });
+
+  const calcPercent = (current, previous) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter(e => e.is_active).length;
   const inactiveEmployees = employees.filter(e => !e.is_active).length;
-  // Let's pretend New Joiners are those added in the last 6 months, for now mock it as 20% of total
-  const newJoiners = Math.floor(totalEmployees * 0.2) || 1;
+  const newJoiners = currentMonthEmps.length;
+
+  const prevTotal = totalEmployees - currentMonthEmps.length;
+  const prevActive = activeEmployees - currentMonthEmps.filter(e => e.is_active).length;
+  const prevInactive = inactiveEmployees - currentMonthEmps.filter(e => !e.is_active).length;
+
+  const totalPercentage = calcPercent(totalEmployees, prevTotal);
+  const activePercentage = calcPercent(activeEmployees, prevActive);
+  const inactivePercentage = calcPercent(inactiveEmployees, prevInactive);
+  const newJoinersPercentage = calcPercent(currentMonthEmps.length, lastMonthEmps.length);
+
+  const renderPercentageBadge = (percent, baseClass) => {
+    const isPositive = percent > 0;
+    const isZero = percent === 0;
+    const icon = isPositive ? 'ti-arrow-wave-right-up' : (isZero ? 'ti-minus' : 'ti-arrow-wave-right-down');
+    
+    return (
+      <span className={`badge ${baseClass} badge-sm fw-normal`}>
+        <i className={`ti ${icon}`}></i>
+        {isPositive ? '+' : ''}{percent}%
+      </span>
+    );
+  };
+
+  const designationOptions = useMemo(() => {
+    const unique = [...new Set(employees.map(e => e.designation).filter(Boolean))];
+    return [
+      { value: '', label: 'All Designations' },
+      ...unique.map(d => ({ value: d, label: d }))
+    ];
+  }, [employees]);
+
+  // Dynamic Departments
+  const departmentOptions = useMemo(() => {
+    const unique = [...new Set(employees.map(e => e.department).filter(Boolean))];
+    return [
+      { value: '', label: 'All Departments' },
+      ...unique.map(d => ({ value: d, label: d }))
+    ];
+  }, [employees]);
+
+  // Dynamic Roles
+  const roleOptions = useMemo(() => {
+    const unique = [...new Set(employees.map(e => e.role).filter(Boolean))];
+    return [
+      { value: '', label: 'All Roles' },
+      ...unique.map(r => ({ value: r, label: r }))
+    ];
+  }, [employees]);
+
+  const hasFilters = designationFilter !== '' || departmentFilter !== '' || roleFilter !== '' || statusFilter !== '' || sortFilter !== '' || (startDate && endDate);
+
+  const handleClearFilters = () => {
+    setDesignationFilter('');
+    setDepartmentFilter('');
+    setRoleFilter('');
+    setStatusFilter('');
+    setSortFilter('');
+    setDateRange([null, null]);
+    setSearchQuery('');
+  };
 
   const filteredEmployees = useMemo(() => {
     let result = employees.filter(emp => {
@@ -52,10 +165,31 @@ const Employees = () => {
         return false;
       }
 
+      // Department Filter
+      if (departmentFilter && emp.department !== departmentFilter) {
+        return false;
+      }
+
+      // Role Filter
+      if (roleFilter && emp.role !== roleFilter) {
+        return false;
+      }
+
       // Status Filter
       if (statusFilter !== '') {
         const isActiveFilter = statusFilter === 'active';
         if (emp.is_active !== isActiveFilter) {
+          return false;
+        }
+      }
+
+      // Date Range Filter
+      if (startDate && endDate) {
+        if (!emp.joining_date) return false;
+        const joining = new Date(emp.joining_date).getTime();
+        const start = new Date(startDate).setHours(0, 0, 0, 0);
+        const end = new Date(endDate).setHours(23, 59, 59, 999);
+        if (joining < start || joining > end) {
           return false;
         }
       }
@@ -69,11 +203,16 @@ const Employees = () => {
     } else if (sortFilter === 'desc') {
       result.sort((a, b) => b.name.localeCompare(a.name));
     } else if (sortFilter === 'recently_added') {
-      result.sort((a, b) => b.id - a.id);
+      result.sort((a, b) => {
+        if (a.created_at && b.created_at) {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+        return String(b.id || '').localeCompare(String(a.id || ''));
+      });
     }
 
     return result;
-  }, [employees, searchQuery, designationFilter, statusFilter, sortFilter]);
+  }, [employees, searchQuery, designationFilter, departmentFilter, roleFilter, statusFilter, sortFilter, startDate, endDate]);
 
   const handleAddEmployee = () => {
     setEditingEmployee(null);
@@ -85,40 +224,65 @@ const Employees = () => {
     setIsModalOpen(true);
   };
 
-  const handleFormSubmit = (data) => {
-    if (editingEmployee) {
-      setEmployees(employees.map(e => e.id === data.id ? data : e));
-      toast.success('Employee updated successfully');
-    } else {
-      setEmployees([{ ...data, id: Date.now() }, ...employees]);
-      toast.success('Employee added successfully');
+  const handleFormSubmit = async (data) => {
+    try {
+      if (editingEmployee) {
+        const res = await axiosClient.put(`/users/${editingEmployee.id}`, data);
+        setEmployees(employees.map(e => e.id === editingEmployee.id ? res : e));
+        toast.success('Employee updated successfully');
+      } else {
+        const res = await axiosClient.post('/users', data);
+        setEmployees([...employees, res]);
+        toast.success('Employee added successfully');
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to save employee');
     }
-    setIsModalOpen(false);
   };
 
   const handleDeleteEmployee = (id) => {
-    const isConfirmed = window.confirm('Are you sure you want to delete this employee?');
-    if (isConfirmed) {
+    setConfirmDeleteModal({ isOpen: true, employeeId: id });
+  };
+
+  const executeDeleteEmployee = async () => {
+    const id = confirmDeleteModal.employeeId;
+    if (!id) return;
+    try {
+      await axiosClient.delete(`/users/${id}`);
       setEmployees(employees.filter(e => e.id !== id));
       toast.success('Employee deleted successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to delete employee');
+    } finally {
+      setConfirmDeleteModal({ isOpen: false, employeeId: null });
     }
   };
 
   const handleToggleStatus = (emp) => {
-    const action = emp.is_active ? 'deactivate' : 'activate';
-    const isConfirmed = window.confirm(`Are you sure you want to ${action} this employee?`);
-    if (isConfirmed) {
-      setEmployees(employees.map(e => e.id === emp.id ? { ...e, is_active: !e.is_active } : e));
-      toast.success(`Employee ${action}d successfully`);
+    setConfirmStatusModal({ isOpen: true, employee: emp });
+  };
+
+  const executeToggleStatus = async () => {
+    const emp = confirmStatusModal.employee;
+    if (!emp) return;
+    try {
+      const res = await axiosClient.patch(`/users/${emp.id}/status`, { is_active: !emp.is_active });
+      setEmployees(employees.map(e => e.id === emp.id ? { ...e, is_active: res.is_active } : e));
+      toast.success(`Employee ${res.is_active ? 'activated' : 'deactivated'} successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update status');
+    } finally {
+      setConfirmStatusModal({ isOpen: false, employee: null });
     }
   };
 
   const columns = [
     {
       name: 'Emp ID',
-      selector: row => row.employee_id,
+      selector: row => row.employee_id || '-',
       sortable: true,
-      cell: row => <a href="#" onClick={(e) => e.preventDefault()} className="text-primary">{row.employee_id}</a>
+      cell: row => <a href="#" onClick={(e) => e.preventDefault()} className="text-primary">{row.employee_id || '-'}</a>
     },
     {
       name: 'Name',
@@ -126,12 +290,16 @@ const Employees = () => {
       sortable: true,
       cell: row => (
         <div className="d-flex align-items-center">
-          <a href="#" onClick={(e) => e.preventDefault()} className="avatar avatar-md rounded-circle bg-primary-transparent text-primary me-2">
-            {row.name.charAt(0)}
+          <a href="#" onClick={(e) => e.preventDefault()} className={`avatar avatar-md rounded-circle me-2 text-decoration-none d-flex align-items-center justify-content-center ${(row.profile_photo && (row.profile_photo.startsWith('/') || row.profile_photo.startsWith('http'))) ? '' : 'bg-primary'}`}>
+            {(row.profile_photo && (row.profile_photo.startsWith('/') || row.profile_photo.startsWith('http'))) ? (
+              <img src={row.profile_photo.startsWith('http') ? row.profile_photo : `${backendUrl}${row.profile_photo}`} className="img-fluid rounded-circle" alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span className="text-white fw-bold" style={{ fontSize: '14px' }}>{getInitials(row.name)}</span>
+            )}
           </a>
           <div>
             <h6 className="mb-0"><a href="#" onClick={(e) => e.preventDefault()} className="text-dark">{row.name}</a></h6>
-            <span className="fs-12 text-muted">{row.department}</span>
+            <span className="fs-12 text-muted">{row.department || row.role}</span>
           </div>
         </div>
       )
@@ -143,17 +311,34 @@ const Employees = () => {
     },
     {
       name: 'Phone',
-      selector: row => row.phone,
+      selector: row => row.phone || '-',
       sortable: true,
     },
     {
       name: 'Designation',
-      selector: row => row.designation,
+      selector: row => row.designation || '-',
       sortable: true,
     },
     {
+      name: 'Department',
+      selector: row => row.department || '-',
+      sortable: true,
+    },
+    {
+      name: 'Role',
+      selector: row => row.role || '-',
+      sortable: true,
+      cell: row => <span className="badge badge-soft-secondary">{row.role || '-'}</span>
+    },
+    {
+      name: 'Salary',
+      selector: row => row.basic_salary || 0,
+      sortable: true,
+      cell: row => `₹${row.basic_salary ? row.basic_salary.toLocaleString('en-IN') : '0'}`
+    },
+    {
       name: 'Joining Date',
-      selector: row => row.joining_date,
+      selector: row => row.joining_date ? new Date(row.joining_date).toLocaleDateString() : '-',
       sortable: true,
     },
     {
@@ -161,9 +346,24 @@ const Employees = () => {
       selector: row => row.is_active,
       sortable: true,
       cell: row => (
-        <span className={`badge ${row.is_active ? 'badge-soft-success' : 'badge-soft-danger'} d-inline-flex align-items-center badge-sm`}>
-          <i className="ti ti-point-filled me-1"></i>{row.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <div className="dropdown action-drop">
+          <span 
+            className={`badge ${row.is_active ? 'badge-soft-success' : 'badge-soft-danger'} d-inline-flex align-items-center badge-sm`} 
+            data-bs-toggle="dropdown" 
+            aria-expanded="false"
+            style={{ cursor: 'pointer' }}
+          >
+            <i className="ti ti-point-filled me-1"></i>{row.is_active ? 'Active' : 'Inactive'}
+          </span>
+          <div className="dropdown-menu dropdown-menu-end">
+            <a className="dropdown-item" href="#" onClick={(e) => { e.preventDefault(); if(!row.is_active) handleToggleStatus(row); }}>
+              <i className="ti ti-point-filled text-success me-2"></i>Active
+            </a>
+            <a className="dropdown-item" href="#" onClick={(e) => { e.preventDefault(); if(row.is_active) handleToggleStatus(row); }}>
+              <i className="ti ti-point-filled text-danger me-2"></i>Inactive
+            </a>
+          </div>
+        </div>
       )
     },
     {
@@ -239,10 +439,7 @@ const Employees = () => {
                     </div>
                   </div>
                   <div>
-                    <span className="badge badge-soft-purple badge-sm fw-normal">
-                      <i className="ti ti-arrow-wave-right-down"></i>
-                      +19.01%
-                    </span>
+                    {renderPercentageBadge(totalPercentage, "badge-soft-purple")}
                   </div>
                 </div>
               </div>
@@ -264,10 +461,7 @@ const Employees = () => {
                     </div>
                   </div>
                   <div>
-                    <span className="badge badge-soft-primary badge-sm fw-normal">
-                      <i className="ti ti-arrow-wave-right-down"></i>
-                      +19.01%
-                    </span>
+                    {renderPercentageBadge(activePercentage, "badge-soft-primary")}
                   </div>
                 </div>
               </div>
@@ -289,10 +483,7 @@ const Employees = () => {
                     </div>
                   </div>
                   <div>
-                    <span className="badge badge-soft-dark badge-sm fw-normal">
-                      <i className="ti ti-arrow-wave-right-down"></i>
-                      +19.01%
-                    </span>
+                    {renderPercentageBadge(inactivePercentage, "badge-soft-dark")}
                   </div>
                 </div>
               </div>
@@ -314,10 +505,7 @@ const Employees = () => {
                     </div>
                   </div>
                   <div>
-                    <span className="badge badge-soft-secondary badge-sm fw-normal">
-                      <i className="ti ti-arrow-wave-right-down"></i>
-                      +19.01%
-                    </span>
+                    {renderPercentageBadge(newJoinersPercentage, "badge-soft-secondary")}
                   </div>
                 </div>
               </div>
@@ -329,20 +517,37 @@ const Employees = () => {
             <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
               <h5>Employee Directory List</h5>
               <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
+                <div className="me-3" style={{ minWidth: '220px' }}>
+                  <CustomDatePicker
+                    isRange={true}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChange={(update) => setDateRange(update)}
+                    placeholderText="Joining Date Range"
+                  />
+                </div>
                 <div className="me-3" style={{ minWidth: '150px' }}>
                   <CustomSelect
-                    options={[
-                      { value: '', label: 'All Designations' },
-                      { value: 'Finance', label: 'Finance' },
-                      { value: 'Developer', label: 'Developer' },
-                      { value: 'Executive', label: 'Executive' },
-                      { value: 'Manager', label: 'Manager' },
-                    ]}
-                    value={designationFilter ? { value: designationFilter, label: designationFilter } : { value: '', label: 'Designation' }}
+                    options={designationOptions}
+                    value={designationOptions.find(o => o.value === designationFilter) || { value: '', label: 'All Designations' }}
                     onChange={(selected) => setDesignationFilter(selected ? selected.value : '')}
                   />
                 </div>
                 <div className="me-3" style={{ minWidth: '150px' }}>
+                  <CustomSelect
+                    options={departmentOptions}
+                    value={departmentOptions.find(o => o.value === departmentFilter) || { value: '', label: 'All Departments' }}
+                    onChange={(selected) => setDepartmentFilter(selected ? selected.value : '')}
+                  />
+                </div>
+                <div className="me-3" style={{ minWidth: '130px' }}>
+                  <CustomSelect
+                    options={roleOptions}
+                    value={roleOptions.find(o => o.value === roleFilter) || { value: '', label: 'All Roles' }}
+                    onChange={(selected) => setRoleFilter(selected ? selected.value : '')}
+                  />
+                </div>
+                <div className="me-3" style={{ minWidth: '140px' }}>
                   <CustomSelect
                     options={[
                       { value: '', label: 'All Statuses' },
@@ -353,7 +558,7 @@ const Employees = () => {
                     onChange={(selected) => setStatusFilter(selected ? selected.value : '')}
                   />
                 </div>
-                <div className="me-0" style={{ minWidth: '150px' }}>
+                <div className="me-3" style={{ minWidth: '150px' }}>
                   <CustomSelect
                     options={[
                       { value: '', label: 'Default Sort' },
@@ -365,16 +570,33 @@ const Employees = () => {
                     onChange={(selected) => setSortFilter(selected ? selected.value : '')}
                   />
                 </div>
-               
+                
+                {hasFilters && (
+                  <div className="me-0">
+                    <button 
+                      className="btn btn-outline-danger btn-sm d-flex align-items-center"
+                      onClick={handleClearFilters}
+                      style={{ height: '36px' }}
+                    >
+                      <i className="ti ti-x me-1"></i>Clear
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="card-body p-0">
+            {loading ? (
+              <div className="card-body text-center p-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
               <CustomDataTable
                 columns={columns}
                 data={filteredEmployees}
                 rowClassName={(row) => !row.is_active ? 'opacity-50 bg-light' : ''}
               />
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -385,6 +607,49 @@ const Employees = () => {
         onSubmit={handleFormSubmit}
         editingData={editingEmployee}
       />
+
+      {confirmStatusModal.isOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Action</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmStatusModal({ isOpen: false, employee: null })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body">
+                Are you sure you want to <strong>{confirmStatusModal.employee?.is_active ? 'deactivate' : 'activate'}</strong> this employee? 
+                {confirmStatusModal.employee?.is_active && " They will no longer be able to log in."}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-light" onClick={() => setConfirmStatusModal({ isOpen: false, employee: null })}>Cancel</button>
+                <button className="btn btn-primary" onClick={executeToggleStatus}>Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteModal.isOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete Employee</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmDeleteModal({ isOpen: false, employeeId: null })} aria-label="Close"></button>
+              </div>
+              <div className="modal-body text-center py-4">
+                <i className="ti ti-alert-circle text-danger mb-3" style={{ fontSize: '48px' }}></i>
+                <h5 className="mb-2">Are you sure?</h5>
+                <p className="text-muted mb-0">Do you really want to delete this employee? This process cannot be undone.</p>
+              </div>
+              <div className="modal-footer justify-content-center border-0 pt-0">
+                <button className="btn btn-light px-4" onClick={() => setConfirmDeleteModal({ isOpen: false, employeeId: null })}>Cancel</button>
+                <button className="btn btn-danger px-4" onClick={executeDeleteEmployee}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -258,6 +258,7 @@ class LeaveCreate(BaseModel):
     end_date: str
     day_type: str
     reason: str
+    days: Optional[float] = None
     proof_url: Optional[str] = None
     status: str = "Pending"
 
@@ -265,9 +266,11 @@ class LeaveResponse(LeaveCreate):
     id: str = Field(alias="_id")
     employee_id: str
     employee_name: str
+    employee_image: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     reviewer_id: Optional[str] = None
+    reviewer_image: Optional[str] = None
     reviewer_name: Optional[str] = None
 
 class LeaveStatusUpdate(BaseModel):

@@ -7,6 +7,7 @@ import WhatsAppEngagementChart from '../components/charts/WhatsAppEngagementChar
 import ActivityHeatmapChart from '../components/charts/ActivityHeatmapChart';
 import { BudgetChart } from '../components/charts/FinanceCharts';
 import axiosClient from '../api/axiosClient';
+import Loader from '../components/common/Loader';
 
 const Dashboard = () => {
   const [statsData, setStatsData] = useState(null);
@@ -27,9 +28,7 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  if (loading) {
-    return <div className="p-5 text-center">Loading dashboard data...</div>;
-  }
+
 
   // Extract stats
   const stats = statsData?.stats || [];
@@ -75,7 +74,10 @@ const Dashboard = () => {
 				</PageHeader>
 				{/* /Breadcrumb */}
 
-			
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
 				<div className="row">
 
 					{/* Total Revenue */}
@@ -188,7 +190,7 @@ const Dashboard = () => {
 								</div>
 							</div>
 							<div className="card-body pb-0">
-								<BudgetChart />
+								<BudgetChart budgetData={statsData?.budget} />
 							</div>
 						</div>
 					</div>
@@ -309,6 +311,8 @@ const Dashboard = () => {
 					{/* /Activity Heatmap */}
 				
 				</div>
+          </>
+        )}
 
 			</div>
 

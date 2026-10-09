@@ -5,6 +5,7 @@ import GanttChartBoard from '../components/projects/GanttChartBoard';
 import ProjectFormModal from '../components/projects/ProjectFormModal';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import Loader from '../components/common/Loader';
 
 const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
 
@@ -147,13 +148,9 @@ const ProjectsGanttChart = () => {
               </div>
             </div>
           </div>
-          <div className="card-body">
+          <div className="card-body p-0">
             {loading ? (
-              <div className="text-center p-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              </div>
+              <Loader />
             ) : ganttData.length === 0 ? (
               <div className="text-center p-5">
                 <p className="text-muted">No projects with tasks found to display on the timeline.</p>

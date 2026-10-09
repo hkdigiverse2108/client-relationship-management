@@ -53,12 +53,17 @@ export const CostChart = () => {
   );
 };
 
-export const TicketCategoryChart = () => {
+export const TicketCategoryChart = ({ chartData }) => {
+  const labels = chartData?.length ? chartData.map(d => d.id || 'Unknown') : ['IT Support', 'HR', 'Payroll', 'Access', 'Hardware', 'Other'];
+  const values = chartData?.length ? chartData.map(d => d.value || 0) : [30, 12, 10, 18, 8, 12];
+  // Default colors or map from a palette
+  const baseColors = ['#0d6efd', '#6c757d', '#198754', '#ffc107', '#0dcaf0', '#dc3545', '#212529', '#f8f9fa'];
+  
   const data = {
-    labels: ['IT Support', 'HR', 'Payroll', 'Access', 'Hardware', 'Other'],
+    labels: labels,
     datasets: [{
-      data: [30, 12, 10, 18, 8, 12],
-      backgroundColor: ['#F68B4A', '#6E8F99', '#45C676', '#F2BE1A', '#4C8DFF', '#E53935'],
+      data: values,
+      backgroundColor: values.map((_, i) => baseColors[i % baseColors.length]),
       borderColor: '#ffffff',
       borderWidth: 3,
       borderRadius: 8,

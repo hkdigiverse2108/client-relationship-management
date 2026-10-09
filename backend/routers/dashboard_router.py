@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Query
+from bson import ObjectId
 from datetime import datetime, timedelta
-from typing import Dict, Any
-from dependencies import get_current_user
+from typing import Dict, Any, Optional
+from dependencies import get_current_user, get_allowed_user_ids
 from models import UserResponse
-from db import leads_collection, audit_logs_collection, deals_collection, users_collection, settings_collection, projects_collection, tasks_collection, expenses_collection
+from db import leads_collection, audit_logs_collection, deals_collection, users_collection, settings_collection, projects_collection, tasks_collection, expenses_collection, db
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -18,10 +19,19 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     last_30_days = now - timedelta(days=30)
     prev_30_days = now - timedelta(days=60)
 
+    allowed_ids = await get_allowed_user_ids(current_user)
+    
+    base_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        base_query["$or"] = [
+            {"created_by": {"$in": allowed_ids}},
+            {"assigned_to": {"$in": allowed_ids}}
+        ]
+
     # 1. Lead Metrics Aggregation
     lead_pipeline = [
         {
-            "$match": {"is_deleted": {"$ne": True}}
+            "$match": base_query
         },
         {
             "$facet": {
@@ -97,7 +107,7 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     # 2. Deals Revenue Aggregation
     deal_pipeline = [
         {
-            "$match": {"stage": "won", "is_deleted": {"$ne": True}}
+            "$match": {**base_query, "stage": "Won"}
         },
         {
             "$facet": {
@@ -176,8 +186,12 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
     ]
 
     # 3. Fetch Recent Activity (Audit Logs)
+    activity_query = {"action": {"$ne": "Login"}}
+    if allowed_ids is not None:
+        activity_query["user_id"] = {"$in": allowed_ids}
+        
     activity_cursor = audit_logs_collection.find(
-        {"action": {"$ne": "Login"}}
+        activity_query
     ).sort("timestamp", -1).limit(5)
     
     activity_docs = await activity_cursor.to_list(5)
@@ -224,11 +238,13 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         })
 
     # 4. Heatmap Aggregation
+    heatmap_match = {"timestamp": {"$gte": last_30_days}}
+    if allowed_ids is not None:
+        heatmap_match["user_id"] = {"$in": allowed_ids}
+        
     heatmap_cursor = audit_logs_collection.aggregate([
         {
-            "$match": {
-                "timestamp": {"$gte": last_30_days}
-            }
+            "$match": heatmap_match
         },
         {
             "$project": {
@@ -251,12 +267,62 @@ async def get_dashboard_stats(current_user: UserResponse = Depends(get_current_u
         hour = doc["_id"]["hour"]
         heatmap.append({"day": day_of_week, "hour": hour, "count": doc["count"]})
 
+    # 5. Revenue / Budget Chart Aggregation (Last 6 Months)
+    budget_start_date = now - timedelta(days=180)
+    projected_stages = ["Proposal Sent", "Negotiation"]
+    
+    budget_pipeline = [
+        {"$match": {**base_query, "created_at": {"$gte": budget_start_date}}},
+        {
+            "$addFields": {
+                "parsed_date": {
+                    "$convert": {
+                        "input": "$created_at",
+                        "to": "date",
+                        "onError": None,
+                        "onNull": None
+                    }
+                }
+            }
+        },
+        {"$match": {"parsed_date": {"$ne": None}}},
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m", "date": "$parsed_date"}},
+                "actual": {
+                    "$sum": {
+                        "$cond": [{"$eq": ["$stage", "Won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
+                    }
+                },
+                "projected": {
+                    "$sum": {
+                        "$cond": [{"$in": ["$stage", projected_stages]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
+                    }
+                }
+            }
+        },
+        {"$sort": {"_id": 1}}
+    ]
+    
+    budget_docs = await deals_collection.aggregate(budget_pipeline).to_list(100)
+    budget = {
+        "labels": [],
+        "actual": [],
+        "projected": []
+    }
+    for doc in budget_docs:
+        if doc["_id"]:
+            budget["labels"].append(doc["_id"]) # e.g. '2023-10'
+            budget["actual"].append(doc["actual"])
+            budget["projected"].append(doc["projected"])
+
     return {
         "stats": stats,
         "sources": sources,
         "funnel": funnel,
         "activity": activity,
-        "heatmap": heatmap
+        "heatmap": heatmap,
+        "budget": budget
     }
 
 @router.get("/revenue-chart")
@@ -279,10 +345,15 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
         start_date = now - timedelta(days=30)
         group_format = "%Y-%m-%d"
 
-    projected_stages = ["qualified", "proposal_sent", "negotiation"]
+    projected_stages = ["Proposal Sent", "Negotiation"]
+
+    allowed_ids = await get_allowed_user_ids(current_user)
+    base_query = {"created_at": {"$gte": start_date}, "is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        base_query["$or"] = [{"created_by": {"$in": allowed_ids}}, {"assigned_to": {"$in": allowed_ids}}]
 
     pipeline = [
-        {"$match": {"created_at": {"$gte": start_date}, "is_deleted": {"$ne": True}}},
+        {"$match": base_query},
         {
             "$addFields": {
                 "parsed_date": {
@@ -301,7 +372,7 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
                 "_id": {"$dateToString": {"format": group_format, "date": "$parsed_date"}},
                 "actual": {
                     "$sum": {
-                        "$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
+                        "$cond": [{"$eq": ["$stage", "Won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]
                     }
                 },
                 "projected": {
@@ -333,13 +404,31 @@ async def get_revenue_chart(range: str = "1m", current_user: UserResponse = Depe
     }
 
 @router.get("/sales-metrics")
-async def get_sales_metrics(current_user: UserResponse = Depends(get_current_user)):
+async def get_sales_metrics(
+    time_filter: str = Query("all"),
+    current_user: UserResponse = Depends(get_current_user)
+):
     current_month_str = datetime.utcnow().strftime("%Y-%m")
     
+    allowed_ids = await get_allowed_user_ids(current_user)
+    base_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        base_query["$or"] = [{"created_by": {"$in": allowed_ids}}, {"assigned_to": {"$in": allowed_ids}}]
+        
+    now = datetime.utcnow()
+    if time_filter == "1_month":
+        base_query["created_at"] = {"$gte": now - timedelta(days=30)}
+    elif time_filter == "3_months":
+        base_query["created_at"] = {"$gte": now - timedelta(days=90)}
+    elif time_filter == "6_months":
+        base_query["created_at"] = {"$gte": now - timedelta(days=180)}
+    elif time_filter == "1_year":
+        base_query["created_at"] = {"$gte": now - timedelta(days=365)}
+
     # 1. Global KPIs & Stage Breakdown
     kpi_pipeline = [
         {
-            "$match": {"is_deleted": {"$ne": True}}
+            "$match": base_query
         },
         {
             "$facet": {
@@ -348,9 +437,9 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
                         "$group": {
                             "_id": None,
                             "total_deals_count": {"$sum": 1},
-                            "won_deals_count": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, 1, 0]}},
-                            "total_won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
-                            "total_pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["won", "lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                            "won_deals_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                            "total_won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                            "total_pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["Won", "Lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
                         }
                     }
                 ],
@@ -381,7 +470,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     
     # 2. Monthly Revenue (Needs a separate date string matching)
     monthly_rev_pipeline = [
-        {"$match": {"stage": "won", "is_deleted": {"$ne": True}}},
+        {"$match": {**base_query, "stage": "Won"}},
         {
             "$addFields": {
                 "date_str": {
@@ -412,15 +501,16 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     monthly_revenue = monthly_rev_res[0]["monthly_revenue"] if monthly_rev_res else 0
     
     # 3. Rep Performance
+    rep_query = {**base_query, "assigned_to": {"$ne": None, "$ne": ""}}
     rep_pipeline = [
-        {"$match": {"assigned_to": {"$ne": None, "$ne": ""}, "is_deleted": {"$ne": True}}},
+        {"$match": rep_query},
         {
             "$group": {
                 "_id": "$assigned_to",
                 "total_deals": {"$sum": 1},
-                "won_deals": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, 1, 0]}},
-                "won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
-                "pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["won", "lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                "won_deals": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                "won_revenue": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
+                "pipeline": {"$sum": {"$cond": [{"$not": {"$in": ["$stage", ["Won", "Lost"]]}}, {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}, 0]}},
             }
         }
     ]
@@ -447,14 +537,19 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
         
         user_map = {}
         for u in users + users_str:
-            user_map[str(u["_id"])] = u.get("name", "Unknown")
+            user_map[str(u["_id"])] = {
+                "name": u.get("name", "Unknown"),
+                "profile_photo": u.get("profile_photo", None)
+            }
             
         for stats in rep_stats_docs:
             uid_str = str(stats["_id"])
             win_r = (stats["won_deals"] / stats["total_deals"] * 100) if stats["total_deals"] > 0 else 0
+            u_info = user_map.get(uid_str, {"name": "Unknown", "profile_photo": None})
             rep_results.append({
                 "id": uid_str,
-                "name": user_map.get(uid_str, "Unknown"),
+                "name": u_info["name"],
+                "profile_photo": u_info["profile_photo"],
                 "won_revenue": stats["won_revenue"],
                 "pipeline": stats["pipeline"],
                 "won_deals": stats["won_deals"],
@@ -464,7 +559,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
             
     # 4. Recent Wins
     recent_wins_pipeline = [
-        {"$match": {"stage": "won", "is_deleted": {"$ne": True}}},
+        {"$match": {**base_query, "stage": "Won"}},
         {
             "$addFields": {
                 "sort_date": {
@@ -480,7 +575,7 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
     formatted_recent_wins = []
     for d in recent_wins:
         rep_id = str(d.get("assigned_to", ""))
-        rep_name = next((r["name"] for r in rep_results if r["id"] == rep_id), "Unknown")
+        rep_info = next((r for r in rep_results if r["id"] == rep_id), {"name": "Unknown", "profile_photo": None})
         dt_val = d.get("updated_at") or d.get("created_at")
         dt_str = dt_val.isoformat() if hasattr(dt_val, "isoformat") else str(dt_val)
         formatted_recent_wins.append({
@@ -489,16 +584,23 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
             "company_name": d.get("company_name", ""),
             "amount": d.get("amount", 0),
             "date": dt_str,
-            "rep_name": rep_name
+            "rep_name": rep_info["name"],
+            "rep_photo": rep_info["profile_photo"]
         })
 
     win_rate = (won_deals_count / total_deals_count * 100) if total_deals_count > 0 else 0
     avg_deal = (total_won_revenue / won_deals_count) if won_deals_count > 0 else 0
 
-    settings = await settings_collection.find_one({"_id": "dashboard_settings"})
+    tenant_admin_id = current_user["_id"] if current_user["role"] in ["Super Admin", "admin"] else current_user.get("ancestors", [current_user["_id"]])[1] if len(current_user.get("ancestors", [])) > 1 else current_user["_id"]
+    tenant_settings_coll = db.get_collection("tenant_settings")
+    settings = await tenant_settings_coll.find_one({"tenant_admin_id": tenant_admin_id})
     monthly_target = 500000
-    if settings and "monthly_sales_target" in settings:
-        monthly_target = settings["monthly_sales_target"]
+    target_updated_at = None
+    if settings:
+        if "sales_target" in settings:
+            monthly_target = settings["sales_target"]
+        if "updated_at" in settings:
+            target_updated_at = settings["updated_at"].isoformat() if hasattr(settings["updated_at"], "isoformat") else str(settings["updated_at"])
 
     return {
         "kpis": {
@@ -509,7 +611,8 @@ async def get_sales_metrics(current_user: UserResponse = Depends(get_current_use
         },
         "target": {
             "monthly_target": monthly_target,
-            "monthly_achieved": monthly_revenue
+            "monthly_achieved": monthly_revenue,
+            "updated_at": target_updated_at
         },
         "rep_performance": sorted(rep_results, key=lambda x: x["won_revenue"], reverse=True),
         "stage_breakdown": stage_breakdown,
@@ -523,39 +626,94 @@ class SalesTargetUpdate(BaseModel):
 
 @router.get("/sales-target")
 async def get_sales_target(current_user: UserResponse = Depends(get_current_user)):
-    settings = await settings_collection.find_one({"_id": "dashboard_settings"})
-    if settings and "monthly_sales_target" in settings:
-        return {"monthly_sales_target": settings["monthly_sales_target"]}
+    tenant_admin_id = current_user["_id"] if current_user["role"] in ["Super Admin", "admin"] else current_user.get("ancestors", [current_user["_id"]])[1] if len(current_user.get("ancestors", [])) > 1 else current_user["_id"]
+    tenant_settings_coll = db.get_collection("tenant_settings")
+    settings = await tenant_settings_coll.find_one({"tenant_admin_id": tenant_admin_id})
+    if settings and "sales_target" in settings:
+        return {"monthly_sales_target": settings["sales_target"]}
     return {"monthly_sales_target": 500000}
 
 @router.put("/sales-target")
 async def update_sales_target(target_data: SalesTargetUpdate, current_user: UserResponse = Depends(get_current_user)):
-    await settings_collection.update_one(
-        {"_id": "dashboard_settings"},
-        {"$set": {"monthly_sales_target": target_data.monthly_sales_target}},
+    tenant_admin_id = current_user["_id"] if current_user["role"] in ["Super Admin", "admin"] else current_user.get("ancestors", [current_user["_id"]])[1] if len(current_user.get("ancestors", [])) > 1 else current_user["_id"]
+    tenant_settings_coll = db.get_collection("tenant_settings")
+    await tenant_settings_coll.update_one(
+        {"tenant_admin_id": tenant_admin_id},
+        {"$set": {"sales_target": target_data.monthly_sales_target, "updated_at": datetime.utcnow()}},
         upsert=True
     )
     return {"message": "Sales target updated successfully"}
 
 @router.get("/team-metrics")
-async def get_team_metrics(current_user: UserResponse = Depends(get_current_user)):
+async def get_team_metrics(start_date: Optional[str] = None, end_date: Optional[str] = None, current_user: UserResponse = Depends(get_current_user)):
+    allowed_ids = await get_allowed_user_ids(current_user)
+    base_query = {"is_deleted": {"$ne": True}}
+    if start_date and end_date:
+        try:
+            sd = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            ed = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            base_query["created_at"] = {"$gte": sd, "$lte": ed}
+        except Exception:
+            pass
+    if allowed_ids is not None:
+        str_ids = [str(aid) for aid in allowed_ids]
+        base_query["$or"] = [{"created_by": {"$in": str_ids}}, {"assigned_to": {"$in": str_ids}}]
+        
+    user_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        parsed_ids = []
+        for aid in allowed_ids:
+            parsed_ids.append(aid)
+            if len(str(aid)) == 24:
+                try: parsed_ids.append(ObjectId(aid))
+                except: pass
+        user_query["_id"] = {"$in": parsed_ids}
+        
+    activity_query = {"timestamp": {"$gte": datetime.utcnow() - timedelta(days=1)}}
+    if allowed_ids is not None:
+        activity_query["user_id"] = {"$in": allowed_ids}
+
     # 1. KPIs
-    active_users = await users_collection.count_documents({"is_active": True, "is_deleted": {"$ne": True}})
-    open_deals = await deals_collection.count_documents({"stage": {"$nin": ["won", "lost"]}, "is_deleted": {"$ne": True}})
-    active_projects = await projects_collection.count_documents({"status": {"$ne": "completed"}, "is_deleted": {"$ne": True}})
+    active_users = await users_collection.count_documents(user_query)
+    open_deals = await deals_collection.count_documents({**base_query, "stage": {"$nin": ["Won", "Lost"]}})
+    active_projects = await projects_collection.count_documents({**base_query, "status": {"$ne": "completed"}})
     
-    one_day_ago = datetime.utcnow() - timedelta(days=1)
-    recent_activities_24h = await audit_logs_collection.count_documents({"timestamp": {"$gte": one_day_ago}})
+    pending_tasks = await tasks_collection.count_documents({**base_query, "status": {"$nin": ["completed", "done", "closed"]}})
+    
+    # Trends (Last 30 days vs Prev 30 days)
+    now = datetime.utcnow()
+    last_30 = now - timedelta(days=30)
+    prev_30 = now - timedelta(days=60)
+    
+    # Deals trend
+    curr_deals = await deals_collection.count_documents({**base_query, "created_at": {"$gte": last_30}})
+    prev_deals = await deals_collection.count_documents({**base_query, "created_at": {"$gte": prev_30, "$lt": last_30}})
+    deals_trend = round(((curr_deals - prev_deals) / max(prev_deals, 1)) * 100, 1)
+    
+    # Projects trend
+    curr_proj = await projects_collection.count_documents({**base_query, "created_at": {"$gte": last_30}})
+    prev_proj = await projects_collection.count_documents({**base_query, "created_at": {"$gte": prev_30, "$lt": last_30}})
+    proj_trend = round(((curr_proj - prev_proj) / max(prev_proj, 1)) * 100, 1)
+    
+    # Tasks trend
+    curr_task = await tasks_collection.count_documents({**base_query, "created_at": {"$gte": last_30}})
+    prev_task = await tasks_collection.count_documents({**base_query, "created_at": {"$gte": prev_30, "$lt": last_30}})
+    task_trend = round(((curr_task - prev_task) / max(prev_task, 1)) * 100, 1)
+    
+    # Users trend (Members joined)
+    curr_user = await users_collection.count_documents({**user_query, "created_at": {"$gte": last_30}})
+    prev_user = await users_collection.count_documents({**user_query, "created_at": {"$gte": prev_30, "$lt": last_30}})
+    user_trend = round(((curr_user - prev_user) / max(prev_user, 1)) * 100, 1)
     
     # 2. Roles Distribution
     cursor = users_collection.aggregate([
-        {"$match": {"is_active": True, "is_deleted": {"$ne": True}}},
+        {"$match": user_query},
         {"$group": {"_id": "$role", "count": {"$sum": 1}}}
     ])
     roles_data = [{"id": r["_id"] or "Unknown", "value": r["count"]} async for r in cursor]
     
     # 3. Workload per Rep & Roster
-    users = await users_collection.find({"is_active": True, "is_deleted": {"$ne": True}}).to_list(100)
+    users = await users_collection.find(user_query).to_list(100)
     user_map = {}
     workload = {}
     
@@ -567,6 +725,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
             "name": u.get("name", "Unknown"),
             "email": u.get("email", ""),
             "role": u.get("role", "Unknown"),
+            "profile_photo": u.get("profile_photo", ""),
             "deals": 0,
             "projects": 0,
             "tasks": 0,
@@ -575,7 +734,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
         
     # Aggregate Deals
     deals_workload = await deals_collection.aggregate([
-        {"$match": {"stage": {"$nin": ["won", "lost"]}, "is_deleted": {"$ne": True}}},
+        {"$match": {**base_query, "stage": {"$nin": ["Won", "Lost"]}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for d in deals_workload:
@@ -586,7 +745,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
             
     # Aggregate Projects
     projects_workload = await projects_collection.aggregate([
-        {"$match": {"status": {"$ne": "completed"}, "is_deleted": {"$ne": True}}},
+        {"$match": {**base_query, "status": {"$ne": "completed"}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for p in projects_workload:
@@ -597,7 +756,7 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
                 
     # Aggregate Tasks
     tasks_workload = await tasks_collection.aggregate([
-        {"$match": {"status": {"$nin": ["completed", "done", "closed"]}, "is_deleted": {"$ne": True}}},
+        {"$match": {**base_query, "status": {"$nin": ["completed", "done", "closed"]}}},
         {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
     ]).to_list(None)
     for t in tasks_workload:
@@ -610,7 +769,10 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
     workload_list.sort(key=lambda x: x["total_items"], reverse=True)
     
     # 4. Recent Activity Feed
-    logs = await audit_logs_collection.find().sort("timestamp", -1).limit(15).to_list(15)
+    activity_feed_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        activity_feed_query["user_id"] = {"$in": allowed_ids}
+    logs = await audit_logs_collection.find(activity_feed_query).sort("timestamp", -1).limit(15).to_list(15)
     formatted_logs = []
     for log in logs:
         uid = str(log.get("user_id", ""))
@@ -648,7 +810,13 @@ async def get_team_metrics(current_user: UserResponse = Depends(get_current_user
             "total_members": active_users,
             "open_deals": open_deals,
             "active_projects": active_projects,
-            "recent_activities": recent_activities_24h
+            "pending_tasks": pending_tasks
+        },
+        "trends": {
+            "members": user_trend,
+            "deals": deals_trend,
+            "projects": proj_trend,
+            "tasks": task_trend
         },
         "roles_distribution": roles_data,
         "workload": workload_list,
@@ -674,19 +842,22 @@ async def get_analytics_metrics(
     prev_end_dt = start_dt - timedelta(seconds=1)
     prev_start_dt = prev_end_dt - duration
 
-    # Base Queries
-    query_curr = {"created_at": {"$gte": start_dt, "$lte": end_dt}, "is_deleted": {"$ne": True}}
-    query_prev = {"created_at": {"$gte": prev_start_dt, "$lte": prev_end_dt}, "is_deleted": {"$ne": True}}
+    allowed_ids = await get_allowed_user_ids(current_user)
     
-    exp_curr = {"date": {"$gte": start_dt, "$lte": end_dt}, "is_deleted": {"$ne": True}}
-    exp_prev = {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}, "is_deleted": {"$ne": True}}
+    base_match_curr = {"created_at": {"$gte": start_dt, "$lte": end_dt}, "is_deleted": {"$ne": True}}
+    base_match_prev = {"created_at": {"$gte": prev_start_dt, "$lte": prev_end_dt}, "is_deleted": {"$ne": True}}
+    
+    if allowed_ids is not None:
+        access_cond = {"$or": [{"created_by": {"$in": allowed_ids}}, {"assigned_to": {"$in": allowed_ids}}]}
+        base_match_curr.update(access_cond)
+        base_match_prev.update(access_cond)
 
     # 1. Deals Aggregations (Revenue, MRR, Velocity, Channels, Services)
     deals_pipeline = [
         {
             "$facet": {
                 "current": [
-                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$match": {**base_match_curr, "stage": "Won"}},
                     {"$group": {
                         "_id": None,
                         "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}},
@@ -711,7 +882,7 @@ async def get_analytics_metrics(
                     }}
                 ],
                 "previous": [
-                    {"$match": {**query_prev, "stage": "won"}},
+                    {"$match": {**base_match_prev, "stage": "Won"}},
                     {"$group": {
                         "_id": None,
                         "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}},
@@ -719,14 +890,14 @@ async def get_analytics_metrics(
                     }}
                 ],
                 "channels": [
-                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$match": {**base_match_curr, "stage": "Won"}},
                     {"$group": {
                         "_id": "$source",
                         "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
                     }}
                 ],
                 "services": [
-                    {"$match": {**query_curr, "stage": "won"}},
+                    {"$match": {**base_match_curr, "stage": "Won"}},
                     {"$group": {
                         "_id": "$service_category",
                         "revenue": {"$sum": {"$convert": {"input": "$amount", "to": "double", "onError": 0, "onNull": 0}}}
@@ -893,4 +1064,134 @@ async def get_analytics_metrics(
         "growth_dynamics": growth_dynamics,
         "channel_attribution": channels_list,
         "revenue_by_service": revenue_by_service
+    }
+
+@router.get("/workload-distribution")
+async def get_workload_distribution(
+    time_filter: str = Query("monthly"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    now = datetime.utcnow()
+    
+    if time_filter == "today":
+        days = 1
+        label = "Yesterday"
+    elif time_filter == "weekly":
+        days = 7
+        label = "Last Week"
+    elif time_filter == "all":
+        days = 36500
+        label = "All Time"
+    else:
+        days = 30
+        label = "Last Month"
+        
+    start_dt = now - timedelta(days=days)
+    prev_start_dt = start_dt - timedelta(days=days)
+    
+    allowed_ids = await get_allowed_user_ids(current_user)
+    base_query = {"is_deleted": {"$ne": True}}
+    
+    user_query = {"is_deleted": {"$ne": True}}
+    if allowed_ids is not None:
+        parsed_ids = []
+        for aid in allowed_ids:
+            parsed_ids.append(aid)
+            if len(str(aid)) == 24:
+                try: parsed_ids.append(ObjectId(aid))
+                except: pass
+        user_query["_id"] = {"$in": parsed_ids}
+        str_ids = [str(aid) for aid in allowed_ids]
+        base_query["$or"] = [{"created_by": {"$in": str_ids}}, {"assigned_to": {"$in": str_ids}}]
+        
+    users = await users_collection.find(user_query).to_list(100)
+    user_map = {str(u["_id"]): u for u in users}
+    
+    if not users:
+        return {"users": [], "deals": [], "projects": [], "tasks": [], "trend": 0, "label": label}
+        
+    # Get Workload for Current Window
+    curr_deals = await deals_collection.aggregate([
+        {"$match": {**base_query, "created_at": {"$gte": start_dt}, "stage": {"$nin": ["Won", "Lost"]}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    
+    curr_projects = await projects_collection.aggregate([
+        {"$match": {**base_query, "created_at": {"$gte": start_dt}, "status": {"$ne": "completed"}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    
+    curr_tasks = await tasks_collection.aggregate([
+        {"$match": {**base_query, "created_at": {"$gte": start_dt}, "status": {"$nin": ["completed", "done", "closed"]}}},
+        {"$group": {"_id": "$assigned_to", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    
+    # Get Totals for Current Window to calculate Trend
+    curr_trend_d = await deals_collection.count_documents({**base_query, "created_at": {"$gte": start_dt}, "stage": {"$nin": ["Won", "Lost"]}})
+    curr_trend_p = await projects_collection.count_documents({**base_query, "created_at": {"$gte": start_dt}, "status": {"$ne": "completed"}})
+    curr_trend_t = await tasks_collection.count_documents({**base_query, "created_at": {"$gte": start_dt}, "status": {"$nin": ["completed", "done", "closed"]}})
+    
+    # Get Totals for Previous Window to calculate Trend
+    prev_d = await deals_collection.count_documents({**base_query, "created_at": {"$gte": prev_start_dt, "$lt": start_dt}, "stage": {"$nin": ["Won", "Lost"]}})
+    prev_p = await projects_collection.count_documents({**base_query, "created_at": {"$gte": prev_start_dt, "$lt": start_dt}, "status": {"$ne": "completed"}})
+    prev_t = await tasks_collection.count_documents({**base_query, "created_at": {"$gte": prev_start_dt, "$lt": start_dt}, "status": {"$nin": ["completed", "done", "closed"]}})
+    
+    curr_total = curr_trend_d + curr_trend_p + curr_trend_t
+    prev_total = prev_d + prev_p + prev_t
+    
+    trend = round(((curr_total - prev_total) / max(prev_total, 1)) * 100, 1)
+    
+    # Build Chart Series
+    u_names = []
+    d_counts = []
+    p_counts = []
+    t_counts = []
+    
+    u_avatars = []
+    u_full_names = []
+    for uid_str, u in user_map.items():
+        uname = u.get("name") or f"{u.get('first_name', '')} {u.get('last_name', '')}".strip() or "Unknown"
+
+        
+        d_val = next((item["count"] for item in curr_deals if str(item.get("_id")) == uid_str), 0)
+        p_val = next((item["count"] for item in curr_projects if str(item.get("_id")) == uid_str), 0)
+        t_val = next((item["count"] for item in curr_tasks if str(item.get("_id")) == uid_str), 0)
+        
+        pass
+        pass
+        if d_val == 0 and p_val == 0 and t_val == 0:
+            continue
+            
+        name_parts = uname.strip().split()
+        if len(name_parts) >= 2:
+            initials = (name_parts[0][0] + name_parts[-1][0]).upper()
+        elif len(name_parts) == 1 and len(name_parts[0]) >= 2:
+            initials = name_parts[0][:2].upper()
+        elif len(name_parts) == 1 and len(name_parts[0]) == 1:
+            initials = (name_parts[0] + "U").upper()[:2]
+        else:
+            initials = "U"
+            
+        avatar = u.get("profile_photo") or u.get("avatar") or u.get("profile_picture")
+        
+        u_names.append(initials)
+
+        d_counts.append(d_val)
+        p_counts.append(p_val)
+        t_counts.append(t_val)
+        u_avatars.append(avatar)
+        u_full_names.append(uname)
+
+    print("WORKLOAD DEBUG - allowed_ids:", allowed_ids)
+    print("WORKLOAD DEBUG - users:", len(users))
+    print("WORKLOAD DEBUG - u_names:", u_names)
+    return {
+        "users": u_names,
+        "deals": d_counts,
+        "projects": p_counts,
+        "tasks": t_counts,
+        "avatars": u_avatars,
+        "full_names": u_full_names,
+        "trend": trend,
+        "label": label
     }

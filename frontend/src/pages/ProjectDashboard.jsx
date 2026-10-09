@@ -7,6 +7,7 @@ import { StatisticsChart, StatisticsChartTwo, StatisticsChartThree, StatisticsCh
 import { ProjectCategoryChart, ProjectStatusChart, TeamProductivityChart, FinancialOverviewChart } from '../components/charts/ProjectDashboardCharts';
 import CustomDataTable from '../components/common/CustomDataTable';
 import axiosClient from '../api/axiosClient';
+import Loader from '../components/common/Loader';
 
 const ProjectDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,15 +69,6 @@ const ProjectDashboard = () => {
     { name: 'VALUE', selector: row => row.value, sortable: true }
   ];
 
-  if (loading) {
-    return (
-      <div className="page-wrapper d-flex justify-content-center align-items-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page-wrapper">
@@ -105,6 +97,10 @@ const ProjectDashboard = () => {
         </PageHeader>
         {/* /Breadcrumb */}
 
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
         <h4 className="mb-3">Project Metrics</h4>
         <div className="row">
           <ClientStatCard 
@@ -309,6 +305,8 @@ const ProjectDashboard = () => {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

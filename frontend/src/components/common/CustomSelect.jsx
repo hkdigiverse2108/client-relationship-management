@@ -12,8 +12,8 @@ const CustomSelect = ({ children, options, value, onChange, placeholder, isMulti
       borderRadius: '5px',
       border: state.isFocused ? '1px solid var(--primary, #ff9b44)' : '1px solid var(--custom-border, #e3e3e3)',
       boxShadow: 'none',
-      backgroundColor: 'var(--custom-bg, transparent)',
-      cursor: 'pointer',
+      backgroundColor: state.isDisabled ? 'var(--custom-disabled-bg, #f4f4f4)' : 'var(--custom-bg, transparent)',
+      cursor: state.isDisabled ? 'not-allowed' : 'pointer',
       '&:hover': {
         border: state.isFocused ? '1px solid var(--primary, #ff9b44)' : '1px solid var(--custom-border, #e3e3e3)'
       }

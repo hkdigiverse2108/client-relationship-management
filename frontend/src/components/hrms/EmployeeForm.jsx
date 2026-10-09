@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     id: null,
     employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
     name: '',
     email: '',
     phone: '',
-    role: 'sales',
+    role: '',
     designation: '',
     department: '',
     joining_date: new Date(),
@@ -21,7 +23,8 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
     basic_salary: '',
     hra_allowance: '',
     special_allowances: '',
-    is_active: true
+    is_active: true,
+    password: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -37,7 +40,7 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
           name: '',
           email: '',
           phone: '',
-          role: 'sales',
+          role: '',
           designation: '',
           department: '',
           joining_date: new Date(),
@@ -48,7 +51,8 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
           basic_salary: '',
           hra_allowance: '',
           special_allowances: '',
-          is_active: true
+          is_active: true,
+          password: ''
         });
       }
       setErrors({});
@@ -83,12 +87,11 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
     if (!formData.name?.trim()) newErrors.name = 'Full Name is required';
     if (!formData.email?.trim()) newErrors.email = 'Email Address is required';
     if (!formData.phone?.trim()) newErrors.phone = 'Mobile Number is required';
+    if (!formData.role) newErrors.role = 'System Role is required';
     if (!formData.designation?.trim()) newErrors.designation = 'Designation is required';
     if (!formData.department?.trim()) newErrors.department = 'Department is required';
-    if (!formData.joining_date) newErrors.joining_date = 'Joining Date is required';
     if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.dob) newErrors.dob = 'Date of Birth is required';
-    if (!formData.basic_salary) newErrors.basic_salary = 'Basic Salary is required';
+    if (!editingData && !formData.password) newErrors.password = 'Password is required for new employees';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -96,16 +99,27 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
     }
 
     // Submit mock data
-    const formatDate = (date) => date ? new Date(date).toISOString().split('T')[0] : '';
-    onSubmit({
+    const formatDate = (date) => date ? new Date(date).toISOString() : null;
+    const dataToSubmit = {
       ...formData,
-      id: formData.id || Date.now(),
-      joining_date: formatDate(formData.joining_date),
-      dob: formatDate(formData.dob),
-      basic_salary: parseFloat(formData.basic_salary) || 0,
-      hra_allowance: parseFloat(formData.hra_allowance) || 0,
-      special_allowances: parseFloat(formData.special_allowances) || 0
-    });
+      joining_date: formData.joining_date ? formatDate(formData.joining_date) : null,
+      dob: formData.dob ? formatDate(formData.dob) : null,
+      basic_salary: formData.basic_salary ? parseFloat(formData.basic_salary) : null,
+      hra_allowance: formData.hra_allowance ? parseFloat(formData.hra_allowance) : null,
+      special_allowances: formData.special_allowances ? parseFloat(formData.special_allowances) : null
+    };
+
+    if (dataToSubmit.phone === '') dataToSubmit.phone = null;
+    if (dataToSubmit.manager_id === '') dataToSubmit.manager_id = null;
+    if (dataToSubmit.department === '') dataToSubmit.department = null;
+    if (dataToSubmit.designation === '') dataToSubmit.designation = null;
+    if (dataToSubmit.gender === '') dataToSubmit.gender = null;
+    
+    if (editingData) {
+      delete dataToSubmit.password;
+    }
+    
+    onSubmit(dataToSubmit);
   };
 
   return (
@@ -168,8 +182,34 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
             {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
           </div>
 
+          {!editingData && (
+            <div className="col-md-6">
+              <label className="form-label">Password <span className="text-danger">*</span></label>
+              <div className="position-relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className={`form-control ${errors.password ? 'is-invalid' : ''}`}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter password"
+                  style={{ backgroundImage: 'none' }}
+                />
+                <button 
+                  type="button"
+                  className="btn btn-link position-absolute p-0"
+                  style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: "#6c757d" }}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
+              {errors.password && <div className="invalid-feedback d-block mt-1">{errors.password}</div>}
+            </div>
+          )}
+
           <div className="col-md-6">
-            <label className="form-label">System Role</label>
+            <label className="form-label">System Role <span className="text-danger">*</span></label>
             <CustomSelect
               options={[
                 { value: 'Super Admin', label: 'Super Admin' },
@@ -179,9 +219,11 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
                 { value: 'sales', label: 'Sales' },
                 { value: 'support', label: 'Support' }
               ]}
-              value={{ value: formData.role, label: formData.role.charAt(0).toUpperCase() + formData.role.slice(1) }}
+              value={formData.role ? { value: formData.role, label: formData.role.charAt(0).toUpperCase() + formData.role.slice(1) } : null}
               onChange={handleSelectChange('role')}
+              placeholder="Select Role"
             />
+            {errors.role && <div className="invalid-feedback d-block">{errors.role}</div>}
           </div>
 
           <div className="col-md-6">
@@ -211,7 +253,7 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
           </div>
 
           <div className="col-md-6">
-            <label className="form-label">Joining Date <span className="text-danger">*</span></label>
+            <label className="form-label">Joining Date</label>
             <div className={`date-picker-wrapper ${errors.joining_date ? 'is-invalid' : ''}`}>
               <CustomDatePicker
                 selected={formData.joining_date ? new Date(formData.joining_date) : null}
@@ -266,7 +308,7 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
           </div>
 
           <div className="col-md-6">
-            <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
+            <label className="form-label">Date of Birth</label>
             <div className={`date-picker-wrapper ${errors.dob ? 'is-invalid' : ''}`}>
               <CustomDatePicker
                 selected={formData.dob ? new Date(formData.dob) : null}
@@ -279,7 +321,7 @@ const EmployeeForm = ({ isOpen, onClose, onSubmit, editingData = null }) => {
           </div>
 
           <div className="col-md-4">
-            <label className="form-label">Basic Salary (₹) <span className="text-danger">*</span></label>
+            <label className="form-label">Basic Salary (₹)</label>
             <input
               type="number"
               className={`form-control ${errors.basic_salary ? 'is-invalid' : ''}`}
