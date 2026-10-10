@@ -273,6 +273,25 @@ async def update_my_profile(user_update: UserUpdate, current_user: dict = Depend
     
     await users_collection.update_one({"_id": current_user["_id"]}, {"$set": update_data})
     
+    # Propagate start_time and end_time to all descendant employees if updated by an admin
+    if current_user["role"].lower() in ["admin", "super admin", "superadmin"]:
+        propagate_data = {}
+        if "start_time" in update_data: propagate_data["start_time"] = update_data["start_time"]
+        if "end_time" in update_data: propagate_data["end_time"] = update_data["end_time"]
+        
+        if propagate_data:
+            await users_collection.update_many(
+                {"ancestors": current_user["_id"]},
+                {"$set": propagate_data}
+            )
+            
+            # Also update all top-level users if Super Admin is setting it globally
+            if current_user["role"].lower() in ["super admin", "superadmin"]:
+                await users_collection.update_many(
+                    {},
+                    {"$set": propagate_data}
+                )
+    
     updated_user = await users_collection.find_one({"_id": current_user["_id"]})
     updated_user["id"] = updated_user.pop("_id")
     return UserResponse(**updated_user)

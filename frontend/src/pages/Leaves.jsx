@@ -200,6 +200,16 @@ const Leaves = () => {
       selector: row => row.start_date,
       sortable: true,
     },
+     {
+      name: 'To',
+      selector: row => row.end_date,
+      sortable: true,
+    },
+      {
+      name: 'No of Days',
+      selector: row => row.days,
+      sortable: true,
+    },
     {
       name: 'Approved By',
       selector: row => row.reviewer_name || '-',
@@ -220,16 +230,8 @@ const Leaves = () => {
         );
       }
     },
-    {
-      name: 'To',
-      selector: row => row.end_date,
-      sortable: true,
-    },
-    {
-      name: 'No of Days',
-      selector: row => row.days,
-      sortable: true,
-    },
+   
+  
     {
       name: 'Status',
       selector: row => row.status,
@@ -338,6 +340,48 @@ const Leaves = () => {
     });
   }
 
+  const myLeavesStats = useMemo(() => {
+    const myOwnLeaves = leaves.filter(l => l.employee_id === user?._id || l.employee_id === user?.id);
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    let monthlyTaken = 0;
+    let monthlyPending = 0;
+    
+    const overallTaken = {
+      'Sick Leave': 0,
+      'Casual Leave': 0,
+      'Other Leave': 0
+    };
+
+    myOwnLeaves.forEach(l => {
+      const d = new Date(l.start_date);
+      const isCurrentMonth = d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      
+      if (l.leave_type === 'Monthly Leave' && isCurrentMonth) {
+        if (l.status === 'Approved') monthlyTaken += l.days;
+        if (l.status === 'Pending') monthlyPending += l.days;
+      }
+
+      if (overallTaken[l.leave_type] !== undefined) {
+        if (l.status === 'Approved') {
+           overallTaken[l.leave_type] += l.days;
+        }
+      }
+    });
+
+    return {
+      monthly: {
+        allowed: 1,
+        taken: monthlyTaken,
+        pending: monthlyPending,
+        remaining: Math.max(0, 1 - monthlyTaken - monthlyPending)
+      },
+      overallTaken
+    };
+  }, [leaves, user]);
+
   const getLeaveBalance = (type) => balances?.[type] || { allowed: 0, taken: 0, pending: 0, remaining: 0 };
 
   const teamStats = useMemo(() => {
@@ -422,22 +466,22 @@ const Leaves = () => {
                     </div>
                     <div className="text-end">
                       <p className="mb-1 fw-medium text-dark">Monthly Leave</p>
-                      <h4 className="text-dark">{getLeaveBalance('Monthly Leave').taken} <span className="fs-12 text-muted fw-normal">Taken</span></h4>
+                      <h4 className="text-dark">{myLeavesStats.monthly.taken} <span className="fs-12 text-muted fw-normal">Taken</span></h4>
                     </div>
                   </div>
                   <hr className="my-2" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }} />
                   <div className="d-flex justify-content-between text-start mt-2">
                     <div>
                       <p className="text-muted fs-11 mb-1">Pending</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-dark">{getLeaveBalance('Monthly Leave').pending} Days</h6>
+                      <h6 className="fs-12 fw-semibold mb-0 text-dark">{myLeavesStats.monthly.pending} Days</h6>
                     </div>
                     <div>
                       <p className="text-muted fs-11 mb-1">Allowance</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-dark">{getLeaveBalance('Monthly Leave').allowed} Free Day</h6>
+                      <h6 className="fs-12 fw-semibold mb-0 text-dark">1 Free Day</h6>
                     </div>
                     <div className="text-end">
                       <p className="text-muted fs-11 mb-1">Remaining</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{getLeaveBalance('Monthly Leave').remaining} Day(s)</h6>
+                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{myLeavesStats.monthly.remaining} Day(s)</h6>
                     </div>
                   </div>
                 </div>
@@ -466,8 +510,8 @@ const Leaves = () => {
                       <h6 className="fs-12 fw-semibold mb-0 text-dark">{getLeaveBalance('Sick Leave').pending} Days</h6>
                     </div>
                     <div className="text-end">
-                      <p className="text-muted fs-11 mb-1">Remaining</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{getLeaveBalance('Sick Leave').remaining} Days</h6>
+                      <p className="text-muted fs-11 mb-1">Overall</p>
+                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{myLeavesStats.overallTaken['Sick Leave']} Days</h6>
                     </div>
                   </div>
                 </div>
@@ -496,8 +540,8 @@ const Leaves = () => {
                       <h6 className="fs-12 fw-semibold mb-0 text-dark">{getLeaveBalance('Casual Leave').pending} Days</h6>
                     </div>
                     <div className="text-end">
-                      <p className="text-muted fs-11 mb-1">Remaining</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{getLeaveBalance('Casual Leave').remaining} Days</h6>
+                      <p className="text-muted fs-11 mb-1">Overall</p>
+                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{myLeavesStats.overallTaken['Casual Leave']} Days</h6>
                     </div>
                   </div>
                 </div>
@@ -526,8 +570,8 @@ const Leaves = () => {
                       <h6 className="fs-12 fw-semibold mb-0 text-dark">{getLeaveBalance('Other Leave').pending} Days</h6>
                     </div>
                     <div className="text-end">
-                      <p className="text-muted fs-11 mb-1">Remaining</p>
-                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{getLeaveBalance('Other Leave').remaining} Days</h6>
+                      <p className="text-muted fs-11 mb-1">Overall</p>
+                      <h6 className="fs-12 fw-semibold mb-0 text-warning">{myLeavesStats.overallTaken['Other Leave']} Days</h6>
                     </div>
                   </div>
                 </div>
@@ -719,6 +763,7 @@ const Leaves = () => {
         }}
         onSubmit={handleSaveLeave}
         editingData={editingLeave}
+        monthlyRemaining={myLeavesStats.monthly.remaining}
       />
 
       {confirmCancelModal.isOpen && (

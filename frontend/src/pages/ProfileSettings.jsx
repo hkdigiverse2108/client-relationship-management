@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import CustomTimePicker from '../components/common/CustomTimePicker';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import { storage } from '../utils/storage';
@@ -23,7 +24,9 @@ const ProfileSettings = () => {
     account_number: '',
     ifsc_code: '',
     pan_number: '',
-    aadhar_number: ''
+    aadhar_number: '',
+    start_time: '',
+    end_time: ''
   });
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
@@ -52,7 +55,9 @@ const ProfileSettings = () => {
             account_number: res.account_number || '',
             ifsc_code: res.ifsc_code || '',
             pan_number: res.pan_number || '',
-            aadhar_number: res.aadhar_number || ''
+            aadhar_number: res.aadhar_number || '',
+            start_time: res.start_time || '',
+            end_time: res.end_time || ''
           });
           setEmail(res.email || '');
           setRole(res.role || '');
@@ -74,6 +79,24 @@ const ProfileSettings = () => {
     setFormData(prev => ({ ...prev, gender: selected ? selected.value : '' }));
   };
 
+  const handleTimeChange = (name, date) => {
+    if (!date) {
+      setFormData(prev => ({ ...prev, [name]: '' }));
+      return;
+    }
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    setFormData(prev => ({ ...prev, [name]: `${hours}:${minutes}` }));
+  };
+
+  const parseTimeStringToDate = (timeStr) => {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -85,7 +108,7 @@ const ProfileSettings = () => {
       toast.success('Profile updated successfully');
       
       const user = storage.get(STORAGE_KEYS.user) || {};
-      storage.set(STORAGE_KEYS.user, { ...user, name: res.name });
+      storage.set(STORAGE_KEYS.user, { ...user, name: res.name, start_time: payload.start_time, end_time: payload.end_time });
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update profile');
     }
@@ -323,6 +346,34 @@ const ProfileSettings = () => {
 													</div>
 													<div className="col-md-8">
 														<input type="text" className="form-control" name="country" value={formData.country} onChange={handleChange} />
+													</div>
+												</div>
+											</div>
+											<div className="col-md-6">
+												<div className="row align-items-center mb-3">
+													<div className="col-md-4">
+														<label className="form-label mb-md-0">Start Time</label>
+													</div>
+													<div className="col-md-8">
+														<CustomTimePicker 
+															selected={parseTimeStringToDate(formData.start_time)} 
+															onChange={(date) => handleTimeChange('start_time', date)} 
+															disabled={!['admin', 'super admin', 'superadmin'].includes(role.toLowerCase())} 
+														/>
+													</div>
+												</div>
+											</div>
+											<div className="col-md-6">
+												<div className="row align-items-center mb-3">
+													<div className="col-md-4">
+														<label className="form-label mb-md-0">End Time</label>
+													</div>
+													<div className="col-md-8">
+														<CustomTimePicker 
+															selected={parseTimeStringToDate(formData.end_time)} 
+															onChange={(date) => handleTimeChange('end_time', date)} 
+															disabled={!['admin', 'super admin', 'superadmin'].includes(role.toLowerCase())} 
+														/>
 													</div>
 												</div>
 											</div>

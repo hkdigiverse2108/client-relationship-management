@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useAuth } from '../context/AuthContext';
+import axiosClient from '../api/axiosClient';
 import PageHeader from '../components/common/PageHeader';
 import { WeeklyAttendanceChart } from '../components/charts/AiAttendanceCharts';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import CustomSelect from '../components/common/CustomSelect';
+import toast from 'react-hot-toast';
 import ATSPipeline from '../components/hrms/ATSPipeline';
 import CompanyAssets from '../components/hrms/CompanyAssets';
 import PerformanceAppraisals from '../components/hrms/PerformanceAppraisals';
@@ -74,6 +77,268 @@ const MiniCalendar = () => {
 };
 
 const HRDashboard = () => {
+  const { user } = useAuth();
+  const [now, setNow] = useState(new Date());
+  const [attendance, setAttendance] = useState(null);
+  const [stats, setStats] = useState({ total_staff: 0, present_today: 0, absent_today: 0, late_today: 0, pending_leaves: 0 });
+  const [productionSecs, setProductionSecs] = useState(0);
+  const [breakSecs, setBreakSecs] = useState(0);
+  const [overtimeSecs, setOvertimeSecs] = useState(0);
+  const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+  
+  const getProfileUrl = (url) => url ? (url.startsWith('http') ? url : (url.startsWith('/') ? `${backendUrl}${url}` : `${backendUrl}/${url}`)) : null;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    fetchAttendance();
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await axiosClient.get('/hrms/attendance/live/stats/today');
+      setStats(res);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchAttendance = async () => {
+    try {
+      const res = await axiosClient.get('/hrms/attendance/live/today');
+      setAttendance(res);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const parseDate = (d) => {
+    if (!d) return null;
+    if (typeof d === 'string' && !d.endsWith('Z')) return new Date(d + 'Z');
+    return new Date(d);
+  };
+
+  useEffect(() => {
+    if (!attendance) return;
+    const interval = setInterval(() => {
+      let prod = 0;
+      let brk = 0;
+      const current = new Date();
+      
+      (attendance.punches || []).forEach(p => {
+        const start = parseDate(p.in);
+        const end = p.out ? parseDate(p.out) : current;
+        prod += (end - start) / 1000;
+      });
+      
+      (attendance.breaks || []).forEach(b => {
+        const start = parseDate(b.start);
+        const end = b.end ? parseDate(b.end) : current;
+        brk += (end - start) / 1000;
+      });
+      
+      setBreakSecs(Math.max(0, brk));
+      const pSecs = Math.max(0, prod - brk);
+      setProductionSecs(pSecs); // Assuming breaks are during punch-in
+      
+      let expectedSecs = 9 * 3600; // default 9 hours
+      if (user?.start_time && user?.end_time) {
+        const [sH, sM] = user.start_time.split(':').map(Number);
+        const [eH, eM] = user.end_time.split(':').map(Number);
+        let diffSecs = (eH - sH) * 3600 + (eM - sM) * 60;
+        if (diffSecs < 0) diffSecs += 24 * 3600;
+        expectedSecs = diffSecs;
+      }
+      setOvertimeSecs(Math.max(0, pSecs - expectedSecs));
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [attendance]);
+
+  const handlePunch = async () => {
+    try {
+      toast.loading("Processing...", { id: "punch" });
+      const res = await axiosClient.post('/hrms/attendance/live/punch', {});
+      setAttendance(res);
+      toast.success(res.is_punched_in ? "Punched in successfully!" : "Punched out successfully!", { id: "punch" });
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Failed to process punch", { id: "punch" });
+    }
+  };
+  
+  const handleBreak = async () => {
+    try {
+      toast.loading("Processing...", { id: "break" });
+      const res = await axiosClient.post('/hrms/attendance/live/break', {});
+      setAttendance(res);
+      toast.success(res.is_on_break ? "Break started!" : "Break ended!", { id: "break" });
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Failed to process break", { id: "break" });
+    }
+  };
+
+  const getGreeting = () => {
+    const hr = now.getHours();
+    if (hr < 12) return 'Good Morning';
+    if (hr < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const formatTime = (dateObj) => {
+    return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  };
+  
+  const formatDate = (dateObj) => {
+    return dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  
+  const formatDuration = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = Math.floor(totalSeconds % 60);
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
+  };
+  
+  const formatDurationDecimal = (totalSeconds) => {
+    return (totalSeconds / 3600).toFixed(2);
+  };
+  
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getTimelineData = () => {
+    let startHour = 6; // default 6 AM
+    let endHour = 22; // default 10 PM
+    const now = new Date();
+    
+    if (attendance?.punches?.length > 0) {
+      const firstPunch = parseDate(attendance.punches[0].in);
+      const h = firstPunch.getHours();
+      if (h < startHour) startHour = Math.max(0, h - 1);
+      
+      const currentH = now.getHours();
+      if (currentH >= endHour) endHour = Math.min(23, currentH + 1);
+    }
+    
+    const totalHours = endHour - startHour;
+    const totalMs = totalHours * 60 * 60 * 1000;
+    const timelineStart = new Date(now);
+    timelineStart.setHours(startHour, 0, 0, 0);
+    
+    const labels = [];
+    for (let i = startHour; i <= endHour; i++) {
+      let labelH = i % 12;
+      if (labelH === 0) labelH = 12;
+      labels.push(`${labelH.toString().padStart(2, '0')}:00`);
+    }
+    
+    const segments = [];
+    if (attendance?.punches?.length > 0) {
+      let expectedMs = 9 * 3600 * 1000;
+      if (user?.start_time && user?.end_time) {
+        const [sH, sM] = user.start_time.split(':').map(Number);
+        const [eH, eM] = user.end_time.split(':').map(Number);
+        let diffSecs = (eH - sH) * 3600 + (eM - sM) * 60;
+        if (diffSecs < 0) diffSecs += 24 * 3600;
+        expectedMs = diffSecs * 1000;
+      }
+
+      // Calculate exact overtime start timestamp
+      const events = [];
+      attendance.punches.forEach(p => {
+        events.push({ type: 'punch_in', time: parseDate(p.in).getTime() });
+        events.push({ type: 'punch_out', time: p.out ? parseDate(p.out).getTime() : now.getTime() });
+      });
+      (attendance.breaks || []).forEach(b => {
+        events.push({ type: 'break_in', time: parseDate(b.start).getTime() });
+        events.push({ type: 'break_out', time: b.end ? parseDate(b.end).getTime() : now.getTime() });
+      });
+      events.sort((a, b) => a.time - b.time);
+
+      let accumulatedProdMs = 0;
+      let isWorking = false;
+      let isBreak = false;
+      let lastTime = events.length > 0 ? events[0].time : null;
+      let overtimeStartTime = null;
+
+      for (const ev of events) {
+        if (isWorking && !isBreak && lastTime !== null) {
+          const delta = ev.time - lastTime;
+          if (accumulatedProdMs + delta >= expectedMs) {
+            overtimeStartTime = lastTime + (expectedMs - accumulatedProdMs);
+            break;
+          }
+          accumulatedProdMs += delta;
+        }
+        
+        if (ev.type === 'punch_in') isWorking = true;
+        if (ev.type === 'punch_out') isWorking = false;
+        if (ev.type === 'break_in') isBreak = true;
+        if (ev.type === 'break_out') isBreak = false;
+        
+        lastTime = ev.time;
+      }
+
+      attendance.punches.forEach(p => {
+        const start = parseDate(p.in).getTime();
+        const end = p.out ? parseDate(p.out).getTime() : now.getTime();
+        
+        if (overtimeStartTime && end > overtimeStartTime) {
+          if (start < overtimeStartTime) {
+            // Split into two segments
+            const left1 = Math.max(0, ((start - timelineStart.getTime()) / totalMs) * 100);
+            const right1 = Math.min(100, ((overtimeStartTime - timelineStart.getTime()) / totalMs) * 100);
+            if (right1 - left1 > 0) segments.push({ color: 'success', left: left1, width: right1 - left1, zIndex: 1 });
+
+            const left2 = Math.max(0, ((overtimeStartTime - timelineStart.getTime()) / totalMs) * 100);
+            const right2 = Math.min(100, ((end - timelineStart.getTime()) / totalMs) * 100);
+            if (right2 - left2 > 0) segments.push({ color: 'info', left: left2, width: right2 - left2, zIndex: 1 });
+          } else {
+            // Entirely overtime
+            const left = Math.max(0, ((start - timelineStart.getTime()) / totalMs) * 100);
+            const right = Math.min(100, ((end - timelineStart.getTime()) / totalMs) * 100);
+            if (right - left > 0) segments.push({ color: 'info', left, width: right - left, zIndex: 1 });
+          }
+        } else {
+          // Entirely normal
+          const left = Math.max(0, ((start - timelineStart.getTime()) / totalMs) * 100);
+          const right = Math.min(100, ((end - timelineStart.getTime()) / totalMs) * 100);
+          if (right - left > 0) segments.push({ color: 'success', left, width: right - left, zIndex: 1 });
+        }
+      });
+    }
+    
+    if (attendance?.breaks) {
+      attendance.breaks.forEach(b => {
+        const start = parseDate(b.start);
+        const end = b.end ? parseDate(b.end) : now;
+        
+        const left = Math.max(0, ((start - timelineStart) / totalMs) * 100);
+        const right = Math.min(100, ((end - timelineStart) / totalMs) * 100);
+        const width = right - left;
+        
+        if (width > 0) {
+          segments.push({ color: 'warning', left, width, zIndex: 2 });
+        }
+      });
+    }
+    
+    return { labels, segments };
+  };
+
+  const { labels: timelineLabels, segments: timelineSegments } = getTimelineData();
+
   return (
     <div className="page-wrapper">
       <style>{`
@@ -94,11 +359,7 @@ const HRDashboard = () => {
             { label: 'HRMS Dashboard', active: true }
           ]}
         >
-          <div className="ms-2 head-icons">
-            <a href="#" className="" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Collapse" id="collapse-header">
-              <i className="ti ti-chevrons-up"></i>
-            </a>
-          </div>
+         
         </PageHeader>
 
         <div className="row">
@@ -107,8 +368,10 @@ const HRDashboard = () => {
             <div className="card flex-fill">
               <div className="card-body">
                 <div className="mb-3 text-center">
-                  <h6 className="fw-medium text-gray-5 mb-2">Good Morning, Adrian</h6>
-                  <h4>08:35 AM, 11 Mar 2025</h4>
+                  <h6 className="fw-medium text-gray-5 mb-2 text-truncate" title={user?.name || ''}>
+                    {getGreeting()}, <span style={{ cursor: 'pointer' }}>{user?.name || 'User'}</span>
+                  </h6>
+                  <h4>{formatTime(now)}, {formatDate(now)}</h4>
                 </div>
                 <div className="attendance-circle-progress mx-auto mb-3" data-value='65'>
                   <span className="progress-left">
@@ -117,19 +380,33 @@ const HRDashboard = () => {
                   <span className="progress-right">
                     <span className="progress-bar border-success"></span>
                   </span>
-                  <div className="avatar avatar-xxl avatar-rounded">
-                    <img src="/assets/img/profiles/avatar-27.jpg" alt="User Profile" />
+                  <div className="avatar avatar-xxl avatar-rounded bg-primary-transparent text-primary d-flex align-items-center justify-content-center overflow-hidden">
+                    {user?.profile_photo ? (
+                      <img src={getProfileUrl(user.profile_photo)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span className="fs-24 fw-bold">{getInitials(user?.name)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="badge badge-md badge-primary mb-3">Production : 3.45 hrs</div>
-                  <h6 className="fw-medium d-flex align-items-center justify-content-center mb-3">
-                    <i className="ti ti-fingerprint text-primary me-1"></i>
-                    Punch In at 10.00 AM
-                  </h6>
+                  <div className="badge badge-md badge-primary mb-3">
+                    Production : {formatDuration(productionSecs)}
+                  </div>
+                  {attendance?.punches?.length > 0 && (
+                    <h6 className="fw-medium d-flex align-items-center justify-content-center mb-3">
+                      <i className="ti ti-fingerprint text-primary me-1"></i>
+                      {attendance.is_punched_in ? 'Punch In at' : 'Punch Out at'} {formatTime(parseDate(attendance.is_punched_in ? attendance.punches[attendance.punches.length - 1].in : attendance.punches[attendance.punches.length - 1].out))}
+                    </h6>
+                  )}
                   <div className="d-flex flex-column gap-2">
-                    <button className="btn btn-dark w-100">Punch Out</button>
-                    <button className="btn btn-outline-dark w-100">Take Break</button>
+                    <button className={`btn ${attendance?.is_punched_in ? 'btn-danger' : 'btn-dark'} w-100`} onClick={handlePunch}>
+                      {attendance?.is_punched_in ? 'Punch Out' : 'Punch In'}
+                    </button>
+                    {attendance?.is_punched_in && (
+                      <button className={`btn ${attendance?.is_on_break ? 'btn-warning' : 'btn-outline-dark'} w-100`} onClick={handleBreak}>
+                        {attendance?.is_on_break ? 'End Break' : 'Take Break'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -147,7 +424,7 @@ const HRDashboard = () => {
                     <span className="avatar avatar-sm bg-primary mb-2">
                       <i className="ti ti-users"></i>
                     </span>
-                    <h2 className="mb-1">8.36 / <span className="fs-20 text-gray-5"> 9</span></h2>
+                    <h2 className="mb-1">{stats.total_staff}</h2>
                     <p className="fw-medium text-truncate mb-0 fs-13">Total Staff</p>
                   </div>
                 </div>
@@ -158,7 +435,7 @@ const HRDashboard = () => {
                     <span className="avatar avatar-sm bg-dark mb-2">
                       <i className="ti ti-user-check"></i>
                     </span>
-                    <h2 className="mb-1">10 / <span className="fs-20 text-gray-5"> 40</span></h2>
+                    <h2 className="mb-1">{stats.present_today} <span className="fs-20 text-gray-5">/ {stats.total_staff}</span></h2>
                     <p className="fw-medium text-truncate mb-0 fs-13">Present Today</p>
                   </div>
                 </div>
@@ -169,7 +446,7 @@ const HRDashboard = () => {
                     <span className="avatar avatar-sm bg-info mb-2">
                       <i className="ti ti-user-x"></i>
                     </span>
-                    <h2 className="mb-1">75 / <span className="fs-20 text-gray-5"> 98</span></h2>
+                    <h2 className="mb-1">{stats.absent_today} <span className="fs-20 text-gray-5">/ {stats.total_staff}</span></h2>
                     <p className="fw-medium text-truncate mb-0 fs-13">Absent Today</p>
                   </div>
                 </div>
@@ -180,8 +457,8 @@ const HRDashboard = () => {
                     <span className="avatar avatar-sm bg-warning mb-2">
                       <i className="ti ti-clock-exclamation"></i>
                     </span>
-                    <h2 className="mb-1">5.5 / <span className="fs-20 text-gray-5"> 15</span></h2>
-                    <p className="fw-medium text-truncate mb-0 fs-13">late Today</p>
+                    <h2 className="mb-1">{stats.late_today} <span className="fs-20 text-gray-5">/ {stats.present_today || 1}</span></h2>
+                    <p className="fw-medium text-truncate mb-0 fs-13">Late Today</p>
                   </div>
                 </div>
               </div>
@@ -191,7 +468,7 @@ const HRDashboard = () => {
                     <span className="avatar avatar-sm bg-pink mb-2">
                       <i className="ti ti-calendar-time"></i>
                     </span>
-                    <h2 className="mb-1">16 / <span className="fs-20 text-gray-5"> 28</span></h2>
+                    <h2 className="mb-1">{stats.pending_leaves}</h2>
                     <p className="fw-medium text-truncate mb-0 fs-13">Pending Leaves</p>
                   </div>
                 </div>
@@ -205,10 +482,10 @@ const HRDashboard = () => {
                   <div className="col-xl-3 col-sm-6">
                     <div className="mb-2">
                       <p className="d-flex align-items-center mb-1 fs-13">
-                        <i className="ti ti-point-filled text-dark-transparent me-1"></i>
+                        <i className="ti ti-point-filled text-primary me-1"></i>
                         Total Working hours
                       </p>
-                      <h4 className="mb-0">12h 36m</h4>
+                      <h4 className="mb-0">{formatDuration(productionSecs + breakSecs)}</h4>
                     </div>
                   </div>
                   <div className="col-xl-3 col-sm-6">
@@ -217,7 +494,7 @@ const HRDashboard = () => {
                         <i className="ti ti-point-filled text-success me-1"></i>
                         Productive Hours
                       </p>
-                      <h4 className="mb-0">08h 36m</h4>
+                      <h4 className="mb-0">{formatDuration(productionSecs)}</h4>
                     </div>
                   </div>
                   <div className="col-xl-3 col-sm-6">
@@ -226,7 +503,7 @@ const HRDashboard = () => {
                         <i className="ti ti-point-filled text-warning me-1"></i>
                         Break hours
                       </p>
-                      <h4 className="mb-0">22m 15s</h4>
+                      <h4 className="mb-0">{formatDuration(breakSecs)}</h4>
                     </div>
                   </div>
                   <div className="col-xl-3 col-sm-6">
@@ -235,46 +512,29 @@ const HRDashboard = () => {
                         <i className="ti ti-point-filled text-info me-1"></i>
                         Overtime
                       </p>
-                      <h4 className="mb-0">02h 15m</h4>
+                      <h4 className="mb-0">{formatDuration(overtimeSecs)}</h4>
                     </div>
                   </div>
                 </div>
                 
                 <div className="row">
                   <div className="col-md-12">
-                    <div className="progress bg-transparent-dark mb-3" style={{ height: '24px' }}>
-                      <div className="progress-bar bg-white rounded" role="progressbar" style={{ width: '18%' }}></div>
-                      <div className="progress-bar bg-success rounded me-2" role="progressbar" style={{ width: '18%' }}></div>
-                      <div className="progress-bar bg-warning rounded me-2" role="progressbar" style={{ width: '5%' }}></div>
-                      <div className="progress-bar bg-success rounded me-2" role="progressbar" style={{ width: '28%' }}></div>
-                      <div className="progress-bar bg-warning rounded me-2" role="progressbar" style={{ width: '17%' }}></div>
-                      <div className="progress-bar bg-success rounded me-2" role="progressbar" style={{ width: '22%' }}></div>
-                      <div className="progress-bar bg-warning rounded me-2" role="progressbar" style={{ width: '5%' }}></div>
-                      <div className="progress-bar bg-info rounded me-2" role="progressbar" style={{ width: '3%' }}></div>
-                      <div className="progress-bar bg-info rounded" role="progressbar" style={{ width: '2%' }}></div>
-                      <div className="progress-bar bg-white rounded" role="progressbar" style={{ width: '18%' }}></div>
+                    <div className="progress bg-transparent-dark mb-3 position-relative" style={{ height: '24px' }}>
+                      {timelineSegments.map((seg, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`progress-bar bg-${seg.color} rounded position-absolute h-100`} 
+                          role="progressbar" 
+                          style={{ left: `${seg.left}%`, width: `${seg.width}%`, zIndex: seg.zIndex }}
+                        ></div>
+                      ))}
                     </div>
                   </div>
                   <div className="col-md-12">
                     <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
-                      <span className="fs-10">06:00</span>
-                      <span className="fs-10">07:00</span>
-                      <span className="fs-10">08:00</span>
-                      <span className="fs-10">09:00</span>
-                      <span className="fs-10">10:00</span>
-                      <span className="fs-10">11:00</span>
-                      <span className="fs-10">12:00</span>
-                      <span className="fs-10">01:00</span>
-                      <span className="fs-10">02:00</span>
-                      <span className="fs-10">03:00</span>
-                      <span className="fs-10">04:00</span>
-                      <span className="fs-10">05:00</span>
-                      <span className="fs-10">06:00</span>
-                      <span className="fs-10">07:00</span>
-                      <span className="fs-10">08:00</span>
-                      <span className="fs-10">09:00</span>
-                      <span className="fs-10">10:00</span>
-                      <span className="fs-10">11:00</span>
+                      {timelineLabels.map((lbl, idx) => (
+                        <span key={idx} className="fs-10">{lbl}</span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -322,31 +582,18 @@ const HRDashboard = () => {
                           <h5 className="mb-1 fw-bold text-dark fs-18">Department Allocations & Distribution</h5>
                           <p className="text-muted fs-13 mb-0">Ratio analysis of staff counts across divisions.</p>
                         </div>
-                        <button className="btn btn-outline-primary btn-sm rounded-pill d-inline-flex align-items-center fw-medium px-3 py-1">
-                          <i className="ti ti-download me-1"></i> Export CSV
-                        </button>
                       </div>
                       <div className="card-body px-4 pb-4 pt-3">
-                        <div className="d-flex justify-content-between py-3 border-bottom border-light">
-                          <span className="fw-bold text-dark fs-14">Creative</span>
-                          <span className="text-muted fs-13">0 Employees (0%)</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-3 border-bottom border-light">
-                          <span className="fw-bold text-dark fs-14">Engineering</span>
-                          <span className="text-muted fs-13">0 Employees (0%)</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-3 border-bottom border-light">
-                          <span className="fw-bold text-dark fs-14">Unassigned</span>
-                          <span className="text-muted fs-13">17 Employees (85%)</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-3 border-bottom border-light">
-                          <span className="fw-bold text-dark fs-14">support</span>
-                          <span className="text-muted fs-13">1 Employees (5%)</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-3">
-                          <span className="fw-bold text-dark fs-14">Sales</span>
-                          <span className="text-muted fs-13">2 Employees (10%)</span>
-                        </div>
+                        {stats?.department_allocations?.length > 0 ? (
+                          stats.department_allocations.map((dept, index) => (
+                            <div key={index} className={`d-flex justify-content-between py-3 ${index !== stats.department_allocations.length - 1 ? 'border-bottom border-light' : ''}`}>
+                              <span className="fw-bold text-dark fs-14">{dept.department}</span>
+                              <span className="text-muted fs-13">{dept.count} Employees ({dept.percentage}%)</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center text-muted py-4">No allocations found</div>
+                        )}
                       </div>
                     </div>
 

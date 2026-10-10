@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import CustomDataTable from '../components/common/CustomDataTable';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import axiosClient from '../api/axiosClient';
+import FilterBar from '../components/common/FilterBar';
 
 const initialAttendanceRecords = [
   { id: 1, employee_id: 'Emp-001', employee_name: 'Anthony Lewis', punch_in: '09:00 AM', punch_out: '06:00 PM', work_hours: '9h 0m', break_duration: '1h 0m', overtime: '-', method: 'Biometric', status: 'On Time' },
@@ -18,12 +20,47 @@ const initialAttendanceRecords = [
 
 const AttendanceAdmin = () => {
   const [activeTab, setActiveTab] = useState('Overview');
-  const [records] = useState(initialAttendanceRecords);
+  const [records, setRecords] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [singleDate, setSingleDate] = useState(null);
   const [dateRange, setDateRange] = useState([null, null]);
+
+  const [stats, setStats] = useState({ total_staff: 0, present_today: 0, absent_today: 0, late_today: 0, pending_leaves: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axiosClient.get('/hrms/attendance/live/stats/today');
+        setStats(res);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        let url = '/hrms/attendance/records';
+        if (dateRange[0]) {
+          const startStr = dateRange[0].toISOString().split('T')[0];
+          let endStr = startStr;
+          if (dateRange[1]) {
+            endStr = dateRange[1].toISOString().split('T')[0];
+          }
+          url += `?start_date=${startStr}&end_date=${endStr}`;
+        }
+        const res = await axiosClient.get(url);
+        setRecords(res);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchRecords();
+  }, [dateRange]);
 
   // Extract unique employees for the dropdown
   const employeeOptions = useMemo(() => {
@@ -34,12 +71,14 @@ const AttendanceAdmin = () => {
     ];
   }, [records]);
 
-  // KPIs
-  const totalStaff = 8;
-  const presentCount = records.filter(r => r.status !== 'Absent').length;
-  const absentCount = records.filter(r => r.status === 'Absent').length;
-  const lateCount = records.filter(r => r.status === 'Late').length;
-  const punctuality = Math.round(((presentCount - lateCount) / totalStaff) * 100) || 0;
+
+
+  // KPIs from live stats
+  const totalStaff = stats.total_staff;
+  const presentCount = stats.present_today;
+  const absentCount = stats.absent_today;
+  const lateCount = stats.late_today;
+  const punctuality = presentCount > 0 ? Math.round(((presentCount - lateCount) / presentCount) * 100) : 0;
 
   const filteredRecords = useMemo(() => {
     return records.filter(r => {
@@ -59,22 +98,113 @@ const AttendanceAdmin = () => {
     });
   }, [records, searchQuery, statusFilter, employeeFilter]);
 
+  const hasActiveFilters = !!(employeeFilter || statusFilter || dateRange[0] || dateRange[1] || searchQuery);
+
+  const filterConfig = [
+    {
+      type: 'select',
+      value: employeeFilter,
+      onChange: setEmployeeFilter,
+      options: employeeOptions
+    },
+    {
+      type: 'date',
+      value: dateRange,
+      onChange: setDateRange,
+      placeholder: 'Select Date Range'
+    },
+    {
+      type: 'select',
+      value: statusFilter,
+      onChange: setStatusFilter,
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'Present', label: 'Present' },
+        { value: 'Absent', label: 'Absent' },
+        { value: 'Leave', label: 'Leave' }
+      ]
+    }
+  ];
+
   const columns = [
     {
       name: 'Employee',
       selector: row => row.employee_name,
       sortable: true,
-      cell: row => (
-        <div className="d-flex align-items-center">
-          <a href="#" onClick={(e) => e.preventDefault()} className="avatar avatar-md rounded-circle bg-primary-transparent text-primary me-2">
-            {row.employee_name.charAt(0)}
-          </a>
-          <div>
-            <h6 className="mb-0"><a href="#" onClick={(e) => e.preventDefault()} className="text-dark">{row.employee_name}</a></h6>
-            <span className="fs-12 text-muted">{row.employee_id}</span>
+      minWidth: '220px',
+      cell: row => {
+        const getInitials = (name) => {
+          if (!name) return '';
+          return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        };
+        const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
+        const imgUrl = row.employee_profile_photo?.startsWith('http') 
+          ? row.employee_profile_photo 
+          : `${backendUrl}${row.employee_profile_photo?.startsWith('/') ? '' : '/'}${row.employee_profile_photo}`;
+          
+        return (
+          <div className="d-flex align-items-center">
+            <div className="avatar avatar-md rounded-circle bg-primary-transparent text-primary me-2 overflow-hidden d-flex justify-content-center align-items-center">
+              {row.employee_profile_photo ? (
+                <img src={imgUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span>{getInitials(row.employee_name)}</span>
+              )}
+            </div>
+            <div>
+              <h6 className="mb-0"><a href="#" onClick={(e) => e.preventDefault()} className="text-dark">{row.employee_name}</a></h6>
+              <span className="fs-12 text-muted">{row.employee_id}</span>
+            </div>
           </div>
+        );
+      }
+    },
+    {
+      name: 'Date / Day',
+      selector: row => row.date,
+      sortable: true,
+      cell: row => (
+        <div className="d-flex flex-column">
+          <span className="fw-medium text-dark">{row.date}</span>
+          <span className="fs-12 text-muted">{row.day}</span>
         </div>
       )
+    },
+    {
+      name: 'Current Status',
+      selector: row => row.current_status,
+      sortable: true,
+      cell: row => {
+        let badgeClass = 'badge-soft-secondary';
+        if (row.current_status === 'Punch In') badgeClass = 'badge-soft-success';
+        if (row.current_status === 'Break In') badgeClass = 'badge-soft-warning';
+        if (row.current_status === 'Break Out') badgeClass = 'badge-soft-info';
+        if (row.current_status === 'Punch Out') badgeClass = 'badge-soft-dark';
+        
+        return (
+          <span className={`badge ${badgeClass} d-inline-flex align-items-center badge-sm`}>
+            {row.current_status}
+          </span>
+        );
+      }
+    },
+    {
+      name: 'Status',
+      selector: row => row.status,
+      sortable: true,
+      cell: row => {
+        let badgeClass = 'badge-soft-secondary';
+        if (row.status === 'Present') badgeClass = 'badge-soft-success';
+        if (row.status === 'Late') badgeClass = 'badge-soft-warning';
+        if (row.status === 'Absent') badgeClass = 'badge-soft-danger';
+        if (row.status === 'Leave' || row.status === 'Half Day') badgeClass = 'badge-soft-info';
+        
+        return (
+          <span className={`badge ${badgeClass} d-inline-flex align-items-center badge-sm`}>
+            {row.status}
+          </span>
+        );
+      }
     },
     {
       name: 'Punch In',
@@ -87,51 +217,38 @@ const AttendanceAdmin = () => {
       sortable: true,
     },
     {
-      name: 'Working Hrs',
-      selector: row => row.work_hours,
-      sortable: true,
-    },
-    {
-      name: 'Break',
-      selector: row => row.break_duration,
+      name: 'Break Time',
+      selector: row => row.break_time,
       sortable: true,
     },
     {
       name: 'Overtime',
-      selector: row => row.overtime,
+      selector: row => row.over_time,
       sortable: true,
       cell: row => (
-        <span className={row.overtime !== '-' ? 'text-success fw-medium' : ''}>{row.overtime}</span>
+        <span className={row.over_time !== '-' ? 'text-success fw-medium' : ''}>{row.over_time}</span>
       )
     },
     {
-      name: 'Verification Method',
-      selector: row => row.method,
+      name: 'Late',
+      selector: row => row.late,
       sortable: true,
-      cell: row => {
-        if (row.method === 'Biometric') return <span className="text-muted"><i className="ti ti-check-circle me-1"></i> Biometric</span>;
-        if (row.method === 'Mobile App') return <span className="text-muted"><i className="ti ti-device-mobile me-1"></i> Mobile</span>;
-        if (row.method === 'Web Portal') return <span className="text-muted"><i className="ti ti-device-desktop me-1"></i> Web</span>;
-        return <span>-</span>;
-      }
+      cell: row => (
+        <span className={row.late !== '-' ? 'fw-medium text-dark' : ''}>{row.late}</span>
+      )
     },
     {
-      name: 'Status',
-      selector: row => row.status,
+      name: 'Production Hours',
+      selector: row => row.production_hours,
       sortable: true,
-      cell: row => {
-        let badgeClass = 'badge-soft-secondary';
-        if (row.status === 'On Time') badgeClass = 'badge-soft-success';
-        if (row.status === 'Late') badgeClass = 'badge-soft-warning';
-        if (row.status === 'Absent') badgeClass = 'badge-soft-danger';
-        if (row.status === 'Half Day') badgeClass = 'badge-soft-info';
-        
-        return (
-          <span className={`badge ${badgeClass} d-inline-flex align-items-center badge-sm`}>
-            {row.status}
-          </span>
-        );
-      }
+      cell: row => (
+        <span className="fw-medium text-dark">{row.production_hours}</span>
+      )
+    },
+    {
+      name: 'Total Working Hours',
+      selector: row => row.total_working_hours,
+      sortable: true,
     }
   ];
 
@@ -258,60 +375,16 @@ const AttendanceAdmin = () => {
               <div className="card">
                 <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
                   <h5>Attendance Logs</h5>
-                  <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-                    <div className="me-2" style={{ minWidth: '160px' }}>
-                      <CustomSelect
-                        options={employeeOptions}
-                        value={employeeOptions.find(opt => opt.value === employeeFilter) || employeeOptions[0]}
-                        onChange={(selected) => setEmployeeFilter(selected ? selected.value : '')}
-                      />
-                    </div>
-                    
-                    <div className="me-2">
-                      <div className="input-icon position-relative" style={{ width: '160px' }}>
-                        <span className="input-icon-addon">
-                          <i className="ti ti-calendar text-gray-9"></i>
-                        </span>
-                        <CustomDatePicker
-                          selected={singleDate}
-                          onChange={(date) => setSingleDate(date)}
-                          className="form-control"
-                          placeholderText="Select Date"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="me-0">
-                      <div className="input-icon position-relative" style={{ width: '220px' }}>
-                        <span className="input-icon-addon">
-                          <i className="ti ti-calendar text-gray-9"></i>
-                        </span>
-                        <CustomDatePicker
-                          isRange={true}
-                          selected={dateRange[0]}
-                          startDate={dateRange[0]}
-                          endDate={dateRange[1]}
-                          onChange={(update) => setDateRange(update)}
-                          className="form-control date-range bookingrange"
-                          placeholderText="Select Date Range"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="me-0" style={{ minWidth: '140px' }}>
-                      <CustomSelect
-                        options={[
-                          { value: '', label: 'All Statuses' },
-                          { value: 'On Time', label: 'On Time' },
-                          { value: 'Late', label: 'Late' },
-                          { value: 'Absent', label: 'Absent' },
-                          { value: 'Half Day', label: 'Half Day' }
-                        ]}
-                        value={statusFilter ? { value: statusFilter, label: statusFilter } : { value: '', label: 'Status' }}
-                        onChange={(selected) => setStatusFilter(selected ? selected.value : '')}
-                      />
-                    </div>
-                  </div>
+                  <FilterBar 
+                    filters={filterConfig}
+                    hasActiveFilters={hasActiveFilters}
+                    onClear={() => {
+                      setSearchQuery('');
+                      setEmployeeFilter('');
+                      setStatusFilter('');
+                      setDateRange([null, null]);
+                    }}
+                  />
                 </div>
                 <div className="card-body p-0">
                   <CustomDataTable

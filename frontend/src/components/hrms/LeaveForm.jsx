@@ -3,7 +3,7 @@ import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
 
-const LeaveForm = ({ open, onClose, onSubmit, editingData = null }) => {
+const LeaveForm = ({ open, onClose, onSubmit, editingData = null, monthlyRemaining = 1 }) => {
   const [formData, setFormData] = useState({
     leave_type: '',
     day_type: '',
@@ -128,10 +128,11 @@ const LeaveForm = ({ open, onClose, onSubmit, editingData = null }) => {
             <label className="form-label">Leave Type <span className="text-danger">*</span></label>
             <CustomSelect
               options={[
-                { value: 'Monthly Leave', label: 'Monthly Leave' },
+                ...(editingData?.leave_type === 'Monthly Leave' || monthlyRemaining > 0 
+                  ? [{ value: 'Monthly Leave', label: 'Monthly Leave' }] 
+                  : []),
                 { value: 'Sick Leave', label: 'Sick Leave' },
                 { value: 'Casual Leave', label: 'Casual Leave' },
-                
                 { value: 'Other', label: 'Other' }
               ]}
               value={formData.leave_type ? { value: formData.leave_type, label: formData.leave_type } : null}
@@ -139,6 +140,12 @@ const LeaveForm = ({ open, onClose, onSubmit, editingData = null }) => {
               placeholder="Select Leave Type"
             />
             {errors.leave_type && <div className="text-danger fs-12 mt-1">{errors.leave_type}</div>}
+            {monthlyRemaining <= 0 && editingData?.leave_type !== 'Monthly Leave' && (
+              <div className="text-muted fs-12 mt-1">
+                <i className="ti ti-info-circle me-1"></i>
+                Your Monthly Leave for this month has already been utilized.
+              </div>
+            )}
           </div>
 
           <div className="col-12">

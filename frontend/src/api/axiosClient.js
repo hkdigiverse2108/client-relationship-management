@@ -32,11 +32,16 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error?.response?.status;
-    const message =
+    let message =
       error?.response?.data?.detail ||
       error?.response?.data?.message ||
       error?.message ||
       "Something went wrong. Please try again.";
+      
+    // FastAPI 422 returns an array of objects in detail
+    if (Array.isArray(message)) {
+      message = message.map(m => m.msg || JSON.stringify(m)).join(", ");
+    }
 
     if (status === 401) {
       storage.remove(STORAGE_KEYS.token);

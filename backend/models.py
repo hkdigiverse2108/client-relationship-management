@@ -38,6 +38,8 @@ class UserCreate(BaseModel):
     hra_allowance: Optional[float] = None
     special_allowances: Optional[float] = None
     manager_id: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 class UserInDB(UserCreate):
     id: str = Field(alias="_id")
@@ -97,6 +99,8 @@ class UserResponse(BaseModel):
     special_allowances: Optional[float] = None
     manager_id: Optional[str] = None
     notification_preferences: Optional[NotificationPreferences] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -126,6 +130,8 @@ class UserUpdate(BaseModel):
     special_allowances: Optional[float] = None
     manager_id: Optional[str] = None
     notification_preferences: Optional[NotificationPreferences] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 class StatusUpdate(BaseModel):
     is_active: bool

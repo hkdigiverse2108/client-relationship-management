@@ -26,8 +26,8 @@ async def get_allowed_user_ids(current_user: dict) -> Optional[List[str]]:
     If the user is Super Admin or admin, returns None (meaning they can see everything).
     Otherwise, returns their own ID plus the IDs of all their descendants in the hierarchy.
     """
-    role = current_user.get("role")
-    if role == "Super Admin":
+    role = current_user.get("role", "").lower()
+    if role in ["super admin", "superadmin"]:
         return None
         
     # Find all descendants (users who have this user in their ancestors list)

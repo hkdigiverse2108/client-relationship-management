@@ -12,7 +12,7 @@ from models import (
     PunchAction, AttendanceResponse
 )
 from db import db, users_collection
-from dependencies import get_current_user
+from dependencies import get_current_user, get_allowed_user_ids
 from models import UserResponse
 import math
 
@@ -710,3 +710,473 @@ async def get_custom_types(current_user: dict = Depends(get_current_user)):
         t["_id"] = str(t["_id"])
     return types
 
+# --- Attendance / Punch-in System ---
+
+@router.get("/attendance/live/stats/today")
+async def get_today_attendance_stats(current_user: dict = Depends(get_current_user)):
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    # Custom logic only for these dashboard cards:
+    # Super Admin sees all. Admin sees their branch.
+    # Anyone under an Admin sees that Admin's branch stats.
+    # If no Admin is in ancestors, they see all (company wide).
+    role = current_user.get("role", "").lower()
+    
+    if role in ["super admin", "superadmin"]:
+        user_query = {"is_deleted": {"$ne": True}}
+    elif role == "admin":
+        user_query = {"is_deleted": {"$ne": True}, "$or": [{"ancestors": current_user["_id"]}, {"_id": current_user["_id"]}]}
+    else:
+        ancestors = current_user.get("ancestors", [])
+        admin_id = None
+        if ancestors:
+            ancestor_docs = await users_collection.find({"_id": {"$in": ancestors}}).to_list(length=None)
+            for doc in ancestor_docs:
+                if doc.get("role", "").lower() == "admin":
+                    admin_id = doc["_id"]
+                    break
+        
+        if admin_id:
+            user_query = {"is_deleted": {"$ne": True}, "$or": [{"ancestors": admin_id}, {"_id": admin_id}]}
+        else:
+            user_query = {"is_deleted": {"$ne": True}}
+        
+    staff_cursor = users_collection.find(user_query)
+    staff_users = await staff_cursor.to_list(length=None)
+    staff_ids = [u["_id"] for u in staff_users]
+    
+    total_staff = len(staff_ids)
+    
+    attendance_cursor = db.hr_attendance.find({
+        "employee_id": {"$in": staff_ids},
+        "date": today_str
+    })
+    attendances = await attendance_cursor.to_list(length=None)
+    
+    present_today = len([a for a in attendances if a.get("punches") and len(a["punches"]) > 0])
+    absent_today = max(0, total_staff - present_today)
+    
+    late_today = 0
+    staff_map = {u["_id"]: u for u in staff_users}
+    for att in attendances:
+        if att.get("punches") and len(att["punches"]) > 0:
+            first_punch_str = att["punches"][0].get("in")
+            if not first_punch_str: continue
+            
+            try:
+                # Ensure compatibility with Python 3.9+ fromisoformat by removing Z if present
+                first_punch_time = datetime.fromisoformat(first_punch_str.replace("Z", "+00:00"))
+                first_punch_local = first_punch_time + timedelta(hours=5, minutes=30)
+                
+                user = staff_map.get(att["employee_id"])
+                start_time_str = user.get("start_time") if user else None
+                
+                if start_time_str:
+                    start_h, start_m = map(int, start_time_str.split(':'))
+                    if first_punch_local.hour * 60 + first_punch_local.minute > start_h * 60 + start_m:
+                        late_today += 1
+            except Exception:
+                pass
+
+    pending_leaves = await db.hr_leaves.count_documents({
+        "employee_id": {"$in": staff_ids},
+        "status": "Pending"
+    })
+    
+    department_counts = {}
+    for user in staff_users:
+        dept = user.get("department") or "Unassigned"
+        department_counts[dept] = department_counts.get(dept, 0) + 1
+        
+    department_allocations = []
+    for dept, count in department_counts.items():
+        department_allocations.append({
+            "department": dept,
+            "count": count,
+            "percentage": round((count / total_staff) * 100) if total_staff > 0 else 0
+        })
+    department_allocations.sort(key=lambda x: x["count"], reverse=True)
+    
+    return {
+        "total_staff": total_staff,
+        "present_today": present_today,
+        "absent_today": absent_today,
+        "late_today": late_today,
+        "pending_leaves": pending_leaves,
+        "department_allocations": department_allocations
+    }
+
+@router.get("/attendance/live/today")
+async def get_today_attendance(current_user: dict = Depends(get_current_user)):
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    record = await db.hr_attendance.find_one({
+        "employee_id": current_user["_id"],
+        "date": today_str
+    })
+    
+    if not record:
+        return {
+            "date": today_str,
+            "punches": [],
+            "breaks": [],
+            "is_punched_in": False,
+            "is_on_break": False
+        }
+        
+    record["_id"] = str(record["_id"])
+    return record
+
+@router.post("/attendance/live/punch")
+async def toggle_punch(current_user: dict = Depends(get_current_user)):
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    now = datetime.utcnow()
+    
+    record = await db.hr_attendance.find_one({
+        "employee_id": current_user["_id"],
+        "date": today_str
+    })
+    
+    if not record:
+        # First punch in of the day
+        new_record = {
+            "employee_id": current_user["_id"],
+            "date": today_str,
+            "punches": [{"in": now, "out": None}],
+            "breaks": [],
+            "is_punched_in": True,
+            "is_on_break": False,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.hr_attendance.insert_one(new_record)
+        new_record["_id"] = str(new_record["_id"])
+        return new_record
+        
+    punches = record.get("punches", [])
+    is_punched_in = record.get("is_punched_in", False)
+    breaks = record.get("breaks", [])
+    is_on_break = record.get("is_on_break", False)
+    
+    if is_punched_in:
+        # Punch out
+        if punches and punches[-1]["out"] is None:
+            punches[-1]["out"] = now
+            
+        # If on break, automatically end break
+        if is_on_break and breaks and breaks[-1]["end"] is None:
+            breaks[-1]["end"] = now
+            is_on_break = False
+            
+        is_punched_in = False
+    else:
+        # Punch in again
+        punches.append({"in": now, "out": None})
+        is_punched_in = True
+        
+    await db.hr_attendance.update_one(
+        {"_id": record["_id"]},
+        {"$set": {
+            "punches": punches,
+            "breaks": breaks,
+            "is_punched_in": is_punched_in,
+            "is_on_break": is_on_break,
+            "updated_at": now
+        }}
+    )
+    
+    record["punches"] = punches
+    record["breaks"] = breaks
+    record["is_punched_in"] = is_punched_in
+    record["is_on_break"] = is_on_break
+    record["_id"] = str(record["_id"])
+    return record
+
+@router.post("/attendance/live/break")
+async def toggle_break(current_user: dict = Depends(get_current_user)):
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    now = datetime.utcnow()
+    
+    record = await db.hr_attendance.find_one({
+        "employee_id": current_user["_id"],
+        "date": today_str
+    })
+    
+    if not record or not record.get("is_punched_in", False):
+        raise HTTPException(status_code=400, detail="Must be punched in to take a break")
+        
+    breaks = record.get("breaks", [])
+    is_on_break = record.get("is_on_break", False)
+    
+    if is_on_break:
+        # End break
+        if breaks and breaks[-1]["end"] is None:
+            breaks[-1]["end"] = now
+        is_on_break = False
+    else:
+        # Start break
+        breaks.append({"start": now, "end": None})
+        is_on_break = True
+        
+    await db.hr_attendance.update_one(
+        {"_id": record["_id"]},
+        {"$set": {
+            "breaks": breaks,
+            "is_on_break": is_on_break,
+            "updated_at": now
+        }}
+    )
+    
+    record["breaks"] = breaks
+    record["is_on_break"] = is_on_break
+    record["_id"] = str(record["_id"])
+    return record
+
+@router.get("/attendance/records")
+async def get_attendance_records(
+    start_date: str = None,
+    end_date: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    if not start_date:
+        start_date = datetime.utcnow().strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = start_date
+        
+    allowed_ids = await get_allowed_user_ids(current_user)
+    
+    if allowed_ids is None:
+        user_query = {"is_deleted": {"$ne": True}}
+    else:
+        # Check if they are admin or just an employee looking at their top-level admin
+        role = current_user.get("role", "").lower()
+        if role != "admin":
+            ancestors = current_user.get("ancestors", [])
+            admin_id = None
+            if ancestors:
+                ancestor_docs = await users_collection.find({"_id": {"$in": ancestors}}).to_list(length=None)
+                for doc in ancestor_docs:
+                    if doc.get("role", "").lower() == "admin":
+                        admin_id = doc["_id"]
+                        break
+            if admin_id:
+                user_query = {"is_deleted": {"$ne": True}, "$or": [{"ancestors": admin_id}, {"_id": admin_id}]}
+            else:
+                user_query = {"is_deleted": {"$ne": True}}
+        else:
+            user_query = {"is_deleted": {"$ne": True}, "_id": {"$in": allowed_ids}}
+            
+    staff_cursor = users_collection.find(user_query)
+    staff_users = await staff_cursor.to_list(length=None)
+    staff_ids = [u["_id"] for u in staff_users]
+    
+    # Generate list of dates between start_date and end_date
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    
+    date_list = []
+    current_dt = start_dt
+    while current_dt <= end_dt:
+        date_list.append(current_dt.strftime("%Y-%m-%d"))
+        current_dt += timedelta(days=1)
+        
+    # Limit to maximum 31 days to prevent overload
+    if len(date_list) > 31:
+        date_list = date_list[:31]
+    
+    # Fetch attendances for these staff on the dates
+    attendance_cursor = db.hr_attendance.find({
+        "employee_id": {"$in": staff_ids},
+        "date": {"$in": date_list}
+    })
+    attendances = await attendance_cursor.to_list(length=None)
+    att_map = {(a["employee_id"], a["date"]): a for a in attendances}
+    
+    # Fetch leaves for these staff on the dates
+    leaves_cursor = db.hr_leaves.find({
+        "employee_id": {"$in": staff_ids},
+        "status": "Approved",
+        "start_date": {"$lte": date_list[-1]},
+        "end_date": {"$gte": date_list[0]}
+    })
+    leaves = await leaves_cursor.to_list(length=None)
+    
+    leave_map = {}
+    for l in leaves:
+        emp = l["employee_id"]
+        try:
+            ls = datetime.strptime(l["start_date"], "%Y-%m-%d")
+            le = datetime.strptime(l["end_date"], "%Y-%m-%d")
+            curr = ls
+            while curr <= le:
+                leave_map[(emp, curr.strftime("%Y-%m-%d"))] = True
+                curr += timedelta(days=1)
+        except:
+            pass
+    
+    results = []
+    
+    import re
+    def parse_time_str(t_str, default_h=9, default_m=0):
+        if not t_str: return default_h, default_m
+        match = re.search(r'(\d+):(\d+)', t_str)
+        if match:
+            h, m = int(match.group(1)), int(match.group(2))
+            if 'pm' in t_str.lower() and h != 12:
+                h += 12
+            elif 'am' in t_str.lower() and h == 12:
+                h = 0
+            return h, m
+        return default_h, default_m
+    
+    def format_duration(secs):
+        if secs <= 0: return "-"
+        h = int(secs // 3600)
+        m = int((secs % 3600) // 60)
+        return f"{h}h {m}m"
+        
+    for user in staff_users:
+        emp_id = user["_id"]
+        for d in date_list:
+            att = att_map.get((emp_id, d))
+        
+        # Parse start and end time
+        start_time_str = user.get("start_time")
+        end_time_str = user.get("end_time")
+        
+        try:
+            sh, sm = parse_time_str(start_time_str, 9, 0)
+            eh, em = parse_time_str(end_time_str, 18, 0)
+            assigned_working_secs = (eh * 3600 + em * 60) - (sh * 3600 + sm * 60)
+        except:
+            assigned_working_secs = 9 * 3600
+        
+        # Calculate punches
+        punches = att.get("punches", []) if att else []
+        breaks = att.get("breaks", []) if att else []
+        is_punched_in = att.get("is_punched_in", False) if att else False
+        is_on_break = att.get("is_on_break", False) if att else False
+        
+        # Current Status
+        if leave_map.get((emp_id, d)):
+            current_status = "Punch Out"
+            status = "Leave"
+        elif not att or not punches:
+            current_status = "Punch Out"
+            status = "Absent"
+        else:
+            status = "Present"
+            if is_on_break:
+                current_status = "Break In"
+            elif is_punched_in:
+                if len(breaks) > 0:
+                    current_status = "Break Out"
+                else:
+                    current_status = "Punch In"
+            else:
+                current_status = "Punch Out"
+                
+        # Times
+        punch_in = "-"
+        punch_out = "-"
+        first_punch_dt = None
+        
+        def parse_dt(val):
+            if isinstance(val, datetime):
+                return val
+            if isinstance(val, str):
+                return datetime.fromisoformat(val.replace("Z", "+00:00"))
+            return None
+
+        if punches:
+            try:
+                first_punch_time = parse_dt(punches[0]["in"])
+                if first_punch_time:
+                    first_punch_dt = first_punch_time + timedelta(hours=5, minutes=30)
+                    punch_in = first_punch_dt.strftime("%I:%M %p")
+                
+                last_out = punches[-1]["out"]
+                if last_out:
+                    last_punch_time = parse_dt(last_out)
+                    if last_punch_time:
+                        last_punch_dt = last_punch_time + timedelta(hours=5, minutes=30)
+                        punch_out = last_punch_dt.strftime("%I:%M %p")
+            except:
+                pass
+                
+        # Late
+        late_duration = "-"
+        if first_punch_dt:
+            try:
+                sh, sm = parse_time_str(start_time_str, 9, 0)
+                punch_minutes = first_punch_dt.hour * 60 + first_punch_dt.minute
+                start_minutes = sh * 60 + sm
+                if punch_minutes > start_minutes:
+                    late_duration = format_duration((punch_minutes - start_minutes) * 60)
+            except:
+                pass
+                
+        # Calculate actual working time
+        prod_secs = 0
+        now_dt = datetime.utcnow()
+        for p in punches:
+            try:
+                pt_in = parse_dt(p["in"])
+                pt_out = parse_dt(p.get("out")) if p.get("out") else now_dt
+                if pt_in and pt_out:
+                    prod_secs += (pt_out - pt_in).total_seconds()
+            except:
+                pass
+                
+        # Calculate break time
+        break_secs = 0
+        for b in breaks:
+            try:
+                bt_in = parse_dt(b["start"])
+                bt_out = parse_dt(b.get("end")) if b.get("end") else now_dt
+                if bt_in and bt_out:
+                    break_secs += (bt_out - bt_in).total_seconds()
+            except:
+                pass
+                
+        # Total working hours = prod_secs (time from punch in to punch out)
+        total_worked_secs = prod_secs
+        total_working_hours = format_duration(total_worked_secs) if status == "Present" else "-"
+        
+        # Sub breaks from production
+        actual_prod_secs = max(0, total_worked_secs - break_secs)
+        
+        production_hours = format_duration(actual_prod_secs) if status == "Present" else "-"
+        break_time = format_duration(break_secs) if break_secs > 0 else "-"
+        
+        overtime_secs = max(0, actual_prod_secs - assigned_working_secs)
+        over_time = format_duration(overtime_secs) if overtime_secs > 0 else "-"
+        
+        # Date string
+        try:
+            d_obj = datetime.strptime(d, "%Y-%m-%d")
+            display_date = d_obj.strftime("%d %b %Y")
+            display_day = d_obj.strftime("%A")
+        except:
+            display_date = d
+            display_day = ""
+            
+        results.append({
+            "id": f"{emp_id}_{d}",
+            "employee_id": user.get("id_number", f"Emp-{emp_id[-4:].upper()}"),
+            "employee_name": user.get("name", "Unknown"),
+            "employee_profile_photo": user.get("profile_photo"),
+            "date": display_date,
+            "day": display_day,
+            "current_status": current_status,
+            "status": status,
+            "punch_in": punch_in,
+            "punch_out": punch_out,
+            "break_time": break_time,
+            "over_time": over_time,
+            "late": late_duration,
+            "production_hours": production_hours,
+            "total_working_hours": total_working_hours,
+            "method": "Web Portal"
+        })
+        
+    return results

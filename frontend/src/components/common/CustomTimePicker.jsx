@@ -18,19 +18,21 @@ const CustomTimePicker = ({
     else setInternalTime(time);
   };
 
-  const CustomInput = React.forwardRef(({ value, onClick, onChange, placeholder }, ref) => (
+  const CustomInput = React.forwardRef(({ value, onClick, onChange, placeholder, disabled }, ref) => (
     <div className="input-icon position-relative w-100">
       <span className="input-icon-addon">
         <i className="ti ti-clock text-gray-9"></i>
       </span>
       <input
         value={value}
-        onClick={onClick}
-        onChange={onChange}
+        onClick={!disabled ? onClick : undefined}
+        onChange={!disabled ? onChange : undefined}
+        disabled={disabled}
+        maxLength={8}
         ref={ref}
         placeholder={placeholder}
         className={`form-control ${className || ''}`}
-        style={{ cursor: 'pointer', backgroundColor: '#fff' }}
+        style={{ cursor: disabled ? 'not-allowed' : 'text', backgroundColor: disabled ? '#f8f9fa' : '#fff' }}
       />
     </div>
   ));
@@ -40,6 +42,11 @@ const CustomTimePicker = ({
       <DatePicker
         selected={actualSelected}
         onChange={handleTimeChange}
+        onChangeRaw={(e) => {
+          let val = e.target.value;
+          // strictly remove non-time characters
+          e.target.value = val.replace(/[^0-9: APMapm]/g, '');
+        }}
         customInput={<CustomInput />}
         placeholderText={actualPlaceholder}
         showTimeSelect
