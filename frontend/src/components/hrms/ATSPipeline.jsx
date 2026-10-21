@@ -7,6 +7,8 @@ import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
 import CustomDatePicker from '../common/CustomDatePicker';
 import CustomDataTable from '../common/CustomDataTable';
+import ConfirmationModal from '../ConfirmationModal';
+import { useAuth } from '../../context/AuthContext';
 
 const backendUrl = APP_CONFIG.apiBaseUrl.replace('/api/v1', '');
 const getFullUrl = (path) => path?.startsWith('http') ? path : backendUrl + path;
@@ -22,18 +24,23 @@ const STAGES = [
 const STAGE_NAMES = STAGES.map(s => s.name);
 
 export default function ATSPipeline() {
+  const { user } = useAuth();
+  const userRole = (user?.role || '').toLowerCase();
+  const canManageATS = ['super admin', 'superadmin', 'admin', 'hr'].includes(userRole);
+
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState('all');
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Jobs List');
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Modals state
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [jobFormData, setJobFormData] = useState({
     title: '', department: '', location: '', employment_type: 'Full Time',
     status: 'Open', applications_count: 0, posted_date: new Date().toISOString().split('T')[0],
-    experience: '', salary_range: '', description: '', stage: STAGE_NAMES[0]
+    experience: '', salary_range: '', description: ''
   });
   const [isEditJob, setIsEditJob] = useState(false);
   
@@ -124,7 +131,7 @@ export default function ATSPipeline() {
   const handleDrop = async (e, destStage) => {
     e.preventDefault();
     setDragOverStage(null);
-    if (!draggedItem) return;
+    if (!canManageATS || !draggedItem) return;
 
     const candidate = candidates.find(c => (c._id || c.id) === draggedItem);
     if (!candidate || candidate.stage === destStage) return;
@@ -180,9 +187,8 @@ export default function ATSPipeline() {
         await atsService.updateJob(jobFormData.id, payload);
         toast.success('Job updated successfully');
       } else {
-        const newJob = await atsService.createJob(payload);
+        await atsService.createJob(payload);
         toast.success('Job created successfully');
-        if (!selectedJob || selectedJob === 'all') setSelectedJob(newJob._id || newJob.id);
       }
       setIsJobModalOpen(false);
       fetchJobs();
@@ -201,7 +207,7 @@ export default function ATSPipeline() {
       setJobFormData({
         title: '', department: departments[0] || '', location: '', employment_type: 'Full Time',
         status: 'Open', applications_count: 0, posted_date: new Date(),
-        experience: '', salary_range: '', description: '', stage: STAGE_NAMES[0]
+        experience: '', salary_range: '', description: ''
       });
       setIsCustomDept(false);
     }
@@ -211,10 +217,10 @@ export default function ATSPipeline() {
   // --- Candidate Form Handlers ---
   const handleCandidateSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedJob || selectedJob === 'all') return toast.error('Please select a specific job first');
+    if (!candidateFormData.job_id) return toast.error('Please select a job position');
     
     try {
-      const payload = { ...candidateFormData, job_id: selectedJob };
+      const payload = { ...candidateFormData };
       
       if (isEditCandidate && candidateFormData.id) {
         await atsService.updateCandidate(candidateFormData.id, payload);
@@ -225,20 +231,37 @@ export default function ATSPipeline() {
       }
       setIsCandidateModalOpen(false);
       fetchCandidates(selectedJob);
+      fetchJobs();
     } catch (error) {
       toast.error('Failed to save candidate');
     }
   };
 
   const openCandidateModal = (candidate = null) => {
-    if (!selectedJob || selectedJob === 'all') return toast.error('Please select a specific job to add candidate');
+    if (jobs.length === 0) {
+      return toast.error('Please create at least one job first');
+    }
     
     if (candidate) {
       setIsEditCandidate(true);
-      setCandidateFormData({ ...candidate, id: candidate._id || candidate.id });
+      setCandidateFormData({
+        ...candidate,
+        id: candidate._id || candidate.id,
+        job_id: candidate.job_id || (selectedJob !== 'all' ? selectedJob : (jobs[0]?._id || jobs[0]?.id || ''))
+      });
     } else {
       setIsEditCandidate(false);
-      setCandidateFormData({ name: '', email: '', phone: '', stage: STAGE_NAMES[0], department: '', resume_url: '' });
+      const defaultJobId = selectedJob !== 'all' ? selectedJob : (jobs[0]?._id || jobs[0]?.id || '');
+      const matchedJob = jobs.find(j => (j._id || j.id) === defaultJobId);
+      setCandidateFormData({
+        name: '',
+        email: '',
+        phone: '',
+        job_id: defaultJobId,
+        stage: STAGE_NAMES[0],
+        department: matchedJob ? matchedJob.department : '',
+        resume_url: ''
+      });
     }
     setIsCandidateModalOpen(true);
   };
@@ -262,23 +285,25 @@ export default function ATSPipeline() {
     }
   };
 
-  const executeDelete = async (type, id) => {
-    const isConfirmed = window.confirm(`Are you sure you want to delete this ${type}?`);
-    if (!isConfirmed) return;
-
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { type, id } = itemToDelete;
     try {
+      toast.loading(`Deleting ${type}...`, { id: 'del_ats' });
       if (type === 'job') {
         await atsService.deleteJob(id);
-        toast.success('Job deleted successfully');
+        toast.success('Job deleted successfully', { id: 'del_ats' });
         if (selectedJob === id) setSelectedJob('all');
         fetchJobs();
       } else if (type === 'candidate') {
         await atsService.deleteCandidate(id);
-        toast.success('Candidate deleted successfully');
+        toast.success('Candidate deleted successfully', { id: 'del_ats' });
         fetchCandidates(selectedJob);
       }
+      setItemToDelete(null);
     } catch (error) {
-      toast.error('Delete failed');
+      console.error(error);
+      toast.error(error.message || `Failed to delete ${type}`, { id: 'del_ats' });
     }
   };
 
@@ -327,12 +352,23 @@ export default function ATSPipeline() {
           <button className="btn btn-sm btn-soft-primary px-3" onClick={() => { setSelectedJob(row._id || row.id); setActiveTab('Pipeline'); }}>
             View Pipeline
           </button>
-          <a href="#" className="text-muted fs-16" onClick={(e) => { e.preventDefault(); openJobModal(row); }}>
-            <i className="ti ti-edit"></i>
-          </a>
-          <a href="#" className="text-danger fs-16" onClick={(e) => { e.preventDefault(); executeDelete('job', row._id || row.id); }}>
-            <i className="ti ti-trash"></i>
-          </a>
+          {canManageATS && (
+            <>
+              <button type="button" className="btn btn-sm btn-link p-0 text-muted fs-16" onClick={() => openJobModal(row)} title="Edit Job">
+                <i className="ti ti-edit"></i>
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-link p-0 text-danger fs-16" 
+                onClick={() => setItemToDelete({ type: 'job', id: row._id || row.id, name: row.title })}
+                data-bs-toggle="modal" 
+                data-bs-target="#delete_ats_item_modal"
+                title="Delete Job"
+              >
+                <i className="ti ti-trash"></i>
+              </button>
+            </>
+          )}
         </div>
       )
     }
@@ -357,21 +393,18 @@ export default function ATSPipeline() {
           </button>
           <button 
             className={`btn ${activeTab === 'Pipeline' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => {
-              if (jobs.length > 0 && (!selectedJob || selectedJob === 'all')) {
-                setSelectedJob(jobs[0]._id || jobs[0].id);
-              }
-              setActiveTab('Pipeline');
-            }}
+            onClick={() => setActiveTab('Pipeline')}
           >
             Candidate Pipeline
           </button>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-primary d-flex align-items-center" onClick={() => openJobModal()}>
-            <i className="ti ti-plus me-1"></i> List Job
-          </button>
-          {activeTab === 'Pipeline' && selectedJob && selectedJob !== 'all' && (
+          {canManageATS && (
+            <button className="btn btn-primary d-flex align-items-center" onClick={() => openJobModal()}>
+              <i className="ti ti-plus me-1"></i> List Job
+            </button>
+          )}
+          {canManageATS && activeTab === 'Pipeline' && (
             <button className="btn btn-outline-primary d-flex align-items-center" onClick={() => openCandidateModal()}>
               <i className="ti ti-plus me-1"></i> Add Candidate
             </button>
@@ -397,7 +430,7 @@ export default function ATSPipeline() {
                     ? { value: 'all', label: 'All Jobs' } 
                     : jobs.find(j => (j._id || j.id) === selectedJob)
                       ? { value: selectedJob, label: `${jobs.find(j => (j._id || j.id) === selectedJob).title} (${jobs.find(j => (j._id || j.id) === selectedJob).department})` }
-                      : null
+                      : { value: 'all', label: 'All Jobs' }
                 }
                 onChange={(option) => setSelectedJob(option ? option.value : 'all')}
               />
@@ -436,35 +469,53 @@ export default function ATSPipeline() {
                       <div 
                         key={candidate._id || candidate.id}
                         className={`card kanban-card mb-2 shadow-sm ${draggedItem === (candidate._id || candidate.id) ? 'opacity-50' : ''}`}
-                        draggable 
-                        onDragStart={(e) => handleDragStart(e, candidate._id || candidate.id)}
-                        style={{ cursor: 'grab' }}
+                        draggable={canManageATS} 
+                        onDragStart={(e) => canManageATS && handleDragStart(e, candidate._id || candidate.id)}
+                        style={{ cursor: canManageATS ? 'grab' : 'default' }}
                       >
                         <div className="card-body p-3">
                           <div className="d-flex align-items-start justify-content-between mb-2">
                             <div>
                               <h6 className="mb-1 fw-bold fs-15 text-dark">{candidate.name}</h6>
-                              {candidate.department && (
-                                <span className="badge bg-light text-dark border mb-2">{candidate.department}</span>
-                              )}
+                              <div className="d-flex flex-wrap gap-1 mb-2">
+                                {selectedJob === 'all' && (
+                                  <span className="badge bg-primary-transparent border">
+                                    {jobs.find(j => (j._id || j.id) === candidate.job_id)?.title || 'Job'}
+                                  </span>
+                                )}
+                                {candidate.department && (
+                                  <span className="badge bg-light text-dark border">{candidate.department}</span>
+                                )}
+                              </div>
                             </div>
-                            <div className="dropdown">
-                              <a href="#" onClick={(e) => e.preventDefault()} className="text-muted" data-bs-toggle="dropdown">
-                                <i className="ti ti-dots-vertical"></i>
-                              </a>
-                              <ul className="dropdown-menu dropdown-menu-end p-2 shadow-sm border-0">
-                                <li>
-                                  <a href="#" onClick={(e) => { e.preventDefault(); openCandidateModal(candidate); }} className="dropdown-item rounded-1">
-                                    <i className="ti ti-edit me-2"></i>Edit
-                                  </a>
-                                </li>
-                                <li>
-                                  <a href="#" onClick={(e) => { e.preventDefault(); executeDelete('candidate', candidate._id || candidate.id); }} className="dropdown-item text-danger rounded-1">
-                                    <i className="ti ti-trash me-2"></i>Delete
-                                  </a>
-                                </li>
-                              </ul>
-                            </div>
+                            {canManageATS && (
+                              <div className="dropdown">
+                                <a href="#" onClick={(e) => e.preventDefault()} className="text-muted" data-bs-toggle="dropdown">
+                                  <i className="ti ti-dots-vertical"></i>
+                                </a>
+                                <ul className="dropdown-menu dropdown-menu-end p-2 shadow-sm border-0">
+                                  <li>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); openCandidateModal(candidate); }} className="dropdown-item rounded-1">
+                                      <i className="ti ti-edit me-2"></i>Edit
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a 
+                                      href="#" 
+                                      onClick={(e) => { 
+                                        e.preventDefault(); 
+                                        setItemToDelete({ type: 'candidate', id: candidate._id || candidate.id, name: candidate.name }); 
+                                      }} 
+                                      className="dropdown-item text-danger rounded-1"
+                                      data-bs-toggle="modal" 
+                                      data-bs-target="#delete_ats_item_modal"
+                                    >
+                                      <i className="ti ti-trash me-2"></i>Delete
+                                    </a>
+                                  </li>
+                                </ul>
+                              </div>
+                            )}
                           </div>
                           
                           <div className="d-flex flex-column gap-1 text-muted fs-13">
@@ -576,15 +627,6 @@ export default function ATSPipeline() {
               <input type="text" className="form-control" value={jobFormData.salary_range} onChange={(e) => setJobFormData({...jobFormData, salary_range: e.target.value})} placeholder="e.g., ₹15L - ₹20L" />
             </div>
 
-            <div className="col-md-12">
-              <label className="form-label fw-medium">Stage (Default for new applicants)</label>
-              <CustomSelect 
-                options={STAGE_NAMES.map(s => ({ value: s, label: s }))}
-                value={{ value: jobFormData.stage, label: jobFormData.stage }}
-                onChange={(opt) => setJobFormData({...jobFormData, stage: opt.value})}
-              />
-            </div>
-
             <div className="col-12">
               <label className="form-label fw-medium">Job Description</label>
               <textarea 
@@ -606,6 +648,33 @@ export default function ATSPipeline() {
       {/* Add/Edit Candidate Modal */}
       <Modal open={isCandidateModalOpen} onClose={() => setIsCandidateModalOpen(false)} title={isEditCandidate ? "Edit Candidate" : "Add Candidate"} size="md">
         <form onSubmit={handleCandidateSubmit}>
+          <div className="mb-3">
+            <label className="form-label fw-medium">Job Position <span className="text-danger">*</span></label>
+            <CustomSelect 
+              options={jobs.map(j => ({ value: j._id || j.id, label: `${j.title} (${j.department})` }))}
+              value={
+                candidateFormData.job_id 
+                  ? { 
+                      value: candidateFormData.job_id, 
+                      label: (() => {
+                        const found = jobs.find(j => (j._id || j.id) === candidateFormData.job_id);
+                        return found ? `${found.title} (${found.department})` : candidateFormData.job_id;
+                      })()
+                    } 
+                  : null
+              }
+              onChange={(opt) => {
+                const jId = opt ? opt.value : '';
+                const matchedJob = jobs.find(j => (j._id || j.id) === jId);
+                setCandidateFormData({
+                  ...candidateFormData, 
+                  job_id: jId,
+                  department: matchedJob ? matchedJob.department : candidateFormData.department
+                });
+              }}
+              placeholder="Select Job Position"
+            />
+          </div>
           <div className="mb-3">
             <label className="form-label fw-medium">Full Name <span className="text-danger">*</span></label>
             <input type="text" className="form-control" value={candidateFormData.name} onChange={e => setCandidateFormData({...candidateFormData, name: e.target.value})} required />
@@ -653,6 +722,14 @@ export default function ATSPipeline() {
           </div>
         </form>
       </Modal>
+
+      {/* Confirmation Modal for Delete ATS Job / Candidate */}
+      <ConfirmationModal 
+        id="delete_ats_item_modal"
+        onConfirm={handleConfirmDelete}
+        title={`Delete ${itemToDelete?.type === 'job' ? 'Job' : 'Candidate'}`}
+        description={`Are you sure you want to delete ${itemToDelete?.type === 'job' ? 'job' : 'candidate'} "${itemToDelete?.name || 'this item'}"? This action cannot be undone.`}
+      />
     </div>
   );
 }

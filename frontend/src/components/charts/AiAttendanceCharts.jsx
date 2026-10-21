@@ -27,23 +27,53 @@ export const DayChart = () => {
   return <ReactApexChart options={options} series={series} type="bar" height={60} width="100%" />;
 };
 
-export const WeeklyAttendanceChart = () => {
+export const WeeklyAttendanceChart = React.memo(({ data }) => {
+  const defaultCategories = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const categories = data?.categories || defaultCategories;
+
+  const series = data?.series || [
+    { name: 'Present', type: 'column', data: [0, 0, 0, 0, 0, 0, 0] },
+    { name: 'Absent', type: 'column', data: [0, 0, 0, 0, 0, 0, 0] },
+    { name: 'Late', type: 'line', data: [0, 0, 0, 0, 0, 0, 0] }
+  ];
+
+  const allValues = series.flatMap(s => s.data || []);
+  const maxVal = Math.max(...allValues, 0);
+  const yaxisMax = maxVal > 0 ? (maxVal <= 5 ? 5 : Math.ceil(maxVal * 1.2)) : 5;
+
   const options = {
     chart: { type: 'line', toolbar: { show: false }, height: 290 },
     colors: ['#0C4B5E', '#A1BCC7', '#F58229'],
     stroke: { width: [0, 0, 2], curve: 'straight' },
     markers: { size: [0, 0, 5] },
-    xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
-    yaxis: { min: 0, max: 8, labels: { formatter: (val) => val === 0 ? "0" : val + "K" } },
-    legend: { show: false }
+    xaxis: { categories: categories },
+    yaxis: {
+      min: 0,
+      max: yaxisMax,
+      forceNiceScale: true,
+      labels: { formatter: (val) => Math.round(val) }
+    },
+    legend: { show: false },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: (val) => (val ?? 0) + (val === 1 ? ' Employee' : ' Employees')
+      },
+      x: {
+        formatter: (val, opts) => {
+          const idx = opts?.dataPointIndex;
+          if (data?.dates && idx !== undefined && data.dates[idx]) {
+            return `${categories[idx]} (${data.dates[idx]})`;
+          }
+          return val;
+        }
+      }
+    }
   };
-  const series = [
-    { name: 'Present', type: 'column', data: [7.6, 5.1, 3.3, 2.8, 2.8, 3.1, 6.7] },
-    { name: 'Absent', type: 'column', data: [2.0, 1.0, 5.2, 0.8, 1.4, 0.8, 1.5] },
-    { name: 'Late', type: 'line', data: [3.5, 1.9, 3.6, 0.8, 1.7, 1.0, 1.7] }
-  ];
-  return <ReactApexChart options={options} series={series} height={290} />;
-};
+
+  return <ReactApexChart options={options} series={series} type="line" height={290} />;
+});
 
 export const AttendanceStatisticsChart = () => {
   const options = {

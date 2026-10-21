@@ -14,7 +14,102 @@ from models import (
 from db import db, users_collection
 from dependencies import get_current_user, get_allowed_user_ids
 from models import UserResponse
+from event_utils import auto_sync_all_birthdays, sync_employee_birthday_event
 import math
+import re
+
+def parse_time_str(t_str, default_h=9, default_m=0):
+    if not t_str: return default_h, default_m
+    match = re.search(r'(\d+):(\d+)', str(t_str))
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        t_lower = str(t_str).lower()
+        if 'pm' in t_lower and h != 12:
+            h += 12
+        elif 'am' in t_lower and h == 12:
+            h = 0
+        return h, m
+    return default_h, default_m
+
+async def calculate_weekly_attendance(staff_ids, staff_map, total_staff, today_str):
+    today_dt = datetime.strptime(today_str, "%Y-%m-%d")
+    current_weekday = today_dt.weekday() # 0 = Mon, ..., 6 = Sun
+    start_of_week = today_dt - timedelta(days=current_weekday)
+    week_dates = [(start_of_week + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    week_days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    week_att_cursor = db.hr_attendance.find({
+        "employee_id": {"$in": staff_ids},
+        "date": {"$in": week_dates}
+    })
+    week_attendances = await week_att_cursor.to_list(length=None)
+    
+    att_by_date = {d: [] for d in week_dates}
+    for a in week_attendances:
+        d = a.get("date")
+        if d in att_by_date:
+            att_by_date[d].append(a)
+            
+    present_series = []
+    absent_series = []
+    late_series = []
+    
+    for i, d in enumerate(week_dates):
+        if i > current_weekday:
+            # Future days of this week have not happened yet
+            present_series.append(0)
+            absent_series.append(0)
+            late_series.append(0)
+            continue
+            
+        day_atts = att_by_date.get(d, [])
+        present_staff = set()
+        day_late = 0
+        
+        for a in day_atts:
+            punches = a.get("punches", [])
+            if punches and len(punches) > 0:
+                emp_id = a.get("employee_id")
+                present_staff.add(emp_id)
+                
+                first_punch_val = punches[0].get("in")
+                if first_punch_val:
+                    try:
+                        if isinstance(first_punch_val, datetime):
+                            fp_time = first_punch_val
+                        else:
+                            fp_time = datetime.fromisoformat(str(first_punch_val).replace("Z", "+00:00"))
+                        fp_local = fp_time + timedelta(hours=5, minutes=30)
+                        
+                        user = staff_map.get(emp_id)
+                        start_time_str = user.get("start_time") if user else None
+                        
+                        sh, sm = parse_time_str(start_time_str, 9, 0)
+                        if fp_local.hour * 60 + fp_local.minute > sh * 60 + sm:
+                            day_late += 1
+                    except Exception:
+                        pass
+                        
+        day_present = len(present_staff)
+        # On Sunday (i == 6), if no one worked, absent is 0 because it's weekend off
+        if i == 6 and day_present == 0:
+            day_absent = 0
+        else:
+            day_absent = max(0, total_staff - day_present)
+            
+        present_series.append(day_present)
+        absent_series.append(day_absent)
+        late_series.append(day_late)
+        
+    return {
+        "categories": week_days,
+        "dates": week_dates,
+        "series": [
+            {"name": "Present", "type": "column", "data": present_series},
+            {"name": "Absent", "type": "column", "data": absent_series},
+            {"name": "Late", "type": "line", "data": late_series}
+        ]
+    }
 
 router = APIRouter()
 
@@ -44,7 +139,12 @@ async def get_employee(employee_id: str, current_user: dict = Depends(get_curren
 # --- HR Notices / Announcements ---
 @router.post("/notices", response_model=HRNoticeResponse)
 async def create_notice(notice: HRNoticeCreate, current_user: dict = Depends(get_current_user)):
+    check_event_permission(current_user)
     notice_data = notice.dict()
+    if not notice_data.get("date"):
+        notice_data["date"] = datetime.utcnow().strftime("%Y-%m-%d")
+    if not notice_data.get("author"):
+        notice_data["author"] = current_user.get("name", "HR Dept")
     notice_data["created_at"] = datetime.utcnow()
     
     result = await db.hr_notices.insert_one(notice_data)
@@ -53,18 +153,48 @@ async def create_notice(notice: HRNoticeCreate, current_user: dict = Depends(get
 
 @router.get("/notices", response_model=List[HRNoticeResponse])
 async def get_notices(current_user: dict = Depends(get_current_user)):
-    notices = await db.hr_notices.find().sort("created_at", -1).to_list(1000)
+    # Seed initial samples if empty
+    if await db.hr_notices.count_documents({}) == 0:
+        sample_notices = [
+            {
+                "title": "Meeting",
+                "desc": "All You are present in meeting",
+                "date": datetime.utcnow().strftime("%Y-%m-%d"),
+                "author": "HR Dept",
+                "department": "HR Dept",
+                "type": "Meeting",
+                "created_at": datetime.utcnow()
+            },
+            {
+                "title": "Notice",
+                "desc": "The all employee are informed that you have to reach the office at 9'o clock",
+                "date": datetime.utcnow().strftime("%Y-%m-%d"),
+                "author": "HR Dept",
+                "department": "General",
+                "type": "Notice",
+                "created_at": datetime.utcnow()
+            }
+        ]
+        await db.hr_notices.insert_many(sample_notices)
+
+    notices = await db.hr_notices.find({"is_deleted": {"$ne": True}}).sort([("date", -1), ("created_at", -1)]).to_list(1000)
     for n in notices:
         n["_id"] = str(n["_id"])
     return notices
 
 @router.put("/notices/{notice_id}", response_model=HRNoticeResponse)
 async def update_notice(notice_id: str, notice: HRNoticeCreate, current_user: dict = Depends(get_current_user)):
+    check_event_permission(current_user)
     update_data = notice.dict()
     update_data["updated_at"] = datetime.utcnow()
 
+    try:
+        q_id = ObjectId(notice_id)
+    except Exception:
+        q_id = notice_id
+
     result = await db.hr_notices.find_one_and_update(
-        {"_id": ObjectId(notice_id)},
+        {"$or": [{"_id": q_id}, {"_id": notice_id}]},
         {"$set": update_data},
         return_document=True
     )
@@ -75,8 +205,16 @@ async def update_notice(notice_id: str, notice: HRNoticeCreate, current_user: di
 
 @router.delete("/notices/{notice_id}")
 async def delete_notice(notice_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.hr_notices.delete_one({"_id": ObjectId(notice_id)})
-    if result.deleted_count == 0:
+    check_event_permission(current_user)
+    try:
+        q_id = ObjectId(notice_id)
+    except Exception:
+        q_id = notice_id
+    result = await db.hr_notices.update_one(
+        {"$or": [{"_id": q_id}, {"_id": notice_id}]},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Notice not found")
     return {"message": "Notice deleted"}
 
@@ -542,43 +680,35 @@ async def get_attendance(date: Optional[str] = None, current_user: dict = Depend
 
 @router.get("/attendance/weekly")
 async def get_weekly_attendance(current_user: dict = Depends(get_current_user)):
-    user_role = current_user.get("role", "employee").lower()
-    is_hr = user_role in ["admin", "hr", "superadmin", "super admin"]
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    role = current_user.get("role", "").lower()
     
-    query = {}
-    if not is_hr:
-        query["employee_id"] = current_user["_id"]
+    if role in ["super admin", "superadmin"]:
+        user_query = {"is_deleted": {"$ne": True}}
+    elif role == "admin":
+        user_query = {"is_deleted": {"$ne": True}, "$or": [{"ancestors": current_user["_id"]}, {"_id": current_user["_id"]}]}
+    else:
+        ancestors = current_user.get("ancestors", [])
+        admin_id = None
+        if ancestors:
+            ancestor_docs = await users_collection.find({"_id": {"$in": ancestors}}).to_list(length=None)
+            for doc in ancestor_docs:
+                if doc.get("role", "").lower() == "admin":
+                    admin_id = doc["_id"]
+                    break
         
-    # Get last 7 days
-    now = datetime.utcnow()
-    dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
-    query["date"] = {"$in": dates}
-    
-    records = await db.hr_attendance.find(query).to_list(1000)
-    
-    # Calculate daily present count
-    daily_present = {d: 0 for d in dates}
-    for r in records:
-        daily_present[r["date"]] += 1
+        if admin_id:
+            user_query = {"is_deleted": {"$ne": True}, "$or": [{"ancestors": admin_id}, {"_id": admin_id}]}
+        else:
+            user_query = {"is_deleted": {"$ne": True}}
         
-    # Formatting for chart
-    result = []
-    days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    staff_cursor = users_collection.find(user_query)
+    staff_users = await staff_cursor.to_list(length=None)
+    staff_ids = [u["_id"] for u in staff_users]
+    total_staff = len(staff_ids)
+    staff_map = {u["_id"]: u for u in staff_users}
     
-    # also fetch total employees for percentage
-    total_employees = await db.users.count_documents({})
-    if total_employees == 0: total_employees = 1
-    
-    for d in dates:
-        dt = datetime.strptime(d, "%Y-%m-%d")
-        day_str = days_map[dt.weekday()]
-        percentage = round((daily_present[d] / total_employees) * 100)
-        result.append({
-            "name": day_str,
-            "present": percentage
-        })
-        
-    return result
+    return await calculate_weekly_attendance(staff_ids, staff_map, total_staff, today_str)
 
 # --- HR Dashboard Stats ---
 @router.get("/dashboard/department-stats")
@@ -636,9 +766,18 @@ async def get_department_stats(current_user: dict = Depends(get_current_user)):
     return stats
 
 
+def check_event_permission(current_user: dict):
+    role = current_user.get("role", "").lower()
+    if role not in ["super admin", "superadmin", "admin", "hr"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied. Only Super Admin, Admin, and HR can manage events."
+        )
+
 # --- HR Events ---
 @router.post("/events", response_model=HREventResponse)
 async def create_event(event: HREventCreate, current_user: dict = Depends(get_current_user)):
+    check_event_permission(current_user)
     event_data = event.dict()
     event_data["created_at"] = datetime.utcnow()
     
@@ -648,18 +787,25 @@ async def create_event(event: HREventCreate, current_user: dict = Depends(get_cu
 
 @router.get("/events", response_model=List[HREventResponse])
 async def get_events(current_user: dict = Depends(get_current_user)):
-    events = await db.hr_events.find().sort("date", 1).to_list(1000)
+    await auto_sync_all_birthdays()
+    events = await db.hr_events.find({"is_deleted": {"$ne": True}}).sort("date", 1).to_list(1000)
     for e in events:
         e["_id"] = str(e["_id"])
     return events
 
 @router.put("/events/{event_id}", response_model=HREventResponse)
 async def update_event(event_id: str, event: HREventCreate, current_user: dict = Depends(get_current_user)):
+    check_event_permission(current_user)
     update_data = event.dict()
     update_data["updated_at"] = datetime.utcnow()
 
+    try:
+        q_id = ObjectId(event_id)
+    except Exception:
+        q_id = event_id
+
     result = await db.hr_events.find_one_and_update(
-        {"_id": ObjectId(event_id)},
+        {"$or": [{"_id": q_id}, {"_id": event_id}]},
         {"$set": update_data},
         return_document=True
     )
@@ -670,8 +816,16 @@ async def update_event(event_id: str, event: HREventCreate, current_user: dict =
 
 @router.delete("/events/{event_id}")
 async def delete_event(event_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.hr_events.delete_one({"_id": ObjectId(event_id)})
-    if result.deleted_count == 0:
+    check_event_permission(current_user)
+    try:
+        q_id = ObjectId(event_id)
+    except Exception:
+        q_id = event_id
+    result = await db.hr_events.update_one(
+        {"$or": [{"_id": q_id}, {"_id": event_id}]},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
     return {"message": "Event deleted"}
 
@@ -770,11 +924,9 @@ async def get_today_attendance_stats(current_user: dict = Depends(get_current_us
                 
                 user = staff_map.get(att["employee_id"])
                 start_time_str = user.get("start_time") if user else None
-                
-                if start_time_str:
-                    start_h, start_m = map(int, start_time_str.split(':'))
-                    if first_punch_local.hour * 60 + first_punch_local.minute > start_h * 60 + start_m:
-                        late_today += 1
+                start_h, start_m = parse_time_str(start_time_str, 9, 0)
+                if first_punch_local.hour * 60 + first_punch_local.minute > start_h * 60 + start_m:
+                    late_today += 1
             except Exception:
                 pass
 
@@ -797,13 +949,16 @@ async def get_today_attendance_stats(current_user: dict = Depends(get_current_us
         })
     department_allocations.sort(key=lambda x: x["count"], reverse=True)
     
+    weekly_attendance = await calculate_weekly_attendance(staff_ids, staff_map, total_staff, today_str)
+
     return {
         "total_staff": total_staff,
         "present_today": present_today,
         "absent_today": absent_today,
         "late_today": late_today,
         "pending_leaves": pending_leaves,
-        "department_allocations": department_allocations
+        "department_allocations": department_allocations,
+        "weekly_attendance": weekly_attendance
     }
 
 @router.get("/attendance/live/today")

@@ -11,6 +11,7 @@ from dependencies import get_current_user
 from audit_logger import log_audit_action
 from routers.notifications_router import create_notification
 from email_utils import send_new_account_email, send_password_changed_by_admin_email
+from event_utils import sync_employee_birthday_event
 import os
 import aiofiles
 
@@ -67,7 +68,11 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
     now = datetime.utcnow()
     ancestors = current_user.get("ancestors", []) + [current_user["_id"]]
     
+    # Extract all provided user fields (dob, employee_id, department, etc.)
+    extra_fields = user_in.model_dump(exclude={"permissions", "password", "name", "email", "phone", "role", "parent_id", "ancestors"})
+    
     user_dict = {
+        **extra_fields,
         "_id": str(uuid.uuid4()),
         "name": user_in.name,
         "email": user_in.email,
@@ -85,6 +90,10 @@ async def create_user(user_in: UserCreate, current_user: dict = Depends(get_curr
     }
     
     await users_collection.insert_one(user_dict)
+    
+    # Automatically sync birthday event if DOB is present
+    if user_dict.get("dob"):
+        await sync_employee_birthday_event(user_dict["_id"], user_dict["name"], user_dict.get("dob"), True)
     
     # Send email
     login_url = os.getenv("VITE_APP_URL", "http://localhost:5173") + "/login"
@@ -185,6 +194,9 @@ async def update_user(user_id: str, user_update: UserUpdate, current_user: dict 
         f"Updated user {updated_user['name']} ({updated_user['email']})"
     )
     
+    # Sync birthday events if updated
+    await sync_employee_birthday_event(user_id, updated_user["name"], updated_user.get("dob"), updated_user.get("is_active", True))
+    
     updated_user["id"] = updated_user.pop("_id")
     return UserResponse(**updated_user)
 
@@ -218,6 +230,9 @@ async def toggle_user_status(user_id: str, status_update: StatusUpdate, current_
         f"Changed status of {updated_user['name']} to {'Active' if status_update.is_active else 'Inactive'}"
     )
     
+    # Sync birthday events on status change
+    await sync_employee_birthday_event(user_id, updated_user["name"], updated_user.get("dob"), updated_user.get("is_active", True))
+    
     updated_user["id"] = updated_user.pop("_id")
     return UserResponse(**updated_user)
 
@@ -248,6 +263,9 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
         "Users", 
         f"Deleted user {target_user['name']} ({target_user['email']})"
     )
+    
+    # Remove birthday events for deleted user
+    await sync_employee_birthday_event(user_id, target_user["name"], None, is_active=False)
     
     return {"message": "User deleted successfully"}
 
@@ -293,6 +311,10 @@ async def update_my_profile(user_update: UserUpdate, current_user: dict = Depend
                 )
     
     updated_user = await users_collection.find_one({"_id": current_user["_id"]})
+    
+    # Sync birthday events if updated in own profile
+    await sync_employee_birthday_event(current_user["_id"], updated_user["name"], updated_user.get("dob"), updated_user.get("is_active", True))
+    
     updated_user["id"] = updated_user.pop("_id")
     return UserResponse(**updated_user)
 

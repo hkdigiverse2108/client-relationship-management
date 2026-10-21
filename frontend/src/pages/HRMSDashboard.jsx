@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
 import PageHeader from '../components/common/PageHeader';
@@ -9,29 +9,38 @@ import toast from 'react-hot-toast';
 import ATSPipeline from '../components/hrms/ATSPipeline';
 import CompanyAssets from '../components/hrms/CompanyAssets';
 import PerformanceAppraisals from '../components/hrms/PerformanceAppraisals';
+import ConfirmationModal from '../components/ConfirmationModal';
 
-const MiniCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+const MiniCalendar = ({ events = [], selectedDate, onSelectDate, calendarDate, onMonthChange }) => {
+  const currentDate = calendarDate || new Date();
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const prevMonth = () => {
+    const next = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    if (onMonthChange) onMonthChange(next);
+    if (onSelectDate) onSelectDate(null);
+  };
+  const nextMonth = () => {
+    const next = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    if (onMonthChange) onMonthChange(next);
+    if (onSelectDate) onSelectDate(null);
+  };
 
   const days = [];
   const prevMonthDays = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
   for (let i = firstDayOfMonth - 1; i >= 0; i--) {
-    days.push({ day: prevMonthDays - i, isCurrentMonth: false });
+    days.push({ day: prevMonthDays - i, isCurrentMonth: false, monthOffset: -1 });
   }
   for (let i = 1; i <= daysInMonth; i++) {
-    days.push({ day: i, isCurrentMonth: true });
+    days.push({ day: i, isCurrentMonth: true, monthOffset: 0 });
   }
   const remaining = (7 - (days.length % 7)) % 7;
   for (let i = 1; i <= remaining; i++) {
-    days.push({ day: i, isCurrentMonth: false });
+    days.push({ day: i, isCurrentMonth: false, monthOffset: 1 });
   }
 
   const rows = [];
@@ -40,11 +49,22 @@ const MiniCalendar = () => {
   }
 
   const today = new Date();
-  const isToday = (day) => {
-    return currentDate.getMonth() === today.getMonth() && 
+  const isToday = (day, isCurrentMonth) => {
+    return isCurrentMonth &&
+           currentDate.getMonth() === today.getMonth() && 
            currentDate.getFullYear() === today.getFullYear() && 
            day === today.getDate();
   };
+
+  const toDateStr = (day, monthOffset = 0) => {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, day);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dayStr}`;
+  };
+
+  const eventDateSet = new Set((events || []).map(e => e.date));
 
   return (
     <div className="mb-4">
@@ -61,15 +81,55 @@ const MiniCalendar = () => {
       
       {rows.map((row, rIdx) => (
         <div key={rIdx} className="row text-center mb-3 px-2 fs-13 text-dark">
-          {row.map((d, cIdx) => (
-            <div key={cIdx} className="col" style={{ color: !d.isCurrentMonth ? '#ced4da' : 'inherit' }}>
-              {d.isCurrentMonth && isToday(d.day) ? (
-                <span className="bg-primary text-white rounded px-2 py-1 shadow-sm">{d.day}</span>
-              ) : (
-                <span>{d.day}</span>
-              )}
-            </div>
-          ))}
+          {row.map((d, cIdx) => {
+            const dateStr = toDateStr(d.day, d.monthOffset);
+            const hasEvent = eventDateSet.has(dateStr);
+            const isSelected = selectedDate === dateStr;
+            const isTodayDate = isToday(d.day, d.isCurrentMonth);
+
+            return (
+              <div 
+                key={cIdx} 
+                className="col position-relative d-flex justify-content-center align-items-center" 
+                style={{ 
+                  color: !d.isCurrentMonth ? '#ced4da' : 'inherit',
+                  cursor: 'pointer',
+                  minHeight: '28px'
+                }}
+                onClick={() => {
+                  if (onSelectDate) {
+                    onSelectDate(selectedDate === dateStr ? null : dateStr);
+                  }
+                }}
+                title={hasEvent ? `Event on ${dateStr}` : dateStr}
+              >
+                {isTodayDate ? (
+                  <span className={`bg-primary text-white rounded px-2 py-1 shadow-sm ${isSelected ? 'border border-2 border-dark' : ''}`} style={{ fontSize: '12px' }}>
+                    {d.day}
+                  </span>
+                ) : isSelected ? (
+                  <span className="bg-primary-subtle text-primary border border-primary fw-bold rounded px-2 py-1" style={{ fontSize: '12px' }}>
+                    {d.day}
+                  </span>
+                ) : (
+                  <span className="px-2 py-1">{d.day}</span>
+                )}
+                {hasEvent && (
+                  <span 
+                    className="position-absolute rounded-circle" 
+                    style={{ 
+                      width: '5px', 
+                      height: '5px', 
+                      backgroundColor: '#7952B3', 
+                      bottom: '-2px', 
+                      left: '50%', 
+                      transform: 'translateX(-50%)' 
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
@@ -93,9 +153,110 @@ const HRDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const [events, setEvents] = useState([]);
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [eventToDelete, setEventToDelete] = useState(null);
+  const [savingEvent, setSavingEvent] = useState(false);
+  const userRole = (user?.role || '').toLowerCase();
+  const canManageEvents = ['super admin', 'superadmin', 'admin', 'hr'].includes(userRole);
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const eventsByMonth = useMemo(() => {
+    const groups = {};
+    const sorted = [...events].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    sorted.forEach(ev => {
+      if (!ev.date) return;
+      const parts = ev.date.split('-');
+      if (parts.length >= 2) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const monthTitle = monthNames[monthIdx] ? `${monthNames[monthIdx]} ${year}` : `${parts[1]}-${year}`;
+        if (!groups[monthTitle]) groups[monthTitle] = [];
+        groups[monthTitle].push(ev);
+      } else {
+        const key = 'Other Events';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ev);
+      }
+    });
+    return groups;
+  }, [events]);
+
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    desc: '',
+    date: new Date().toISOString().split('T')[0],
+    type: '',
+    duration: ''
+  });
+
+  const [notices, setNotices] = useState([]);
+  const [editingNoticeId, setEditingNoticeId] = useState(null);
+  const [noticeToDelete, setNoticeToDelete] = useState(null);
+  const [savingNotice, setSavingNotice] = useState(false);
+  const [noticeForm, setNoticeForm] = useState({
+    title: '',
+    desc: '',
+    department: 'HR Dept',
+    type: 'Notice',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const noticesByMonth = useMemo(() => {
+    const groups = {};
+    const sorted = [...notices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    sorted.forEach(n => {
+      if (!n.date) {
+        const key = 'Other Notices';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(n);
+        return;
+      }
+      const parts = n.date.split('-');
+      if (parts.length >= 2) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const monthTitle = monthNames[monthIdx] ? `${monthNames[monthIdx]} ${year}` : `${parts[1]}-${year}`;
+        if (!groups[monthTitle]) groups[monthTitle] = [];
+        groups[monthTitle].push(n);
+      } else {
+        const key = 'Other Notices';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(n);
+      }
+    });
+    return groups;
+  }, [notices]);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await axiosClient.get('/hrms/events');
+      setEvents(res || []);
+    } catch (e) {
+      console.error("Error fetching events:", e);
+    }
+  };
+
+  const fetchNotices = async () => {
+    try {
+      const res = await axiosClient.get('/hrms/notices');
+      setNotices(res || []);
+    } catch (e) {
+      console.error("Error fetching notices:", e);
+    }
+  };
+
   useEffect(() => {
     fetchAttendance();
     fetchStats();
+    fetchEvents();
+    fetchNotices();
+    const interval = setInterval(() => {
+      fetchStats();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
@@ -164,6 +325,7 @@ const HRDashboard = () => {
       toast.loading("Processing...", { id: "punch" });
       const res = await axiosClient.post('/hrms/attendance/live/punch', {});
       setAttendance(res);
+      fetchStats();
       toast.success(res.is_punched_in ? "Punched in successfully!" : "Punched out successfully!", { id: "punch" });
     } catch (e) {
       console.error(e);
@@ -180,6 +342,171 @@ const HRDashboard = () => {
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Failed to process break", { id: "break" });
+    }
+  };
+
+  const formatEventDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getEventTypeBadge = (type) => {
+    const t = (type || '').toLowerCase();
+    if (t === 'birthday') return 'bg-warning text-white';
+    if (t === 'meeting') return 'bg-info text-white';
+    if (t === 'holiday') return 'bg-purple text-white';
+    return 'bg-primary text-white';
+  };
+
+  const handleAddNewEvent = () => {
+    setEditingEventId(null);
+    setEventForm({
+      title: '',
+      desc: '',
+      date: selectedCalendarDate || new Date().toISOString().split('T')[0],
+      type: '',
+      duration: ''
+    });
+  };
+
+  const handleEditEvent = (ev) => {
+    setEditingEventId(ev.id || ev._id);
+    setEventForm({
+      title: ev.title || '',
+      desc: ev.desc || '',
+      date: ev.date || new Date().toISOString().split('T')[0],
+      type: ev.type || '',
+      duration: ev.duration || ''
+    });
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    const eventId = eventToDelete.id || eventToDelete._id;
+    try {
+      toast.loading("Deleting event...", { id: "del_event" });
+      await axiosClient.delete(`/hrms/events/${eventId}`);
+      toast.success("Event deleted successfully!", { id: "del_event" });
+      setEventToDelete(null);
+      fetchEvents();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Failed to delete event", { id: "del_event" });
+    }
+  };
+
+  const handleSaveEvent = async (e) => {
+    e.preventDefault();
+    if (!eventForm.title.trim()) {
+      toast.error("Please enter event title");
+      return;
+    }
+    if (!eventForm.date) {
+      toast.error("Please select an event date");
+      return;
+    }
+
+    try {
+      setSavingEvent(true);
+      toast.loading(editingEventId ? "Updating event..." : "Creating event...", { id: "save_event" });
+      const payload = {
+        ...eventForm,
+        type: eventForm.type || '',
+        duration: eventForm.type === 'birthday' ? '' : (eventForm.duration || '')
+      };
+      if (editingEventId) {
+        await axiosClient.put(`/hrms/events/${editingEventId}`, payload);
+        toast.success("Event updated successfully!", { id: "save_event" });
+      } else {
+        await axiosClient.post('/hrms/events', payload);
+        toast.success("Event created successfully!", { id: "save_event" });
+      }
+      document.getElementById('close_add_event_modal')?.click();
+      handleAddNewEvent();
+      fetchEvents();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Failed to save event", { id: "save_event" });
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
+  const handleAddNewNotice = () => {
+    setEditingNoticeId(null);
+    setNoticeForm({
+      title: '',
+      desc: '',
+      department: 'HR Dept',
+      type: 'Notice',
+      date: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleEditNotice = (n) => {
+    setEditingNoticeId(n.id || n._id);
+    setNoticeForm({
+      title: n.title || '',
+      desc: n.desc || '',
+      department: n.department || 'HR Dept',
+      type: n.type || 'Notice',
+      date: n.date || new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const confirmDeleteNotice = async () => {
+    if (!noticeToDelete) return;
+    const noticeId = noticeToDelete.id || noticeToDelete._id;
+    try {
+      toast.loading("Deleting notice...", { id: "del_notice" });
+      await axiosClient.delete(`/hrms/notices/${noticeId}`);
+      toast.success("Notice deleted successfully!", { id: "del_notice" });
+      setNoticeToDelete(null);
+      fetchNotices();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Failed to delete notice", { id: "del_notice" });
+    }
+  };
+
+  const handleSaveNotice = async (e) => {
+    e.preventDefault();
+    if (!noticeForm.title.trim()) {
+      toast.error("Please enter notice title");
+      return;
+    }
+    if (!noticeForm.desc.trim()) {
+      toast.error("Please enter notice content");
+      return;
+    }
+
+    try {
+      setSavingNotice(true);
+      toast.loading(editingNoticeId ? "Updating notice..." : "Publishing notice...", { id: "save_notice" });
+      if (editingNoticeId) {
+        await axiosClient.put(`/hrms/notices/${editingNoticeId}`, noticeForm);
+        toast.success("Notice updated successfully!", { id: "save_notice" });
+      } else {
+        await axiosClient.post('/hrms/notices', noticeForm);
+        toast.success("Notice published successfully!", { id: "save_notice" });
+      }
+      document.getElementById('close_post_new_modal')?.click();
+      handleAddNewNotice();
+      fetchNotices();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Failed to save notice", { id: "save_notice" });
+    } finally {
+      setSavingNotice(false);
     }
   };
 
@@ -605,7 +932,7 @@ const HRDashboard = () => {
                       </div>
                       <div className="card-body px-4 pb-4">
                         <div className="mt-4">
-                          <WeeklyAttendanceChart />
+                          <WeeklyAttendanceChart data={stats?.weekly_attendance} />
                         </div>
                       </div>
                     </div>
@@ -623,37 +950,95 @@ const HRDashboard = () => {
                           <p className="text-muted fs-13 mb-0">Manage company calendar</p>
                         </div>
                         <div className="d-flex align-items-center gap-3">
-                          <button className="btn btn-outline-primary btn-sm rounded-pill d-inline-flex align-items-center fw-medium px-3 py-1" data-bs-toggle="modal" data-bs-target="#add_event_modal">
-                            <i className="ti ti-plus me-1"></i> Add Event
-                          </button>
+                          {canManageEvents && (
+                            <button 
+                              className="btn btn-outline-primary btn-sm rounded-pill d-inline-flex align-items-center fw-medium px-3 py-1" 
+                              onClick={handleAddNewEvent}
+                              data-bs-toggle="modal" 
+                              data-bs-target="#add_event_modal"
+                            >
+                              <i className="ti ti-plus me-1"></i> Add Event
+                            </button>
+                          )}
                           <a href="#" className="text-muted fs-12 fw-medium text-decoration-none" data-bs-toggle="modal" data-bs-target="#view_all_events_modal">View all</a>
                         </div>
                       </div>
                       <div className="card-body px-4 pb-4 pt-3">
                         
                         {/* Mini Calendar */}
-                        <MiniCalendar />
+                        <MiniCalendar 
+                          events={events} 
+                          selectedDate={selectedCalendarDate} 
+                          onSelectDate={setSelectedCalendarDate} 
+                          calendarDate={calendarDate}
+                          onMonthChange={setCalendarDate}
+                        />
 
                         {/* Event List */}
-                        <div className="bg-light p-3 rounded d-flex justify-content-between align-items-center border border-light-subtle shadow-sm">
-                          <div className="d-flex align-items-center gap-3">
-                            <span className="avatar avatar-md bg-purple text-white rounded-circle flex-shrink-0 shadow-sm d-flex justify-content-center align-items-center">
-                              <i className="ti ti-calendar-event fs-18"></i>
-                            </span>
-                            <div>
-                              <h6 className="fw-bold text-dark mb-1 fs-14">Janmashtami</h6>
-                              <p className="text-muted mb-0 fs-12">happy janmashtami</p>
-                            </div>
-                          </div>
-                          <div className="text-end">
-                            <h6 className="fw-bold text-dark mb-1 fs-14">04 Sep</h6>
-                            <p className="text-muted mb-1 fs-11">Full Day</p>
-                            <div className="d-flex gap-2 justify-content-end">
-                              <a href="#" className="text-primary fs-14"><i className="ti ti-pencil"></i></a>
-                              <a href="#" className="text-danger fs-14"><i className="ti ti-trash"></i></a>
-                            </div>
-                          </div>
-                        </div>
+                        {(() => {
+                          const currentMonthYear = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`;
+                          const displayedEvents = selectedCalendarDate 
+                            ? events.filter(e => e.date === selectedCalendarDate)
+                            : events.filter(e => e.date && e.date.startsWith(currentMonthYear));
+
+                          return (
+                            <>
+                              <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+                                <span className="fs-12 fw-bold text-dark text-uppercase">
+                                  {selectedCalendarDate ? (
+                                    <>
+                                      <i className="ti ti-calendar me-1 text-primary"></i> 
+                                      Events for {formatEventDate(selectedCalendarDate)} ({selectedCalendarDate})
+                                    </>
+                                  ) : (
+                                    <>
+                                      <i className="ti ti-calendar-event me-1 text-primary"></i> 
+                                      {monthNames[calendarDate.getMonth()]} {calendarDate.getFullYear()} ({displayedEvents.length})
+                                    </>
+                                  )}
+                                </span>
+                                {selectedCalendarDate && (
+                                  <button className="btn btn-link btn-sm p-0 fs-12 text-primary text-decoration-none" onClick={() => setSelectedCalendarDate(null)}>
+                                    Show all for month
+                                  </button>
+                                )}
+                              </div>
+
+                              {displayedEvents.length === 0 ? (
+                                <div className="bg-light p-3 rounded text-center border border-light-subtle">
+                                  <i className="ti ti-calendar-event fs-20 text-muted mb-1 d-block"></i>
+                                  <p className="text-muted mb-0 fs-12">
+                                    {selectedCalendarDate 
+                                      ? 'No events on this day.' 
+                                      : `No events in ${monthNames[calendarDate.getMonth()]} ${calendarDate.getFullYear()}.`}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="d-flex flex-column gap-2 hide-scrollbar" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                                  {displayedEvents.map((ev) => (
+                                    <div key={ev.id || ev._id} className="bg-light p-3 rounded d-flex justify-content-between align-items-center border border-light-subtle shadow-sm">
+                                      <div className="d-flex align-items-center gap-3">
+                                        <span className={`avatar avatar-md ${getEventTypeBadge(ev.type)} rounded-circle flex-shrink-0 shadow-sm d-flex justify-content-center align-items-center`}>
+                                          <i className={ev.type === 'birthday' ? "ti ti-cake fs-18" : "ti ti-calendar-event fs-18"}></i>
+                                        </span>
+                                        <div>
+                                          <h6 className="fw-bold text-dark mb-1 fs-14">{ev.title}</h6>
+                                          <p className="text-muted mb-0 fs-12">{ev.desc || '-'}</p>
+                                        </div>
+                                      </div>
+                                      <div className="text-end flex-shrink-0">
+                                        <h6 className="fw-bold text-dark mb-1 fs-14">{formatEventDate(ev.date)}</h6>
+                                        {ev.duration && ev.type !== 'birthday' && (
+                                          <p className="text-muted mb-0 fs-11">{ev.duration}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
 
                       </div>
                     </div>
@@ -666,48 +1051,82 @@ const HRDashboard = () => {
                           {/* Header */}
                           <div className="border rounded border-start border-start-primary d-flex align-items-center justify-content-between p-2 gap-2 flex-wrap mb-2">
                             <h2 className="card-title mb-0 fs-16 fw-bold">HR Updates Bulletin</h2>
-                            <button className="border btn btn-white btn-md d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#post_new_modal">
-                              <i className="ti ti-calendar me-1 fs-14"></i>Post New
-                            </button>
+                            {canManageEvents && (
+                              <button 
+                                className="border btn btn-white btn-md d-inline-flex align-items-center" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#post_new_modal"
+                                onClick={handleAddNewNotice}
+                              >
+                                <i className="ti ti-plus me-1 fs-14"></i>Post New
+                              </button>
+                            )}
                           </div>
 
-                          {/* Update 1 */}
-                          <div className="p-3 rounded border border-start border-start-4 border-start-primary mb-2">
-                            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-0">
-                              <div>
-                                <p className="text-dark fw-semibold mb-1">Meeting <span className="text-primary fs-12 ms-2 fw-normal">- HR Dept</span></p>
-                                <p className="fs-13 mb-0">2026-08-27</p>
-                                <p className="text-muted fs-13 mb-0 mt-1">All You are present in meeting</p>
-                              </div>
-                              <div className="d-flex align-items-center gap-2">
-                                <a href="#" className="text-primary fs-16"><i className="ti ti-pencil"></i></a>
-                                <a href="#" className="text-danger fs-16"><i className="ti ti-trash"></i></a>
-                              </div>
+                          {/* Dynamic Notices List */}
+                          {notices.length === 0 ? (
+                            <div className="text-center py-4 text-muted">
+                              <i className="ti ti-bell-off fs-24 mb-1 d-block text-secondary"></i>
+                              <p className="fs-13 mb-0">No updates or notices posted yet.</p>
                             </div>
-                           
-                          </div>
-
-                          {/* Update 2 */}
-                          <div className="p-3 rounded border border-start border-start-4 border-start-secondary mb-2">
-                            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-0">
-                              <div>
-                                <p className="text-dark fw-semibold mb-1">Notice</p>
-                                <p className="fs-13 mb-0">2026-08-27</p>
-                                <p className="text-muted fs-13 mb-0 mt-1">The all employee are informed that you have to reach the office at 9'o clock</p>
-                              </div>
-                              <div className="d-flex align-items-center gap-2">
-                                <a href="#" className="text-primary fs-16"><i className="ti ti-pencil"></i></a>
-                                <a href="#" className="text-danger fs-16"><i className="ti ti-trash"></i></a>
-                              </div>
-                            </div>
-                          
-                          </div>
+                          ) : (
+                            notices.slice(0, 5).map((n, idx) => {
+                              const borderColors = ['border-start-primary', 'border-start-secondary', 'border-start-info', 'border-start-warning', 'border-start-success'];
+                              const borderClass = borderColors[idx % borderColors.length];
+                              return (
+                                <div key={n.id || n._id} className={`p-3 rounded border border-start border-start-4 ${borderClass} mb-2 shadow-sm`}>
+                                  <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-0">
+                                    <div className="flex-grow-1" style={{ maxWidth: canManageEvents ? '82%' : '100%' }}>
+                                      <p className="text-dark fw-semibold mb-1 fs-14">
+                                        {n.title} 
+                                        {n.department && (
+                                          <span className="text-primary fs-12 ms-2 fw-normal">- {n.department}</span>
+                                        )}
+                                        {n.type && n.type !== 'Notice' && (
+                                          <span className="badge bg-light text-secondary border fs-10 ms-2">{n.type}</span>
+                                        )}
+                                      </p>
+                                      <p className="fs-12 text-muted mb-1">
+                                        <i className="ti ti-calendar me-1"></i>{n.date || '-'}
+                                        {n.author && <span className="ms-2"><i className="ti ti-user me-1"></i>{n.author}</span>}
+                                      </p>
+                                      <p className="text-muted fs-13 mb-0 mt-1" style={{ whiteSpace: 'pre-line' }}>{n.desc}</p>
+                                    </div>
+                                    {canManageEvents && (
+                                      <div className="d-flex align-items-center gap-2">
+                                        <button 
+                                          type="button" 
+                                          className="btn btn-sm btn-link p-0 text-primary fs-16" 
+                                          onClick={() => handleEditNotice(n)}
+                                          data-bs-toggle="modal" 
+                                          data-bs-target="#post_new_modal"
+                                          title="Edit Notice"
+                                        >
+                                          <i className="ti ti-pencil"></i>
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          className="btn btn-sm btn-link p-0 text-danger fs-16" 
+                                          onClick={() => setNoticeToDelete(n)}
+                                          data-bs-toggle="modal" 
+                                          data-bs-target="#delete_notice_modal"
+                                          title="Delete Notice"
+                                        >
+                                          <i className="ti ti-trash"></i>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
 
                         </div>
 
-                        <a href="#" className="btn btn-light w-100 fw-medium" data-bs-toggle="modal" data-bs-target="#view_all_updates_modal">
-                          View All <i className="ti ti-arrow-right ms-1"></i>
-                        </a>
+                        <button className="btn btn-light w-100 fw-medium mt-2" data-bs-toggle="modal" data-bs-target="#view_all_updates_modal">
+                          View All ({notices.length}) <i className="ti ti-arrow-right ms-1"></i>
+                        </button>
 
                       </div>
                     </div>
@@ -759,48 +1178,93 @@ const HRDashboard = () => {
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title fw-bold">Add Event</h5>
+              <h5 className="modal-title fw-bold">{editingEventId ? 'Edit Event' : 'Add Event'}</h5>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div className="modal-body">
-              <div className="mb-3">
-                <label className="form-label fw-medium">Event Date <span className="text-danger">*</span></label>
-                <CustomDatePicker placeholderText="Select Date" />
+            <form onSubmit={handleSaveEvent}>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Event Date <span className="text-danger">*</span></label>
+                  <CustomDatePicker 
+                    selected={eventForm.date ? new Date(eventForm.date + 'T00:00:00') : null}
+                    onChange={(d) => {
+                      if (d) {
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        setEventForm(prev => ({ ...prev, date: `${y}-${m}-${day}` }));
+                      } else {
+                        setEventForm(prev => ({ ...prev, date: '' }));
+                      }
+                    }}
+                    placeholderText="Select Date" 
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Event Title <span className="text-danger">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Enter event title" 
+                    value={eventForm.title}
+                    onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Event Description</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="e.g. National Holiday, Happy Birthday!" 
+                    value={eventForm.desc}
+                    onChange={(e) => setEventForm(prev => ({ ...prev, desc: e.target.value }))}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Event Type</label>
+                  <CustomSelect 
+                    options={[
+                      { value: 'holiday', label: 'Holiday' },
+                      { value: 'birthday', label: 'Birthday' },
+                      { value: 'meeting', label: 'Meeting' },
+                      { value: 'event', label: 'Company Event' }
+                    ]} 
+                    value={eventForm.type ? { value: eventForm.type, label: eventForm.type.charAt(0).toUpperCase() + eventForm.type.slice(1) } : null}
+                    onChange={(opt) => {
+                      const newType = opt?.value || '';
+                      setEventForm(prev => ({ 
+                        ...prev, 
+                        type: newType,
+                        duration: newType === 'birthday' ? '' : prev.duration
+                      }));
+                    }}
+                    placeholder="Select Type (Optional)" 
+                  />
+                </div>
+                {eventForm.type !== 'birthday' && (
+                  <div className="mb-3">
+                    <label className="form-label fw-medium">Duration</label>
+                    <CustomSelect 
+                      options={[
+                        { value: 'Full Day', label: 'Full Day' },
+                        { value: 'First Half', label: 'First Half' },
+                        { value: 'Second Half', label: 'Second Half' }
+                      ]} 
+                      value={eventForm.duration ? { value: eventForm.duration, label: eventForm.duration } : null}
+                      onChange={(opt) => setEventForm(prev => ({ ...prev, duration: opt?.value || '' }))}
+                      placeholder="Select Duration (Optional)" 
+                    />
+                  </div>
+                )}
               </div>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Event Title <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" placeholder="Enter event title" />
+              <div className="modal-footer">
+                <button type="button" className="btn btn-white border" data-bs-dismiss="modal" id="close_add_event_modal">Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={savingEvent}>
+                  {savingEvent ? 'Saving...' : (editingEventId ? 'Update Event' : 'Save Event')}
+                </button>
               </div>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Event Description</label>
-                <input type="text" className="form-control" placeholder="e.g. National Holiday, Happy Birthday!" />
-              </div>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Event Type</label>
-                <CustomSelect 
-                  options={[
-                    { value: 'holiday', label: 'Holiday' },
-                    { value: 'birthday', label: 'Birthday' }
-                  ]} 
-                  placeholder="Select Type" 
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Duration</label>
-                <CustomSelect 
-                  options={[
-                    { value: 'Full Day', label: 'Full Day' },
-                    { value: 'First Half', label: 'First Half' },
-                    { value: 'Second Half', label: 'Second Half' }
-                  ]} 
-                  placeholder="Select Duration" 
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-white border" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" className="btn btn-primary">Save Event</button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -810,39 +1274,164 @@ const HRDashboard = () => {
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title fw-bold">Publish Notice / Announcement</h5>
+              <h5 className="modal-title fw-bold">{editingNoticeId ? 'Edit Notice / Announcement' : 'Publish Notice / Announcement'}</h5>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div className="modal-body">
-              <div className="mb-3">
-                <label className="form-label fw-medium">Notice/Announcement Title <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" placeholder="Enter title..." />
+            <form onSubmit={handleSaveNotice}>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Notice/Announcement Title <span className="text-danger">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="e.g. Monthly Review Meeting, Office Timings Update" 
+                    value={noticeForm.title}
+                    onChange={(e) => setNoticeForm(prev => ({ ...prev, title: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="row g-2 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">Category / Type</label>
+                    <CustomSelect 
+                      options={[
+                        { value: 'Notice', label: 'Notice' },
+                        { value: 'Meeting', label: 'Meeting' },
+                        { value: 'Announcement', label: 'Announcement' },
+                        { value: 'Policy', label: 'Policy' },
+                        { value: 'General', label: 'General' }
+                      ]}
+                      value={{ value: noticeForm.type, label: noticeForm.type }}
+                      onChange={(opt) => setNoticeForm(prev => ({ ...prev, type: opt?.value || 'Notice' }))}
+                      placeholder="Select Type"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">Department / Tag</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="e.g. HR Dept, All Employees" 
+                      value={noticeForm.department}
+                      onChange={(e) => setNoticeForm(prev => ({ ...prev, department: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Date</label>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    value={noticeForm.date}
+                    onChange={(e) => setNoticeForm(prev => ({ ...prev, date: e.target.value }))}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Notice/Announcement Content <span className="text-danger">*</span></label>
+                  <textarea 
+                    className="form-control" 
+                    rows="4" 
+                    placeholder="Write the announcement content here..." 
+                    value={noticeForm.desc}
+                    onChange={(e) => setNoticeForm(prev => ({ ...prev, desc: e.target.value }))}
+                    required
+                  ></textarea>
+                </div>
               </div>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Notice/Announcement Content <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows="4" placeholder="Write the announcement content here..."></textarea>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-white border" data-bs-dismiss="modal" id="close_post_new_modal">Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={savingNotice}>
+                  {savingNotice ? 'Saving...' : (editingNoticeId ? 'Update Notice' : 'Publish Notice')}
+                </button>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-white border" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" className="btn btn-primary">Publish Notice</button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
 
       {/* View All Events Modal */}
       <div className="modal fade" id="view_all_events_modal" tabIndex="-1" aria-hidden="true">
-        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title fw-bold">All Events</h5>
+              <h5 className="modal-title fw-bold">All Events ({events.length})</h5>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div className="modal-body">
-              <div className="text-center py-4">
-                <p className="text-muted mb-0">List of all events categorized by month will appear here.</p>
-              </div>
+            <div className="modal-body p-4">
+              {Object.keys(eventsByMonth).length === 0 ? (
+                <div className="text-center py-5 text-muted">
+                  <i className="ti ti-calendar-off fs-36 mb-2 d-block text-secondary"></i>
+                  <h6 className="fw-semibold text-dark mb-1">No Events Found</h6>
+                  <p className="mb-0 fs-13">Company calendar has no scheduled events.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-column gap-4">
+                  {Object.entries(eventsByMonth).map(([monthYear, monthEvList]) => (
+                    <div key={monthYear} className="month-event-section">
+                      <div className="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                        <span className="badge bg-primary-subtle text-primary fw-bold px-3 py-2 fs-13 rounded-pill">
+                          <i className="ti ti-calendar me-1"></i> {monthYear}
+                        </span>
+                        <span className="text-muted fs-12 fw-medium">
+                          {monthEvList.length} {monthEvList.length === 1 ? 'Event' : 'Events'}
+                        </span>
+                      </div>
+
+                      <div className="d-flex flex-column gap-2">
+                        {monthEvList.map((ev) => (
+                          <div key={ev.id || ev._id} className="bg-light p-3 rounded d-flex justify-content-between align-items-center border border-light-subtle shadow-sm">
+                            <div className="d-flex align-items-center gap-3">
+                              <span className={`avatar avatar-md ${getEventTypeBadge(ev.type)} rounded-circle flex-shrink-0 shadow-sm d-flex justify-content-center align-items-center`}>
+                                <i className={ev.type === 'birthday' ? "ti ti-cake fs-18" : "ti ti-calendar-event fs-18"}></i>
+                              </span>
+                              <div>
+                                <h6 className="fw-bold text-dark mb-1 fs-14">{ev.title}</h6>
+                                <p className="text-muted mb-0 fs-12">{ev.desc || '-'}</p>
+                              </div>
+                            </div>
+                            <div className="text-end flex-shrink-0">
+                              <h6 className="fw-bold text-dark mb-1 fs-14">{formatEventDate(ev.date)} ({ev.date})</h6>
+                              {ev.duration && ev.type !== 'birthday' && (
+                                <p className="text-muted mb-1 fs-11">{ev.duration}</p>
+                              )}
+                              {canManageEvents && (
+                                <div className="d-flex gap-2 justify-content-end">
+                                  <button 
+                                    type="button"
+                                    className="btn btn-sm btn-link p-0 text-primary fs-14" 
+                                    onClick={() => {
+                                      document.querySelector('#view_all_events_modal .btn-close')?.click();
+                                      handleEditEvent(ev);
+                                    }}
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#add_event_modal"
+                                    title="Edit Event"
+                                  >
+                                    <i className="ti ti-pencil"></i>
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    className="btn btn-sm btn-link p-0 text-danger fs-14" 
+                                    onClick={() => {
+                                      document.querySelector('#view_all_events_modal .btn-close')?.click();
+                                      setEventToDelete(ev);
+                                    }}
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#delete_event_modal"
+                                    title="Delete Event"
+                                  >
+                                    <i className="ti ti-trash"></i>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-white border" data-bs-dismiss="modal">Close</button>
@@ -853,16 +1442,93 @@ const HRDashboard = () => {
 
       {/* View All Updates Modal */}
       <div className="modal fade" id="view_all_updates_modal" tabIndex="-1" aria-hidden="true">
-        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title fw-bold">All Announcements & Notices</h5>
+              <h5 className="modal-title fw-bold">All Announcements & Notices ({notices.length})</h5>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div className="modal-body">
-              <div className="text-center py-4">
-                <p className="text-muted mb-0">List of all announcements categorized by month will appear here.</p>
-              </div>
+            <div className="modal-body p-4">
+              {Object.keys(noticesByMonth).length === 0 ? (
+                <div className="text-center py-5 text-muted">
+                  <i className="ti ti-bell-off fs-36 mb-2 d-block text-secondary"></i>
+                  <h6 className="fw-semibold text-dark mb-1">No Notices Found</h6>
+                  <p className="mb-0 fs-13">There are no published announcements or notices.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-column gap-4">
+                  {Object.entries(noticesByMonth).map(([monthYear, monthNotices]) => (
+                    <div key={monthYear} className="month-notice-section">
+                      <div className="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                        <span className="badge bg-primary-subtle text-primary fw-bold px-3 py-2 fs-13 rounded-pill">
+                          <i className="ti ti-calendar me-1"></i> {monthYear}
+                        </span>
+                        <span className="text-muted fs-12 fw-medium">
+                          {monthNotices.length} {monthNotices.length === 1 ? 'Notice' : 'Notices'}
+                        </span>
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        {monthNotices.map((n, idx) => {
+                          const borderColors = ['border-start-primary', 'border-start-secondary', 'border-start-info', 'border-start-warning', 'border-start-success'];
+                          const borderClass = borderColors[idx % borderColors.length];
+                          return (
+                            <div key={n.id || n._id} className={`p-3 rounded border border-start border-start-4 ${borderClass} shadow-sm bg-light`}>
+                              <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-0">
+                                <div className="flex-grow-1" style={{ maxWidth: canManageEvents ? '85%' : '100%' }}>
+                                  <p className="text-dark fw-semibold mb-1 fs-14">
+                                    {n.title} 
+                                    {n.department && (
+                                      <span className="text-primary fs-12 ms-2 fw-normal">- {n.department}</span>
+                                    )}
+                                    {n.type && (
+                                      <span className="badge bg-white text-secondary border fs-10 ms-2">{n.type}</span>
+                                    )}
+                                  </p>
+                                  <p className="fs-12 text-muted mb-2">
+                                    <i className="ti ti-calendar me-1"></i>{n.date || '-'}
+                                    {n.author && <span className="ms-2"><i className="ti ti-user me-1"></i>{n.author}</span>}
+                                  </p>
+                                  <p className="text-dark fs-13 mb-0" style={{ whiteSpace: 'pre-line' }}>{n.desc}</p>
+                                </div>
+                                {canManageEvents && (
+                                  <div className="d-flex align-items-center gap-2">
+                                    <button 
+                                      type="button" 
+                                      className="btn btn-sm btn-link p-0 text-primary fs-16" 
+                                      onClick={() => {
+                                        document.querySelector('#view_all_updates_modal .btn-close')?.click();
+                                        handleEditNotice(n);
+                                      }}
+                                      data-bs-toggle="modal" 
+                                      data-bs-target="#post_new_modal"
+                                      title="Edit Notice"
+                                    >
+                                      <i className="ti ti-pencil"></i>
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      className="btn btn-sm btn-link p-0 text-danger fs-16" 
+                                      onClick={() => {
+                                        document.querySelector('#view_all_updates_modal .btn-close')?.click();
+                                        setNoticeToDelete(n);
+                                      }}
+                                      data-bs-toggle="modal" 
+                                      data-bs-target="#delete_notice_modal"
+                                      title="Delete Notice"
+                                    >
+                                      <i className="ti ti-trash"></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-white border" data-bs-dismiss="modal">Close</button>
@@ -870,6 +1536,22 @@ const HRDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal for Delete Event */}
+      <ConfirmationModal 
+        id="delete_event_modal"
+        onConfirm={confirmDeleteEvent}
+        title="Delete Event"
+        description={`Are you sure you want to delete event "${eventToDelete?.title || 'this event'}"? This action cannot be undone.`}
+      />
+
+      {/* Confirmation Modal for Delete Notice */}
+      <ConfirmationModal 
+        id="delete_notice_modal"
+        onConfirm={confirmDeleteNotice}
+        title="Delete Notice"
+        description={`Are you sure you want to delete notice "${noticeToDelete?.title || 'this notice'}"? This action cannot be undone.`}
+      />
 
     </div>
   );

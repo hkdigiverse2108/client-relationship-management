@@ -995,23 +995,30 @@ class LedgerEntryResponse(LedgerEntryCreate):
 class HRNoticeCreate(BaseModel):
     title: str
     desc: str
-    date: str
-    author: str
+    date: Optional[str] = None
+    author: Optional[str] = None
+    department: Optional[str] = None
+    type: Optional[str] = "Notice"
 
 class HRNoticeResponse(HRNoticeCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    is_deleted: Optional[bool] = False
 
 class HREventCreate(BaseModel):
     title: str
-    desc: str
+    desc: Optional[str] = ""
     date: str
-    type: str
-    duration: Optional[str] = None
+    type: Optional[str] = ""
+    duration: Optional[str] = ""
 
 class HREventResponse(HREventCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
+    user_id: Optional[str] = None
+    is_birthday: Optional[bool] = None
+    is_deleted: Optional[bool] = False
 
 class HRCustomTypeCreate(BaseModel):
     type: str = "event"
@@ -1038,6 +1045,7 @@ class ATSJobCreate(BaseModel):
 class ATSJobResponse(ATSJobCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
+    is_deleted: Optional[bool] = False
 
 class ATSCandidateCreate(BaseModel):
     job_id: str
@@ -1051,6 +1059,7 @@ class ATSCandidateCreate(BaseModel):
 class ATSCandidateResponse(ATSCandidateCreate):
     id: str = Field(alias="_id")
     applied_date: Optional[datetime] = None
+    is_deleted: Optional[bool] = False
 
 class HRAssetCreate(BaseModel):
     asset_name: str
