@@ -13,9 +13,9 @@ const KanbanCard = ({ card, columnColor, onDragStart, onEdit, onDelete }) => {
   return (
     <div 
       className="card kanban-card mb-2" 
-      draggable 
-      onDragStart={(e) => onDragStart(e, card.id)}
-      style={{ cursor: 'grab' }}
+      draggable={Boolean(onEdit)} 
+      onDragStart={(e) => onDragStart && onDragStart(e, card.id)}
+      style={{ cursor: onEdit ? 'grab' : 'default' }}
     >
       <div className="card-body">
         <div className="d-flex align-items-center justify-content-between mb-3">
@@ -27,19 +27,27 @@ const KanbanCard = ({ card, columnColor, onDragStart, onEdit, onDelete }) => {
               </span>
             )}
           </div>
-          <div className="dropdown">
-            <a href="#" onClick={(e) => e.preventDefault()} className="d-inline-flex align-items-center" data-bs-toggle="dropdown">
-              <i className="ti ti-dots-vertical"></i>
-            </a>
-            <ul className="dropdown-menu dropdown-menu-end p-3">
-              <li>
-                <a href="#" onClick={(e) => { e.preventDefault(); onEdit && onEdit(); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a>
-              </li>
-              <li>
-                <a href="#" onClick={(e) => { e.preventDefault(); onDelete && onDelete(); }} className="dropdown-item rounded-1" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash me-2"></i>Delete</a>
-              </li>
-            </ul>
-          </div>
+          {(onEdit || onDelete) ? (
+            <div className="dropdown">
+              <a href="#" onClick={(e) => e.preventDefault()} className="d-inline-flex align-items-center" data-bs-toggle="dropdown">
+                <i className="ti ti-dots-vertical"></i>
+              </a>
+              <ul className="dropdown-menu dropdown-menu-end p-3">
+                {onEdit && (
+                  <li>
+                    <a href="#" onClick={(e) => { e.preventDefault(); onEdit(); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a>
+                  </li>
+                )}
+                {onDelete && (
+                  <li>
+                    <a href="#" onClick={(e) => { e.preventDefault(); onDelete(); }} className="dropdown-item rounded-1" data-bs-toggle="modal" data-bs-target="#delete_modal"><i className="ti ti-trash me-2"></i>Delete</a>
+                  </li>
+                )}
+              </ul>
+            </div>
+          ) : (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
         
         <div className="mb-2">

@@ -30,7 +30,7 @@ const getInitials = (name) => {
 
 const backendUrl = import.meta.env.VITE_APP_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
 
-const ProjectsGridView = ({ data, users = {}, clients = {}, setProjectToEdit, setIsProjectModalOpen, setProjectToDelete, hideClient = false }) => {
+const ProjectsGridView = ({ data, users = {}, clients = {}, canEdit = true, canDelete = true, setProjectToEdit, setIsProjectModalOpen, setProjectToDelete, hideClient = false }) => {
   return (
     <div className="row p-3">
       {data.map((row) => {
@@ -68,18 +68,22 @@ const ProjectsGridView = ({ data, users = {}, clients = {}, setProjectToEdit, se
                     <li>
                       <Link to="/all-projects" className="dropdown-item rounded-1"><i className="ti ti-eye me-2"></i>View</Link>
                     </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1" onClick={(e) => {
-                        e.preventDefault();
-                        setProjectToEdit(row);
-                        setIsProjectModalOpen(true);
-                      }}><i className="ti ti-edit me-2"></i>Edit</Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1" onClick={() => {
-                        setProjectToDelete(row);
-                      }} data-bs-toggle="modal" data-bs-target="#delete_project_modal"><i className="ti ti-trash me-1"></i>Delete</Link>
-                    </li>
+                    {canEdit && (
+                      <li>
+                        <Link to="#" className="dropdown-item rounded-1" onClick={(e) => {
+                          e.preventDefault();
+                          setProjectToEdit(row);
+                          setIsProjectModalOpen(true);
+                        }}><i className="ti ti-edit me-2"></i>Edit</Link>
+                      </li>
+                    )}
+                    {canDelete && (
+                      <li>
+                        <Link to="#" className="dropdown-item rounded-1" onClick={() => {
+                          setProjectToDelete(row);
+                        }} data-bs-toggle="modal" data-bs-target="#delete_project_modal"><i className="ti ti-trash me-1"></i>Delete</Link>
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>

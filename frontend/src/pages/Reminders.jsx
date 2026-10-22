@@ -6,6 +6,7 @@ import CustomSelect from '../components/common/CustomSelect';
 import { FiClock, FiAlertCircle, FiCheckCircle, FiSearch, FiFilter } from 'react-icons/fi';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const MetricCard = ({ title, value, icon, color, percent, isUp }) => (
   <div className="col-md-4 d-flex">
@@ -34,6 +35,7 @@ const MetricCard = ({ title, value, icon, color, percent, isUp }) => (
 const initialReminders = [];
 
 const Reminders = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/reminders');
   const [reminders, setReminders] = useState(initialReminders);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState(null);
@@ -210,11 +212,20 @@ const Reminders = () => {
         const newStatus = row.status === 'completed' ? 'pending' : 'completed';
         return (
           <div className="action-icon d-inline-flex">
-            <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); setConfirmStatusModal({ isOpen: true, reminder: row, newStatus }); }} title={row.status === 'completed' ? "Mark as Pending" : "Mark as Completed"}>
-              <i className={`ti ${row.status === 'completed' ? 'ti-restore text-warning' : 'ti-check text-success'}`}></i>
-            </a>
-            <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); handleOpenModal(row); }}><i className="ti ti-edit"></i></a>
-            <a href="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row.id || row._id, title: row.description }); }}><i className="ti ti-trash"></i></a>
+            {canEdit && (
+              <>
+                <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); setConfirmStatusModal({ isOpen: true, reminder: row, newStatus }); }} title={row.status === 'completed' ? "Mark as Pending" : "Mark as Completed"}>
+                  <i className={`ti ${row.status === 'completed' ? 'ti-restore text-warning' : 'ti-check text-success'}`}></i>
+                </a>
+                <a href="#" className="me-2" onClick={(e) => { e.preventDefault(); handleOpenModal(row); }}><i className="ti ti-edit"></i></a>
+              </>
+            )}
+            {canDelete && (
+              <a href="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row.id || row._id, title: row.description }); }}><i className="ti ti-trash"></i></a>
+            )}
+            {!canEdit && !canDelete && (
+              <span className="badge bg-light text-muted border fs-11">View Only</span>
+            )}
           </div>
         );
       }
@@ -239,13 +250,15 @@ const Reminders = () => {
               { label: 'Reminders', active: true }
             ]}
           >
-            <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
-              <div className="mb-2">
-                <button className="btn btn-primary d-flex align-items-center" onClick={() => handleOpenModal()}>
-                  <i className="ti ti-circle-plus me-2"></i>Add Reminder
-                </button>
+            {canAdd && (
+              <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
+                <div className="mb-2">
+                  <button className="btn btn-primary d-flex align-items-center" onClick={() => handleOpenModal()}>
+                    <i className="ti ti-circle-plus me-2"></i>Add Reminder
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </PageHeader>
 
           {/* Metric Cards */}

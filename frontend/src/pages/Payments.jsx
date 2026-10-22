@@ -8,8 +8,9 @@ import FilterBar from '../components/common/FilterBar';
 import CustomSelect from '../components/common/CustomSelect';
 import api from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
-const InlinePaymentStatus = ({ row, onUpdate }) => {
+const InlinePaymentStatus = ({ row, onUpdate, canEdit = true }) => {
   const [isEditing, setIsEditing] = useState(false);
 
   let badgeClass = 'badge-success';
@@ -20,13 +21,15 @@ const InlinePaymentStatus = ({ row, onUpdate }) => {
   const badge = (
     <span 
       className={`badge ${badgeClass} d-inline-flex align-items-center badge-xs`}
-      onClick={() => setIsEditing(true)}
-      style={{ cursor: 'pointer' }}
-      title="Click to change status"
+      onClick={() => canEdit && setIsEditing(true)}
+      style={{ cursor: canEdit ? 'pointer' : 'default' }}
+      title={canEdit ? "Click to change status" : ""}
     >
       <i className="ti ti-point-filled me-1"></i>{row.status}
     </span>
   );
+
+  if (!canEdit) return badge;
 
   if (isEditing) {
     const statusOptions = [
@@ -64,6 +67,7 @@ const InlinePaymentStatus = ({ row, onUpdate }) => {
 };
 
 const Payments = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/payments');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [searchQuery_payments, setSearchQuery_payments] = useState('');
   
@@ -309,22 +313,29 @@ const Payments = () => {
     { name: 'Amount', selector: row => row.amount, sortable: true },
     {
       name: 'Status',
-      cell: row => <InlinePaymentStatus row={row} onUpdate={handleStatusChange} />,
+      cell: row => <InlinePaymentStatus row={row} onUpdate={handleStatusChange} canEdit={canEdit} />,
       sortable: true,
     },
     {
       name: 'Actions',
       cell: row => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2 text-muted" onClick={(e) => {
-            e.preventDefault();
-            setEditPayment(row);
-            setIsPaymentModalOpen(true);
-          }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" className="text-muted" onClick={(e) => {
-            e.preventDefault();
-            setConfirmDeleteModal({ isOpen: true, id: row._id });
-          }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2 text-muted" onClick={(e) => {
+              e.preventDefault();
+              setEditPayment(row);
+              setIsPaymentModalOpen(true);
+            }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" className="text-muted" onClick={(e) => {
+              e.preventDefault();
+              setConfirmDeleteModal({ isOpen: true, id: row._id });
+            }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     }
@@ -373,11 +384,13 @@ const Payments = () => {
               { label: 'Payments', active: true }
             ]}
           >
-            <div className="mb-2">
-              <button onClick={() => setIsPaymentModalOpen(true)} className="btn btn-primary d-flex align-items-center">
-                <i className="ti ti-circle-plus me-2"></i>Log Offline Payment
-              </button>
-            </div>
+            {canAdd && (
+              <div className="mb-2">
+                <button onClick={() => setIsPaymentModalOpen(true)} className="btn btn-primary d-flex align-items-center">
+                  <i className="ti ti-circle-plus me-2"></i>Log Offline Payment
+                </button>
+              </div>
+            )}
           </PageHeader>
           {/* /Breadcrumb */}
 

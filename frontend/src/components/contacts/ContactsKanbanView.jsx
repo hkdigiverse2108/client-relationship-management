@@ -1,7 +1,7 @@
 import React from 'react';
 import { getInitials } from '../../utils/exportUtils';
 
-const ContactsKanbanView = ({ contacts = [], onEdit, onDelete }) => {
+const ContactsKanbanView = ({ contacts = [], canEdit = true, canDelete = true, onEdit, onDelete }) => {
   return (
     <div className="row">
       {contacts.map((contact, index) => (
@@ -21,22 +21,30 @@ const ContactsKanbanView = ({ contacts = [], onEdit, onDelete }) => {
                     )}
                   </div>
                 </div>
-                <div className="dropdown">
-                  <button className="btn btn-icon btn-sm rounded-circle" type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    <i className="ti ti-dots-vertical"></i>
-                  </button>
-                  <ul className="dropdown-menu dropdown-menu-end p-3">
-                    <li>
-                      <a className="dropdown-item rounded-1" href="#" onClick={(e) => onEdit(e, contact)}><i
-                          className="ti ti-edit me-1"></i>Edit</a>
-                    </li>
-                    <li>
-                      <a className="dropdown-item rounded-1" href="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => onDelete(e, contact)}><i
-                          className="ti ti-trash me-1"></i>Delete</a>
-                    </li>
-                  </ul>
-                </div>
+                {(canEdit || canDelete) ? (
+                  <div className="dropdown">
+                    <button className="btn btn-icon btn-sm rounded-circle" type="button"
+                      data-bs-toggle="dropdown" aria-expanded="false">
+                      <i className="ti ti-dots-vertical"></i>
+                    </button>
+                    <ul className="dropdown-menu dropdown-menu-end p-3">
+                      {canEdit && (
+                        <li>
+                          <a className="dropdown-item rounded-1" href="#" onClick={(e) => onEdit(e, contact)}><i
+                              className="ti ti-edit me-1"></i>Edit</a>
+                        </li>
+                      )}
+                      {canDelete && (
+                        <li>
+                          <a className="dropdown-item rounded-1" href="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => onDelete(e, contact)}><i
+                              className="ti ti-trash me-1"></i>Delete</a>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                ) : (
+                  <span className="badge bg-light text-muted border fs-11">View Only</span>
+                )}
               </div>
               <div className="text-center mb-3">
                 <h6 className="mb-1"><a href="#" onClick={(e) => e.preventDefault()}>{contact.contact_name || '-'}</a></h6>

@@ -63,6 +63,12 @@ export const hrmsService = {
     return response;
   },
 
+  // --- Employees ---
+  getEmployees: async () => {
+    const response = await axiosClient.get('/hrms/employees');
+    return response;
+  },
+
   // --- Assets ---
   getAssets: async () => {
     const response = await axiosClient.get('/hrms/assets');

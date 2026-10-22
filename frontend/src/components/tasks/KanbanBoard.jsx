@@ -3,7 +3,7 @@ import axiosClient from '../../api/axiosClient';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
-const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUpdate }) => {
+const KanbanBoard = ({ tasks = [], canEdit = true, canDelete = true, onAddTask, onEditTask, onDeleteTask, onTaskUpdate }) => {
 
   const getInitials = (name) => {
     if (!name) return 'UN';
@@ -52,6 +52,10 @@ const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUp
 
   // Drag and Drop Handlers
   const handleDragStart = (e, taskId) => {
+    if (!canEdit) {
+      e.preventDefault();
+      return;
+    }
     setDraggingTaskId(taskId);
     e.dataTransfer.setData('text/plain', taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -95,6 +99,7 @@ const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUp
   const handleDrop = async (e, targetStatus) => {
     e.preventDefault();
     e.currentTarget.classList.remove('bg-light');
+    if (!canEdit) return;
     
     const taskId = e.dataTransfer.getData('text/plain');
     if (!taskId) return;
@@ -162,10 +167,10 @@ const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUp
                     <div 
                       key={task.id}
                       className="card kanban-card mb-2 cursor-pointer"
-                      draggable="true"
+                      draggable={canEdit ? "true" : "false"}
                       onDragStart={(e) => handleDragStart(e, task.id)}
                       onDragEnd={handleDragEnd}
-                      style={{ cursor: 'grab' }}
+                      style={{ cursor: canEdit ? 'grab' : 'default' }}
                     >
                       <div className="card-body">
                         <div className="d-flex align-items-center justify-content-between mb-3">
@@ -180,8 +185,15 @@ const KanbanBoard = ({ tasks = [], onAddTask, onEditTask, onDeleteTask, onTaskUp
                               <i className="ti ti-dots-vertical"></i>
                             </a>
                             <ul className="dropdown-menu dropdown-menu-end p-3">
-                              <li><a href="#" onClick={(e) => { e.preventDefault(); if(onEditTask) onEditTask(task); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a></li>
-                              <li><a href="#" onClick={(e) => { e.preventDefault(); if(onDeleteTask) onDeleteTask(task.id, task.title); }} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a></li>
+                              {canEdit && (
+                                <li><a href="#" onClick={(e) => { e.preventDefault(); if(onEditTask) onEditTask(task); }} className="dropdown-item rounded-1"><i className="ti ti-edit me-2"></i>Edit</a></li>
+                              )}
+                              {canDelete && (
+                                <li><a href="#" onClick={(e) => { e.preventDefault(); if(onDeleteTask) onDeleteTask(task.id, task.title); }} className="dropdown-item rounded-1"><i className="ti ti-trash me-2"></i>Delete</a></li>
+                              )}
+                              {!canEdit && !canDelete && (
+                                <li><span className="dropdown-item text-muted disabled">View Only</span></li>
+                              )}
                             </ul>
                           </div>
                         </div>

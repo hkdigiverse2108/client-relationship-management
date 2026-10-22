@@ -8,8 +8,10 @@ import FilterBar from '../components/common/FilterBar';
 import CustomSelect from '../components/common/CustomSelect';
 import api from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const Quotes = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/quotes');
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [searchQuery_quotes, setSearchQuery_quotes] = useState('');
   
@@ -53,7 +55,7 @@ const Quotes = () => {
     { value: 'Descending', label: 'Descending' },
   ];
 
-  const InlineStatus = ({ row, onStatusChange }) => {
+  const InlineStatus = ({ row, onStatusChange, canEdit = true }) => {
     const [isEditing, setIsEditing] = useState(false);
     
     let badgeClass = 'badge-success';
@@ -65,13 +67,15 @@ const Quotes = () => {
     const badge = (
       <span 
         className={`badge ${badgeClass} d-inline-flex align-items-center badge-xs`} 
-        onClick={() => setIsEditing(true)}
-        style={{ cursor: 'pointer' }}
-        title="Click to change status"
+        onClick={() => canEdit && setIsEditing(true)}
+        style={{ cursor: canEdit ? 'pointer' : 'default' }}
+        title={canEdit ? "Click to change status" : ""}
       >
         <i className="ti ti-point-filled me-1"></i>{row.status}
       </span>
     );
+
+    if (!canEdit) return badge;
 
     if (isEditing) {
       const opts = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'].map(s => ({ value: s, label: s }));
@@ -270,7 +274,7 @@ const Quotes = () => {
     { name: 'Amount', selector: row => row.amount, sortable: true },
     {
       name: 'Status',
-      cell: row => <InlineStatus row={row} onStatusChange={handleStatusChange} />,
+      cell: row => <InlineStatus row={row} onStatusChange={handleStatusChange} canEdit={canEdit} />,
       sortable: true,
     },
     {
@@ -278,8 +282,15 @@ const Quotes = () => {
       cell: row => (
         <div className="action-icon d-inline-flex">
           <Link to="#" onClick={(e) => { e.preventDefault(); openQuotePreview(row); }} className="me-2 text-muted" title="Download PDF"><i className="ti ti-download"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); handleEditClick(row); }} className="me-2 text-muted"><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row.id }); }} className="text-muted"><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); handleEditClick(row); }} className="me-2 text-muted" title="Edit"><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row.id }); }} className="text-muted" title="Delete"><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     }
@@ -416,11 +427,13 @@ const Quotes = () => {
             ]}
           >
           
-            <div className="mb-2">
-              <a href="#" onClick={(e) => { e.preventDefault(); setEditQuote(null); setIsQuoteModalOpen(true); }}
-                className="btn btn-primary d-flex align-items-center"><i
-                  className="ti ti-circle-plus me-2"></i>Add Quote</a>
-            </div>
+            {canAdd && (
+              <div className="mb-2">
+                <a href="#" onClick={(e) => { e.preventDefault(); setEditQuote(null); setIsQuoteModalOpen(true); }}
+                  className="btn btn-primary d-flex align-items-center"><i
+                    className="ti ti-circle-plus me-2"></i>Add Quote</a>
+              </div>
+            )}
            
           </PageHeader>
           {/* /Breadcrumb */}

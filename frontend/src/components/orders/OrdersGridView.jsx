@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ordersData } from '../../pages/ordersData';
 
-const OrdersGridView = ({ data = [], onEditClick, onDeleteClick }) => {
+const OrdersGridView = ({ data = [], canEdit = true, canDelete = true, onEditClick, onDeleteClick }) => {
   const getInitials = (name) => {
     if (!name) return 'UN';
     const parts = name.trim().split(' ').filter(Boolean);
@@ -116,8 +116,19 @@ const OrdersGridView = ({ data = [], onEditClick, onDeleteClick }) => {
                     </span>
                   </div>
                   <div className="action-icon d-inline-flex mt-2">
-                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(order); }}><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(order); }}><i className="ti ti-trash"></i></Link>
+                    {canEdit && (
+                      <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(order); }}>
+                        <i className="ti ti-edit"></i>
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(order); }}>
+                        <i className="ti ti-trash"></i>
+                      </Link>
+                    )}
+                    {!canEdit && !canDelete && (
+                      <span className="badge bg-light text-muted border fs-11">View Only</span>
+                    )}
                   </div>
                 </div>
               </div>

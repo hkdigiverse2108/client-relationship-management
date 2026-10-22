@@ -11,8 +11,10 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
+import usePermission from '../hooks/usePermission';
 
 const Leads = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/leads');
   const [viewMode, setViewMode] = useState('list');
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -441,8 +443,19 @@ const Leads = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => openEditModal(e, row)}><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => openDeleteModal(e, row)}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => openEditModal(e, row)}>
+              <i className="ti ti-edit"></i>
+            </Link>
+          )}
+          {canDelete && (
+            <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => openDeleteModal(e, row)}>
+              <i className="ti ti-trash"></i>
+            </Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border">View Only</span>
+          )}
         </div>
       ),
     },
@@ -503,11 +516,13 @@ const Leads = () => {
 								</ul>
 							</div>
 						</div>
-						<div className="mb-2">
-							<a href="#" onClick={openAddModal}
-								className="btn btn-primary d-flex align-items-center"><i
-									className="ti ti-circle-plus me-2"></i>Add Lead</a>
-						</div>
+						{canAdd && (
+							<div className="mb-2">
+								<a href="#" onClick={openAddModal}
+									className="btn btn-primary d-flex align-items-center"><i
+										className="ti ti-circle-plus me-2"></i>Add Lead</a>
+							</div>
+						)}
 						
 				</PageHeader>
 				{/* /Breadcrumb */}
@@ -724,6 +739,8 @@ const Leads = () => {
 										<LeadsKanbanView 
                       data={filteredLeads} 
                       users={users}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
                       onInlineUpdate={handleInlineUpdate}
                       onEdit={openEditModal}
                       onDelete={openDeleteModal}

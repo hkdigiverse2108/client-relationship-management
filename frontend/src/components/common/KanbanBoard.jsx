@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import KanbanCard from './KanbanCard';
 
-const KanbanBoard = ({ initialColumns, itemType = 'Deal', onAddDeal, onEditCard, onDeleteCard, onCardDropIntercept, onCardMove }) => {
+const KanbanBoard = ({ initialColumns, itemType = 'Deal', canAdd = true, canEdit = true, canDelete = true, onAddDeal, onEditCard, onDeleteCard, onCardDropIntercept, onCardMove }) => {
   const [columns, setColumns] = useState(initialColumns);
   const scrollRef = useRef(null);
 
@@ -10,16 +10,19 @@ const KanbanBoard = ({ initialColumns, itemType = 'Deal', onAddDeal, onEditCard,
   }, [initialColumns]);
 
   const handleDragStart = (e, cardId) => {
+    if (!canEdit) return;
     e.dataTransfer.setData('cardId', cardId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e) => {
+    if (!canEdit) return;
     e.preventDefault(); // Necessary to allow dropping
     e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (e, targetColumnId) => {
+    if (!canEdit) return;
     e.preventDefault();
     const cardId = e.dataTransfer.getData('cardId');
     if (!cardId) return;
@@ -142,17 +145,19 @@ const KanbanBoard = ({ initialColumns, itemType = 'Deal', onAddDeal, onEditCard,
                 card={card} 
                 columnColor={col.color} 
                 onDragStart={handleDragStart}
-                onEdit={() => onEditCard && onEditCard(card.id)}
-                onDelete={() => onDeleteCard && onDeleteCard(card.id)}
+                onEdit={canEdit ? () => onEditCard && onEditCard(card.id) : undefined}
+                onDelete={canDelete ? () => onDeleteCard && onDeleteCard(card.id) : undefined}
               />
             ))}
           </div>
           
-          <div className="pt-2">
-            <a href="#" onClick={(e) => { e.preventDefault(); onAddDeal && onAddDeal(col.title); }} className="btn btn-white border border-dashed d-flex align-items-center justify-content-center text-dark">
-              <i className="ti ti-plus me-2"></i> Add {itemType}
-            </a>
-          </div>
+          {canAdd && (
+            <div className="pt-2">
+              <a href="#" onClick={(e) => { e.preventDefault(); onAddDeal && onAddDeal(col.title); }} className="btn btn-white border border-dashed d-flex align-items-center justify-content-center text-dark">
+                <i className="ti ti-plus me-2"></i> Add {itemType}
+              </a>
+            </div>
+          )}
         </div>
       ))}
     </div>

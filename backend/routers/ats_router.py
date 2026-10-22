@@ -193,6 +193,7 @@ async def create_candidate(candidate: ATSCandidateCreate, current_user: dict = D
 
 @router.get("/candidates", response_model=List[ATSCandidateResponse])
 async def get_candidates(job_id: str = None, current_user: dict = Depends(get_current_user)):
+    check_ats_permission(current_user)
     query = {"is_deleted": {"$ne": True}}
     if job_id and job_id != "all":
         query["job_id"] = job_id

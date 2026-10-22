@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const CategoriesGridView = ({ categories = [], onEditClick, onDeleteClick }) => {
+const CategoriesGridView = ({ categories = [], canEdit = true, canDelete = true, onEditClick, onDeleteClick }) => {
   return (
     <div className="row">
       {categories.map((category) => {
@@ -37,8 +37,19 @@ const CategoriesGridView = ({ categories = [], onEditClick, onDeleteClick }) => 
 
                 <div className="d-flex align-items-center justify-content-center pt-2 border-top">
                   <div className="action-icon d-inline-flex">
-                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(category); }}><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(category); }}><i className="ti ti-trash"></i></Link>
+                    {canEdit && (
+                      <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(category); }}>
+                        <i className="ti ti-edit"></i>
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(category); }}>
+                        <i className="ti ti-trash"></i>
+                      </Link>
+                    )}
+                    {!canEdit && !canDelete && (
+                      <span className="badge bg-light text-muted border fs-11">View Only</span>
+                    )}
                   </div>
                 </div>
               </div>

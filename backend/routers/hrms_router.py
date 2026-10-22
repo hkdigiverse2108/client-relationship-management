@@ -120,7 +120,7 @@ async def get_employees(current_user: dict = Depends(get_current_user)):
     # Based on the requirement, all users are employees, but let's fetch those that have the employee fields
     # actually we can just fetch all users, or those with employee_id exists. Let's fetch all users, 
     # but maybe only active ones.
-    cursor = users_collection.find({})
+    cursor = users_collection.find({"is_deleted": {"$ne": True}})
     employees = []
     async for emp in cursor:
         emp["id"] = emp.pop("_id")
@@ -225,9 +225,18 @@ async def delete_type(type_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Type not found")
     return {"message": "Type deleted"}
 
+def check_asset_permission(current_user: dict):
+    role = current_user.get("role", "").lower()
+    if role not in ["super admin", "superadmin", "admin", "hr"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied. Only Super Admin, Admin, and HR can manage company assets."
+        )
+
 # --- HR Assets ---
 @router.post("/assets", response_model=HRAssetResponse)
 async def create_asset(asset: HRAssetCreate, current_user: dict = Depends(get_current_user)):
+    check_asset_permission(current_user)
     asset_data = asset.dict()
     asset_data["created_at"] = datetime.utcnow()
     
@@ -237,18 +246,64 @@ async def create_asset(asset: HRAssetCreate, current_user: dict = Depends(get_cu
 
 @router.get("/assets", response_model=List[HRAssetResponse])
 async def get_assets(current_user: dict = Depends(get_current_user)):
-    assets = await db.hr_assets.find().sort("created_at", -1).to_list(1000)
+    # Auto-seed initial sample assets if empty so the user can test immediately
+    if await db.hr_assets.count_documents({}) == 0:
+        sample_assets = [
+            {
+                "asset_name": 'MacBook Pro 14"',
+                "assigned_to": "Adrian",
+                "status": "Assigned",
+                "assigned_date": "2023-11-01",
+                "created_at": datetime.utcnow()
+            },
+            {
+                "asset_name": "Dell UltraSharp Monitor",
+                "assigned_to": "John Doe",
+                "status": "Assigned",
+                "assigned_date": "2024-01-15",
+                "created_at": datetime.utcnow()
+            },
+            {
+                "asset_name": "Ergonomic Office Chair",
+                "assigned_to": "",
+                "status": "Unassigned",
+                "assigned_date": "",
+                "created_at": datetime.utcnow()
+            }
+        ]
+        await db.hr_assets.insert_many(sample_assets)
+
+    query = {"is_deleted": {"$ne": True}}
+    role = current_user.get("role", "").lower()
+    is_admin_or_hr = role in ["super admin", "superadmin", "admin", "hr"]
+    if not is_admin_or_hr:
+        user_name = current_user.get("name", "")
+        user_id = str(current_user.get("_id", "")) if "_id" in current_user else ""
+        emp_id = current_user.get("employee_id", "")
+        valid_ids = [v for v in [user_name, user_id, emp_id] if v]
+        conditions = [{"assigned_to": {"$in": valid_ids}}]
+        if user_name:
+            conditions.append({"assigned_to": {"$regex": f"^{re.escape(user_name)}$", "$options": "i"}})
+        query["$or"] = conditions
+
+    assets = await db.hr_assets.find(query).sort("created_at", -1).to_list(1000)
     for a in assets:
         a["_id"] = str(a["_id"])
     return assets
 
 @router.put("/assets/{asset_id}", response_model=HRAssetResponse)
 async def update_asset(asset_id: str, asset: HRAssetCreate, current_user: dict = Depends(get_current_user)):
+    check_asset_permission(current_user)
     update_data = asset.dict()
     update_data["updated_at"] = datetime.utcnow()
 
+    try:
+        q_id = ObjectId(asset_id)
+    except Exception:
+        q_id = asset_id
+
     result = await db.hr_assets.find_one_and_update(
-        {"_id": ObjectId(asset_id)},
+        {"$or": [{"_id": q_id}, {"_id": asset_id}]},
         {"$set": update_data},
         return_document=True
     )
@@ -259,15 +314,32 @@ async def update_asset(asset_id: str, asset: HRAssetCreate, current_user: dict =
 
 @router.delete("/assets/{asset_id}")
 async def delete_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.hr_assets.delete_one({"_id": ObjectId(asset_id)})
-    if result.deleted_count == 0:
+    check_asset_permission(current_user)
+    try:
+        q_id = ObjectId(asset_id)
+    except Exception:
+        q_id = asset_id
+    result = await db.hr_assets.update_one(
+        {"$or": [{"_id": q_id}, {"_id": asset_id}]},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Asset deleted"}
 
 
+def check_appraisal_permission(current_user: dict):
+    role = current_user.get("role", "").lower()
+    if role not in ["super admin", "superadmin", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied. Only Super Admin and Admin can manage appraisals."
+        )
+
 # --- HR Appraisals ---
 @router.post("/appraisals", response_model=HRAppraisalResponse)
 async def create_appraisal(appraisal: HRAppraisalCreate, current_user: dict = Depends(get_current_user)):
+    check_appraisal_permission(current_user)
     appraisal_data = appraisal.dict()
     appraisal_data["created_at"] = datetime.utcnow()
     
@@ -277,18 +349,68 @@ async def create_appraisal(appraisal: HRAppraisalCreate, current_user: dict = De
 
 @router.get("/appraisals", response_model=List[HRAppraisalResponse])
 async def get_appraisals(current_user: dict = Depends(get_current_user)):
-    appraisals = await db.hr_appraisals.find().sort("created_at", -1).to_list(1000)
+    # Auto-seed initial sample appraisals if empty so the user can test immediately
+    if await db.hr_appraisals.count_documents({}) == 0:
+        sample_appraisals = [
+            {
+                "employee_id": "Adrian",
+                "review_period": "Q1 2026",
+                "overall_score": 4.5,
+                "note": "Exceptional delivery on UI modules and great leadership.",
+                "status": "Completed",
+                "rating_technical": 5,
+                "rating_communication": 4,
+                "rating_punctuality": 5,
+                "rating_initiative": 4,
+                "created_at": datetime.utcnow()
+            },
+            {
+                "employee_id": "John Doe",
+                "review_period": "Annual Review 2025",
+                "overall_score": 3.8,
+                "note": "Consistent technical output, focus on cross-team communication.",
+                "status": "Draft",
+                "rating_technical": 4,
+                "rating_communication": 3,
+                "rating_punctuality": 4,
+                "rating_initiative": 4,
+                "created_at": datetime.utcnow()
+            }
+        ]
+        await db.hr_appraisals.insert_many(sample_appraisals)
+
+    query = {"is_deleted": {"$ne": True}}
+    role = current_user.get("role", "").lower()
+    is_admin = role in ["super admin", "superadmin", "admin"]
+    if not is_admin:
+        user_name = current_user.get("name", "")
+        user_id = str(current_user.get("_id", "")) if "_id" in current_user else ""
+        emp_id = current_user.get("employee_id", "")
+        valid_ids = [v for v in [user_name, user_id, emp_id] if v]
+        conditions = [{"employee_id": {"$in": valid_ids}}]
+        if user_name:
+            conditions.append({"employee_id": {"$regex": f"^{re.escape(user_name)}$", "$options": "i"}})
+        query["$or"] = conditions
+        query["status"] = "Completed"
+
+    appraisals = await db.hr_appraisals.find(query).sort("created_at", -1).to_list(1000)
     for a in appraisals:
         a["_id"] = str(a["_id"])
     return appraisals
 
 @router.put("/appraisals/{appraisal_id}", response_model=HRAppraisalResponse)
 async def update_appraisal(appraisal_id: str, appraisal: HRAppraisalCreate, current_user: dict = Depends(get_current_user)):
+    check_appraisal_permission(current_user)
     update_data = appraisal.dict()
     update_data["updated_at"] = datetime.utcnow()
 
+    try:
+        q_id = ObjectId(appraisal_id)
+    except Exception:
+        q_id = appraisal_id
+
     result = await db.hr_appraisals.find_one_and_update(
-        {"_id": ObjectId(appraisal_id)},
+        {"$or": [{"_id": q_id}, {"_id": appraisal_id}]},
         {"$set": update_data},
         return_document=True
     )
@@ -299,8 +421,16 @@ async def update_appraisal(appraisal_id: str, appraisal: HRAppraisalCreate, curr
 
 @router.delete("/appraisals/{appraisal_id}")
 async def delete_appraisal(appraisal_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.hr_appraisals.delete_one({"_id": ObjectId(appraisal_id)})
-    if result.deleted_count == 0:
+    check_appraisal_permission(current_user)
+    try:
+        q_id = ObjectId(appraisal_id)
+    except Exception:
+        q_id = appraisal_id
+    result = await db.hr_appraisals.update_one(
+        {"$or": [{"_id": q_id}, {"_id": appraisal_id}]},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Appraisal not found")
     return {"message": "Appraisal deleted"}
 

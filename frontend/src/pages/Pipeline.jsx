@@ -127,8 +127,10 @@ import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
+import usePermission from '../hooks/usePermission';
 
 const Pipeline = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/pipeline');
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeProbability, setActiveProbability] = useState('All');
@@ -414,9 +416,11 @@ const Pipeline = () => {
                   <a href="#" onClick={(e) => { e.preventDefault(); setViewMode('forecast'); }} className={`btn btn-sm ${viewMode === 'forecast' ? 'bg-primary text-white border-0' : 'text-muted'}`}>Forecast</a>
                 </div>
               </div>
-              <a href="#" onClick={(e) => { e.preventDefault(); setDealToEdit(null); setDefaultStageForModal('Lead'); setIsModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center mb-2">
-                <i className="ti ti-circle-plus me-1"></i>New Deal
-              </a>
+              {canAdd && (
+                <a href="#" onClick={(e) => { e.preventDefault(); setDealToEdit(null); setDefaultStageForModal('Lead'); setIsModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center mb-2">
+                  <i className="ti ti-circle-plus me-1"></i>New Deal
+                </a>
+              )}
              
             </div>
           </PageHeader>
@@ -538,6 +542,9 @@ const Pipeline = () => {
             {viewMode === 'pipeline' ? (
               <KanbanBoard 
                 initialColumns={pipelineData} 
+                canAdd={canAdd}
+                canEdit={canEdit}
+                canDelete={canDelete}
                 onAddDeal={(stage) => {
                   setDefaultStageForModal(stage);
                   setDealToEdit(null);

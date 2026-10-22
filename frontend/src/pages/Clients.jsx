@@ -12,8 +12,10 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
+import usePermission from '../hooks/usePermission';
 
 const Clients = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/clients');
   const [viewMode, setViewMode] = useState('list');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState([null, null]);
@@ -300,8 +302,15 @@ const Clients = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEdit(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => { e.preventDefault(); setClientToDelete(row); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEdit(row); }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => { e.preventDefault(); setClientToDelete(row); }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border">View Only</span>
+          )}
         </div>
       ),
     },
@@ -348,11 +357,13 @@ const Clients = () => {
 								</ul>
 							</div>
 						</div>
-						<div className="mb-2">
-							<a href="#" onClick={(e) => { e.preventDefault(); setClientToEdit(null); setIsClientModalOpen(true); }}
-								className="btn btn-primary d-flex align-items-center"><i
-									className="ti ti-circle-plus me-2"></i>Add Client</a>
-						</div>
+						{canAdd && (
+							<div className="mb-2">
+								<a href="#" onClick={(e) => { e.preventDefault(); setClientToEdit(null); setIsClientModalOpen(true); }}
+									className="btn btn-primary d-flex align-items-center"><i
+										className="ti ti-circle-plus me-2"></i>Add Client</a>
+							</div>
+						)}
 						
 				</PageHeader>
 				{/* /Breadcrumb */}
@@ -474,6 +485,8 @@ const Clients = () => {
 										<ClientsGridView 
                       clients={filteredClients} 
                       users={users}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
                       handleEdit={handleEdit} 
                       setClientToDelete={setClientToDelete} 
                     />

@@ -9,8 +9,9 @@ import CustomDatePicker from '../components/common/CustomDatePicker';
 import CustomSelect from '../components/common/CustomSelect';
 import api from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
-const InlineStatusEditor = ({ row, onUpdate }) => {
+const InlineStatusEditor = ({ row, onUpdate, canEdit = true }) => {
   const [isEditing, setIsEditing] = useState(false);
 
   let badgeClass = 'badge-soft-secondary';
@@ -23,13 +24,17 @@ const InlineStatusEditor = ({ row, onUpdate }) => {
   const badge = (
     <span 
       className={`badge ${badgeClass} d-inline-flex align-items-center`} 
-      onClick={() => setIsEditing(true)}
-      style={{ cursor: 'pointer' }}
-      title="Click to change status"
+      onClick={() => canEdit && setIsEditing(true)}
+      style={{ cursor: canEdit ? 'pointer' : 'default' }}
+      title={canEdit ? "Click to change status" : ""}
     >
       <i className="ti ti-point-filled me-1"></i>{row.status}
     </span>
   );
+
+  if (!canEdit) {
+    return badge;
+  }
 
   if (isEditing) {
     const statusOptions = [
@@ -68,6 +73,7 @@ const InlineStatusEditor = ({ row, onUpdate }) => {
 };
 
 const Invoices = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/invoices');
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState(null);
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, id: null });
@@ -336,7 +342,7 @@ const Invoices = () => {
           }
         };
 
-        return <InlineStatusEditor row={row} onUpdate={handleStatusChange} />;
+        return <InlineStatusEditor row={row} onUpdate={handleStatusChange} canEdit={canEdit} />;
       },
       sortable: true,
     },
@@ -344,25 +350,34 @@ const Invoices = () => {
       name: 'Action',
       cell: row => (
         <div className="action-icon d-inline-flex">
-          <Link 
-            to="#" 
-            onClick={(e) => { 
-              e.preventDefault(); 
-              if (row.status !== 'Paid') setConfirmPaidModal({ isOpen: true, row: row }); 
-            }} 
-            className={`me-2 ${row.status === 'Paid' ? 'invisible' : 'text-success'}`} 
-            style={{ visibility: row.status === 'Paid' ? 'hidden' : 'visible' }}
-            title={row.status !== 'Paid' ? "Mark as Paid" : ""}
-          >
-            <i className="ti ti-check" style={{fontSize: '18px'}}></i>
-          </Link>
+          {canEdit && (
+            <Link 
+              to="#" 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                if (row.status !== 'Paid') setConfirmPaidModal({ isOpen: true, row: row }); 
+              }} 
+              className={`me-2 ${row.status === 'Paid' ? 'invisible' : 'text-success'}`} 
+              style={{ visibility: row.status === 'Paid' ? 'hidden' : 'visible' }}
+              title={row.status !== 'Paid' ? "Mark as Paid" : ""}
+            >
+              <i className="ti ti-check" style={{fontSize: '18px'}}></i>
+            </Link>
+          )}
           <Link to="#" onClick={(e) => { e.preventDefault(); downloadInvoicePDF(row); }} className="me-2 text-muted" title="Download PDF"><i className="ti ti-download"></i></Link>
-          <Link to="#" onClick={(e) => { 
-              e.preventDefault(); 
-              setEditInvoice(row);
-              setIsInvoiceModalOpen(true);
-            }} className="me-2 text-muted" title="Edit"><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id }); }} className="text-muted"><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" onClick={(e) => { 
+                e.preventDefault(); 
+                setEditInvoice(row);
+                setIsInvoiceModalOpen(true);
+              }} className="me-2 text-muted" title="Edit"><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id }); }} className="text-muted"><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     }
@@ -524,6 +539,7 @@ const Invoices = () => {
 					]}
 				>
 					
+					{canAdd && (
 						<div className="mb-2">
 							<button onClick={() => {
                                 setEditInvoice(null);
@@ -531,6 +547,7 @@ const Invoices = () => {
                             }} className="btn btn-primary d-flex align-items-center"><i
 									className="ti ti-circle-plus me-2"></i>Add Invoice</button>
 						</div>
+					)}
 						
 				</PageHeader>
 				{/* /Breadcrumb */}

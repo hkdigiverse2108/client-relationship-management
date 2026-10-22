@@ -9,8 +9,10 @@ import OrdersGridView from '../components/orders/OrdersGridView';
 import FilterBar from '../components/common/FilterBar';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const Contacts = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/orders');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
@@ -275,8 +277,19 @@ const Contacts = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.order_id }); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}>
+              <i className="ti ti-edit"></i>
+            </Link>
+          )}
+          {canDelete && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.order_id }); }}>
+              <i className="ti ti-trash"></i>
+            </Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border">View Only</span>
+          )}
         </div>
       ),
     },
@@ -338,11 +351,13 @@ const Contacts = () => {
 							</div>
 						</div>
 						
-						<div className="mb-2">
-							<a href="#" onClick={(e) => { e.preventDefault(); setCurrentEditOrder(null); setIsOrderModalOpen(true); }}
-								className="btn btn-primary d-flex align-items-center"><i
-									className="ti ti-circle-plus me-2"></i>Simulate E-com Order</a>
-						</div>
+						{canAdd && (
+							<div className="mb-2">
+								<a href="#" onClick={(e) => { e.preventDefault(); setCurrentEditOrder(null); setIsOrderModalOpen(true); }}
+									className="btn btn-primary d-flex align-items-center"><i
+										className="ti ti-circle-plus me-2"></i>Simulate E-com Order</a>
+							</div>
+						)}
 					
 					</PageHeader>
 					{/* /Breadcrumb */}
@@ -379,6 +394,8 @@ const Contacts = () => {
 							<div className="p-3">
 								<OrdersGridView 
                   data={filteredOrders} 
+                  canEdit={canEdit}
+                  canDelete={canDelete}
                   onEditClick={handleEditClick}
                   onDeleteClick={(row) => setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.order_id })}
                 />

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { APP_CONFIG } from '../../config/appConfig';
 
-const ProductsGridView = ({ products = [], onEditClick, onDeleteClick }) => {
+const ProductsGridView = ({ products = [], canEdit = true, canDelete = true, onEditClick, onDeleteClick }) => {
   return (
     <div className="row">
       {products.map((product) => {
@@ -88,8 +88,19 @@ const ProductsGridView = ({ products = [], onEditClick, onDeleteClick }) => {
 
                 <div className="d-flex align-items-center justify-content-center pt-2 border-top">
                   <div className="action-icon d-inline-flex">
-                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(product); }}><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(product); }}><i className="ti ti-trash"></i></Link>
+                    {canEdit && (
+                      <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(product); }}>
+                        <i className="ti ti-edit"></i>
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(product); }}>
+                        <i className="ti ti-trash"></i>
+                      </Link>
+                    )}
+                    {!canEdit && !canDelete && (
+                      <span className="badge bg-light text-muted border fs-11">View Only</span>
+                    )}
                   </div>
                 </div>
               </div>

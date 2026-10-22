@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { customersData } from '../../pages/customersData';
 
-const CustomersGridView = ({ data = [], onEditClick, onDeleteClick }) => {
+const CustomersGridView = ({ data = [], canEdit = true, canDelete = true, onEditClick, onDeleteClick }) => {
   const getInitials = (name) => {
     if (!name) return 'UN';
     const parts = name.trim().split(' ').filter(Boolean);
@@ -83,8 +83,19 @@ const CustomersGridView = ({ data = [], onEditClick, onDeleteClick }) => {
                     <li><Link to="#" className="p-1 rounded-circle bg-light d-flex align-items-center justify-content-center"><i className="ti ti-brand-whatsapp text-muted"></i></Link></li>
                   </ul>
                   <div className="action-icon d-inline-flex">
-                    <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(customer); }}><i className="ti ti-edit"></i></Link>
-                    <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(customer); }}><i className="ti ti-trash"></i></Link>
+                    {canEdit && (
+                      <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); onEditClick && onEditClick(customer); }}>
+                        <i className="ti ti-edit"></i>
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); onDeleteClick && onDeleteClick(customer); }}>
+                        <i className="ti ti-trash"></i>
+                      </Link>
+                    )}
+                    {!canEdit && !canDelete && (
+                      <span className="badge bg-light text-muted border fs-11">View Only</span>
+                    )}
                   </div>
                 </div>
               </div>

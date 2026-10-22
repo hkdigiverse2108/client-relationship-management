@@ -8,9 +8,11 @@ import CustomDatePicker from '../components/common/CustomDatePicker';
 import CustomSelect from '../components/common/CustomSelect';
 import { toast } from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
+import usePermission from '../hooks/usePermission';
 
 
 const ProjectPipeline = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/project-pipeline');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
@@ -317,13 +319,13 @@ const ProjectPipeline = () => {
               { label: 'Pipeline Board', active: true }
             ]}
           >
-            <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
-            
-              <a href="#" onClick={(e) => { e.preventDefault(); setProjectToEdit(null); setIsModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center mb-2">
-                <i className="ti ti-circle-plus me-1"></i>New Project
-              </a>
-             
-            </div>
+            {canAdd && (
+              <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
+                <a href="#" onClick={(e) => { e.preventDefault(); setProjectToEdit(null); setIsModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center mb-2">
+                  <i className="ti ti-circle-plus me-1"></i>New Project
+                </a>
+              </div>
+            )}
           </PageHeader>
           {/* /Breadcrumb */}
 
@@ -453,6 +455,9 @@ const ProjectPipeline = () => {
               <KanbanBoard 
                 initialColumns={initialPipelineData} 
                 itemType="Project" 
+                canAdd={canAdd}
+                canEdit={canEdit}
+                canDelete={canDelete}
                 onCardMove={handleCardMove} 
                 onAddDeal={handleAddDeal} 
                 onEditCard={handleEditCard}

@@ -9,8 +9,10 @@ import CustomSelect from '../components/common/CustomSelect';
 import ConfirmationModal from '../components/ConfirmationModal';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const Projects = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/all-projects');
   const [viewMode, setViewMode] = useState('list');
   const [selectedClient, setSelectedClient] = useState('All');
   const [dateRange, setDateRange] = useState([null, null]);
@@ -220,7 +222,7 @@ const Projects = () => {
       selector: row => row.priority, 
       sortable: true,
       cell: (row) => {
-        const isEditing = editingCell.rowId === row._id && editingCell.field === 'priority';
+        const isEditing = canEdit && editingCell.rowId === row._id && editingCell.field === 'priority';
         const color = getPriorityColor(row.priority);
         const prioText = row.priority ? row.priority.charAt(0).toUpperCase() + row.priority.slice(1) : 'Medium';
         
@@ -263,7 +265,7 @@ const Projects = () => {
         }
         
         return (
-          <div className="py-2" onClick={() => setEditingCell({ rowId: row._id, field: 'priority' })} style={{ cursor: 'pointer' }} title="Click to edit">
+          <div className="py-2" onClick={() => canEdit && setEditingCell({ rowId: row._id, field: 'priority' })} style={{ cursor: canEdit ? 'pointer' : 'default' }} title={canEdit ? "Click to edit" : ""}>
             <span className="d-inline-flex align-items-center">
               <span className={`rounded-circle bg-transparent-${color} d-flex justify-content-center align-items-center me-2`}>
                 <i className={`ti ti-point-filled text-${color}`}></i>
@@ -278,7 +280,7 @@ const Projects = () => {
       selector: row => row.status, 
       sortable: true,
       cell: (row) => {
-        const isEditing = editingCell.rowId === row._id && editingCell.field === 'status';
+        const isEditing = canEdit && editingCell.rowId === row._id && editingCell.field === 'status';
         const color = getStatusColor(row.status);
         const statusText = row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : 'Active';
         
@@ -318,7 +320,7 @@ const Projects = () => {
         }
 
         return (
-          <div className="py-2" onClick={() => setEditingCell({ rowId: row._id, field: 'status' })} style={{ cursor: 'pointer' }} title="Click to edit">
+          <div className="py-2" onClick={() => canEdit && setEditingCell({ rowId: row._id, field: 'status' })} style={{ cursor: canEdit ? 'pointer' : 'default' }} title={canEdit ? "Click to edit" : ""}>
             <span className={`badge badge-${color} badge-xs d-inline-flex align-items-center`}>
               <i className="ti ti-point-filled me-1"></i>{statusText}
             </span>
@@ -361,14 +363,21 @@ const Projects = () => {
       sortable: false,
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => {
-            e.preventDefault();
-            setProjectToEdit(row);
-            setIsProjectModalOpen(true);
-          }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_project_modal" onClick={() => {
-            setProjectToDelete(row);
-          }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => {
+              e.preventDefault();
+              setProjectToEdit(row);
+              setIsProjectModalOpen(true);
+            }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_project_modal" onClick={() => {
+              setProjectToDelete(row);
+            }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       )
     }
@@ -453,9 +462,11 @@ const Projects = () => {
               </ul>
             </div>
           </div>
-          <div className="mb-2">
-            <Link to="#" onClick={(e) => { e.preventDefault(); setIsProjectModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Project</Link>
-          </div>
+          {canAdd && (
+            <div className="mb-2">
+              <Link to="#" onClick={(e) => { e.preventDefault(); setIsProjectModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Project</Link>
+            </div>
+          )}
         </PageHeader>
 
         {/* Projects Layout */}
@@ -589,6 +600,8 @@ const Projects = () => {
                     data={filteredProjects} 
                     users={users}
                     clients={clients} 
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                     setProjectToEdit={setProjectToEdit}
                     setIsProjectModalOpen={setIsProjectModalOpen}
                     setProjectToDelete={setProjectToDelete}

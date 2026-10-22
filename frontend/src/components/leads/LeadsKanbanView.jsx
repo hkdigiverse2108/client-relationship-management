@@ -22,7 +22,7 @@ const getSelectValue = (val, options = []) => {
   return { value: val, label: val.charAt(0).toUpperCase() + val.slice(1) };
 };
 
-const LeadsKanbanView = ({ data = [], users = [], onInlineUpdate, onEdit, onDelete, getStatusBadgeClass }) => {
+const LeadsKanbanView = ({ data = [], users = [], canEdit = true, canDelete = true, onInlineUpdate, onEdit, onDelete, getStatusBadgeClass }) => {
   const [editingCell, setEditingCell] = useState({ rowId: null, field: null });
 
   // Define all statuses
@@ -77,8 +77,15 @@ const LeadsKanbanView = ({ data = [], users = [], onInlineUpdate, onEdit, onDele
                             <h6 className="fw-medium">{lead.lead_name}</h6>
                           </div>
                           <div className="action-icon d-inline-flex flex-shrink-0">
-                            <Link to="#" className="me-2" onClick={(e) => onEdit && onEdit(e, lead)} title="Edit"><i className="ti ti-edit"></i></Link>
-                            <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => onDelete && onDelete(e, lead)} title="Delete"><i className="ti ti-trash"></i></Link>
+                            {canEdit && (
+                              <Link to="#" className="me-2" onClick={(e) => onEdit && onEdit(e, lead)} title="Edit"><i className="ti ti-edit"></i></Link>
+                            )}
+                            {canDelete && (
+                              <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => onDelete && onDelete(e, lead)} title="Delete"><i className="ti ti-trash"></i></Link>
+                            )}
+                            {!canEdit && !canDelete && (
+                              <span className="badge bg-light text-muted border fs-11">View Only</span>
+                            )}
                           </div>
                         </div>
                       </div>

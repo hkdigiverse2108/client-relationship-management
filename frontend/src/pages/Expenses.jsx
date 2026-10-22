@@ -9,6 +9,7 @@ import CustomDatePicker from '../components/common/CustomDatePicker';
 import CustomSelect from '../components/common/CustomSelect';
 import api from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const formatCurrency = (amount) => {
   if (amount === undefined || amount === null || amount === '') return '-';
@@ -23,6 +24,7 @@ const formatDate = (dateString) => {
 };
 
 const Expenses = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/expenses');
   const [searchQuery_expenses, setSearchQuery_expenses] = useState('');
   const [isExpenseModalOpen, setExpenseModalOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
@@ -173,12 +175,19 @@ const Expenses = () => {
       name: 'Action',
       cell: row => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" onClick={(e) => { e.preventDefault(); setExpenseToEdit(row); setExpenseModalOpen(true); }} className="me-2 text-muted" title="Edit">
-            <i className="ti ti-edit"></i>
-          </Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setExpenseToDelete(row); }} data-bs-toggle="modal" data-bs-target="#deleteExpenseModal" className="text-muted" title="Delete">
-            <i className="ti ti-trash"></i>
-          </Link>
+          {canEdit && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setExpenseToEdit(row); setExpenseModalOpen(true); }} className="me-2 text-muted" title="Edit">
+              <i className="ti ti-edit"></i>
+            </Link>
+          )}
+          {canDelete && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setExpenseToDelete(row); }} data-bs-toggle="modal" data-bs-target="#deleteExpenseModal" className="text-muted" title="Delete">
+              <i className="ti ti-trash"></i>
+            </Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
       right: true
@@ -203,12 +212,14 @@ const Expenses = () => {
               { label: 'Expenses', active: true }
             ]}
           >
-            <div className="mb-2">
-              <a href="#" onClick={(e) => { e.preventDefault(); setExpenseToEdit(null); setExpenseModalOpen(true); }}
-                className="btn btn-primary d-flex align-items-center">
-                <i className="ti ti-circle-plus me-2"></i>Add Expenses
-              </a>
-            </div>
+            {canAdd && (
+              <div className="mb-2">
+                <a href="#" onClick={(e) => { e.preventDefault(); setExpenseToEdit(null); setExpenseModalOpen(true); }}
+                  className="btn btn-primary d-flex align-items-center">
+                  <i className="ti ti-circle-plus me-2"></i>Add Expenses
+                </a>
+              </div>
+            )}
           </PageHeader>
 
           <div className="row">

@@ -62,12 +62,18 @@ export default function ATSPipeline() {
   }, []);
 
   useEffect(() => {
-    if (selectedJob) {
+    if (canManageATS && selectedJob) {
       fetchCandidates(selectedJob);
     } else {
       setCandidates([]);
     }
-  }, [selectedJob]);
+  }, [selectedJob, canManageATS]);
+
+  useEffect(() => {
+    if (!canManageATS && activeTab === 'Pipeline') {
+      setActiveTab('Jobs List');
+    }
+  }, [canManageATS, activeTab]);
 
   const fetchJobs = async () => {
     try {
@@ -348,28 +354,28 @@ export default function ATSPipeline() {
       name: 'Actions',
       sortable: false,
       cell: row => (
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-sm btn-soft-primary px-3" onClick={() => { setSelectedJob(row._id || row.id); setActiveTab('Pipeline'); }}>
-            View Pipeline
-          </button>
-          {canManageATS && (
-            <>
-              <button type="button" className="btn btn-sm btn-link p-0 text-muted fs-16" onClick={() => openJobModal(row)} title="Edit Job">
-                <i className="ti ti-edit"></i>
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-sm btn-link p-0 text-danger fs-16" 
-                onClick={() => setItemToDelete({ type: 'job', id: row._id || row.id, name: row.title })}
-                data-bs-toggle="modal" 
-                data-bs-target="#delete_ats_item_modal"
-                title="Delete Job"
-              >
-                <i className="ti ti-trash"></i>
-              </button>
-            </>
-          )}
-        </div>
+        canManageATS ? (
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn btn-sm btn-soft-primary px-3" onClick={() => { setSelectedJob(row._id || row.id); setActiveTab('Pipeline'); }}>
+              View Pipeline
+            </button>
+            <button type="button" className="btn btn-sm btn-link p-0 text-muted fs-16" onClick={() => openJobModal(row)} title="Edit Job">
+              <i className="ti ti-edit"></i>
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-sm btn-link p-0 text-danger fs-16" 
+              onClick={() => setItemToDelete({ type: 'job', id: row._id || row.id, name: row.title })}
+              data-bs-toggle="modal" 
+              data-bs-target="#delete_ats_item_modal"
+              title="Delete Job"
+            >
+              <i className="ti ti-trash"></i>
+            </button>
+          </div>
+        ) : (
+          <span className="badge bg-light text-muted border">View Only</span>
+        )
       )
     }
   ];
@@ -391,12 +397,14 @@ export default function ATSPipeline() {
           >
             Jobs List
           </button>
-          <button 
-            className={`btn ${activeTab === 'Pipeline' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setActiveTab('Pipeline')}
-          >
-            Candidate Pipeline
-          </button>
+          {canManageATS && (
+            <button 
+              className={`btn ${activeTab === 'Pipeline' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setActiveTab('Pipeline')}
+            >
+              Candidate Pipeline
+            </button>
+          )}
         </div>
         <div className="d-flex gap-2">
           {canManageATS && (

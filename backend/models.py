@@ -1063,13 +1063,14 @@ class ATSCandidateResponse(ATSCandidateCreate):
 
 class HRAssetCreate(BaseModel):
     asset_name: str
-    assigned_to: str
+    assigned_to: Optional[str] = ""
     status: str = "Unassigned"
     assigned_date: Optional[str] = None
 
 class HRAssetResponse(HRAssetCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
+    is_deleted: Optional[bool] = False
 
 class HRAppraisalCreate(BaseModel):
     employee_id: str
@@ -1086,6 +1087,7 @@ class HRAppraisalResponse(HRAppraisalCreate):
     id: str = Field(alias="_id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    is_deleted: Optional[bool] = False
 
 class LeadStatDetail(BaseModel):
     count: int

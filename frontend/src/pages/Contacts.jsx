@@ -11,8 +11,10 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
+import usePermission from '../hooks/usePermission';
 
 const Contacts = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/contacts');
   const [viewMode, setViewMode] = useState('list');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState([null, null]);
@@ -192,8 +194,19 @@ const Contacts = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); setContactToEdit(row); setIsContactModalOpen(true); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={() => setContactToDelete(row)}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); setContactToEdit(row); setIsContactModalOpen(true); }}>
+              <i className="ti ti-edit"></i>
+            </Link>
+          )}
+          {canDelete && (
+            <Link to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={() => setContactToDelete(row)}>
+              <i className="ti ti-trash"></i>
+            </Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border">View Only</span>
+          )}
         </div>
       ),
     },
@@ -275,11 +288,13 @@ const Contacts = () => {
 								</ul>
 							</div>
 						</div>
-						<div className="mb-2">
-							<a href="#" onClick={(e) => { e.preventDefault(); setContactToEdit(null); setIsContactModalOpen(true); }}
-								className="btn btn-primary d-flex align-items-center"><i
-									className="ti ti-circle-plus me-2"></i>Add Contact</a>
-						</div>
+						{canAdd && (
+							<div className="mb-2">
+								<a href="#" onClick={(e) => { e.preventDefault(); setContactToEdit(null); setIsContactModalOpen(true); }}
+									className="btn btn-primary d-flex align-items-center"><i
+										className="ti ti-circle-plus me-2"></i>Add Contact</a>
+							</div>
+						)}
 					
 				</PageHeader>
 				{/* /Breadcrumb */}
@@ -352,6 +367,8 @@ const Contacts = () => {
 							<div className="p-3">
 								<ContactsKanbanView 
 									contacts={filteredContacts}
+									canEdit={canEdit}
+									canDelete={canDelete}
 									onEdit={(e, contact) => { e.preventDefault(); setContactToEdit(contact); setIsContactModalOpen(true); }}
 									onDelete={(e, contact) => { e?.preventDefault(); setContactToDelete(contact); }}
 								/>

@@ -15,8 +15,10 @@ import toast from 'react-hot-toast';
 import axiosClient from '../api/axiosClient';
 import { APP_CONFIG } from '../config/appConfig';
 import FilterBar from '../components/common/FilterBar';
+import usePermission from '../hooks/usePermission';
 
 const Products = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/products');
   const [viewMode, setViewMode] = useState('list');
   const [activeTab, setActiveTab] = useState('products');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -415,8 +417,15 @@ const Products = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Product', type: 'product', name: row.product_name }); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Product', type: 'product', name: row.product_name }); }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     },
@@ -470,8 +479,15 @@ const Products = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditCategoryClick(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Category', type: 'category', name: row.name }); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); handleEditCategoryClick(row); }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Category', type: 'category', name: row.name }); }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     },
@@ -525,8 +541,15 @@ const Products = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditPlatformClick(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Platform', type: 'platform', name: row.name }); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2 text-primary" onClick={(e) => { e.preventDefault(); handleEditPlatformClick(row); }}><i className="ti ti-edit"></i></Link>
+          )}
+          {canDelete && (
+            <Link to="#" className="text-danger" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id || row.id, title: 'Delete Platform', type: 'platform', name: row.name }); }}><i className="ti ti-trash"></i></Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border fs-11">View Only</span>
+          )}
         </div>
       ),
     },
@@ -554,12 +577,14 @@ const Products = () => {
             </div>
             
             <div className="mb-2 d-flex gap-2">
-              {activeTab === 'products' ? (
-                <a href="#" onClick={(e) => { e.preventDefault(); setIsProductModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Product</a>
-              ) : activeTab === 'categories' ? (
-                <a href="#" onClick={(e) => { e.preventDefault(); setIsCategoryModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Category</a>
-              ) : (
-                <a href="#" onClick={(e) => { e.preventDefault(); setIsPlatformModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Platform</a>
+              {canAdd && (
+                activeTab === 'products' ? (
+                  <a href="#" onClick={(e) => { e.preventDefault(); setIsProductModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Product</a>
+                ) : activeTab === 'categories' ? (
+                  <a href="#" onClick={(e) => { e.preventDefault(); setIsCategoryModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Category</a>
+                ) : (
+                  <a href="#" onClick={(e) => { e.preventDefault(); setIsPlatformModalOpen(true); }} className="btn btn-primary d-flex align-items-center"><i className="ti ti-circle-plus me-2"></i>Create Platform</a>
+                )
               )}
             </div>
             
@@ -617,6 +642,8 @@ const Products = () => {
                     <div className="p-3">
                       <ProductsGridView 
                         products={filteredProducts} 
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                         onEditClick={handleEditClick} 
                         onDeleteClick={(p) => setConfirmDeleteModal({ isOpen: true, id: p._id || p.id, title: 'Delete Product', type: 'product', name: p.product_name })} 
                       />
@@ -647,6 +674,8 @@ const Products = () => {
                     <div className="p-3">
                       <CategoriesGridView 
                         categories={filteredCategories} 
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                         onEditClick={handleEditCategoryClick}
                         onDeleteClick={(c) => setConfirmDeleteModal({ isOpen: true, id: c._id || c.id, title: 'Delete Category', type: 'category', name: c.name })}
                       />
@@ -676,6 +705,8 @@ const Products = () => {
                     <div className="p-3">
                       <PlatformsGridView 
                         platforms={filteredPlatforms} 
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                         onEditClick={handleEditPlatformClick}
                         onDeleteClick={(pl) => setConfirmDeleteModal({ isOpen: true, id: pl._id || pl.id, title: 'Delete Platform', type: 'platform', name: pl.name })}
                       />

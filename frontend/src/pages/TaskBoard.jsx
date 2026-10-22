@@ -8,8 +8,10 @@ import CalendarView from '../components/tasks/CalendarView';
 import FilterBar from '../components/common/FilterBar';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
+import usePermission from '../hooks/usePermission';
 
 const TaskBoard = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/task-board');
   const [activePriority, setActivePriority] = useState('All');
   const [isTaskModalOpen, setTaskModalOpen] = useState(false);
   const [taskModalInitialData, setTaskModalInitialData] = useState(null);
@@ -137,14 +139,16 @@ const TaskBoard = () => {
                   <i className="ti ti-calendar-time me-1"></i> Calendar
                 </button>
               </div>
-              {viewMode === 'board' ? (
-                <a href="#" onClick={(e) => { e.preventDefault(); setTaskModalInitialData(null); setTaskModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center">
-                  <i className="ti ti-circle-plus me-1"></i>Add Task
-                </a>
-              ) : (
-                <a href="#" onClick={(e) => { e.preventDefault(); calendarControls?.openEventModal(); }} className="btn btn-primary d-inline-flex align-items-center">
-                  <i className="ti ti-circle-plus me-1"></i>Add Event
-                </a>
+              {canAdd && (
+                viewMode === 'board' ? (
+                  <a href="#" onClick={(e) => { e.preventDefault(); setTaskModalInitialData(null); setTaskModalOpen(true); }} className="btn btn-primary d-inline-flex align-items-center">
+                    <i className="ti ti-circle-plus me-1"></i>Add Task
+                  </a>
+                ) : (
+                  <a href="#" onClick={(e) => { e.preventDefault(); calendarControls?.openEventModal(); }} className="btn btn-primary d-inline-flex align-items-center">
+                    <i className="ti ti-circle-plus me-1"></i>Add Event
+                  </a>
+                )
               )}
             </div>
           </PageHeader>
@@ -201,6 +205,8 @@ const TaskBoard = () => {
               
               <KanbanBoard 
                 tasks={filteredTasks} 
+                canEdit={canEdit}
+                canDelete={canDelete}
                 onAddTask={(status) => { setTaskModalInitialData({ status }); setTaskModalOpen(true); }} 
                 onEditTask={(task) => { setTaskModalInitialData(task); setTaskModalOpen(true); }}
                 onDeleteTask={(taskId, taskTitle) => setConfirmDeleteModal({ isOpen: true, id: taskId, title: taskTitle })}

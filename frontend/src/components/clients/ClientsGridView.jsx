@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const ClientsGridView = ({ clients, users = [], handleEdit, setClientToDelete }) => {
+const ClientsGridView = ({ clients, users = [], canEdit = true, canDelete = true, handleEdit, setClientToDelete }) => {
   const getInitials = (name) => {
     if (!name) return 'C';
     const words = name.trim().split(' ');
@@ -28,22 +28,32 @@ const ClientsGridView = ({ clients, users = [], handleEdit, setClientToDelete })
           <div className="card w-100 flex-fill">
             <div className="card-body">
               <div className="position-relative mb-2">
-                <div className="dropdown position-absolute top-0 end-0">
-                  <button className="btn btn-icon btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i className="ti ti-dots-vertical"></i>
-                  </button>
-                  <ul className="dropdown-menu dropdown-menu-end p-3">
-                    <li>
-                      <Link className="dropdown-item rounded-1" to="#" onClick={(e) => { e.preventDefault(); handleEdit(client); }}>
-                        <i className="ti ti-edit me-1"></i>Edit
-                      </Link>
-                    </li>
-                    <li>
-                      <Link className="dropdown-item rounded-1" to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => { e.preventDefault(); setClientToDelete(client); }}>
-                        <i className="ti ti-trash me-1"></i>Delete
-                      </Link>
-                    </li>
-                  </ul>
+                <div className="position-absolute top-0 end-0">
+                  {(canEdit || canDelete) ? (
+                    <div className="dropdown">
+                      <button className="btn btn-icon btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i className="ti ti-dots-vertical"></i>
+                      </button>
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
+                        {canEdit && (
+                          <li>
+                            <Link className="dropdown-item rounded-1" to="#" onClick={(e) => { e.preventDefault(); handleEdit(client); }}>
+                              <i className="ti ti-edit me-1"></i>Edit
+                            </Link>
+                          </li>
+                        )}
+                        {canDelete && (
+                          <li>
+                            <Link className="dropdown-item rounded-1" to="#" data-bs-toggle="modal" data-bs-target="#delete_modal" onClick={(e) => { e.preventDefault(); setClientToDelete(client); }}>
+                              <i className="ti ti-trash me-1"></i>Delete
+                            </Link>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  ) : (
+                    <span className="badge bg-light text-muted border fs-11">View Only</span>
+                  )}
                 </div>
                 
                 <div className="d-flex justify-content-center pt-2">

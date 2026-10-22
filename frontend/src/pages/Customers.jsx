@@ -8,8 +8,10 @@ import CustomersGridView from '../components/customers/CustomersGridView';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
 import Loader from '../components/common/Loader';
+import usePermission from '../hooks/usePermission';
 
 const Customers = () => {
+  const { canAdd, canEdit, canDelete } = usePermission('/customers');
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
@@ -235,8 +237,19 @@ const Customers = () => {
       name: 'Action',
       cell: (row) => (
         <div className="action-icon d-inline-flex">
-          <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}><i className="ti ti-edit"></i></Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.name }); }}><i className="ti ti-trash"></i></Link>
+          {canEdit && (
+            <Link to="#" className="me-2" onClick={(e) => { e.preventDefault(); handleEditClick(row); }}>
+              <i className="ti ti-edit"></i>
+            </Link>
+          )}
+          {canDelete && (
+            <Link to="#" onClick={(e) => { e.preventDefault(); setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.name }); }}>
+              <i className="ti ti-trash"></i>
+            </Link>
+          )}
+          {!canEdit && !canDelete && (
+            <span className="badge bg-light text-muted border">View Only</span>
+          )}
         </div>
       ),
     },
@@ -266,11 +279,13 @@ const Customers = () => {
 							</div>
 						</div>
 						
-						<div className="mb-2">
-							<a href="#" onClick={(e) => { e.preventDefault(); setCurrentEditCustomer(null); setIsCustomerModalOpen(true); }}
-								className="btn btn-primary d-flex align-items-center"><i
-									className="ti ti-circle-plus me-2"></i>New Customer</a>
-						</div>
+						{canAdd && (
+							<div className="mb-2">
+								<a href="#" onClick={(e) => { e.preventDefault(); setCurrentEditCustomer(null); setIsCustomerModalOpen(true); }}
+									className="btn btn-primary d-flex align-items-center"><i
+										className="ti ti-circle-plus me-2"></i>New Customer</a>
+							</div>
+						)}
 					
 				</PageHeader>
 				{/* /Breadcrumb */}
@@ -301,6 +316,8 @@ const Customers = () => {
 							<div className="p-3">
 								<CustomersGridView 
                   data={filteredCustomers}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
                   onEditClick={handleEditClick}
                   onDeleteClick={(row) => setConfirmDeleteModal({ isOpen: true, id: row._id, title: row.name })}
                 />
